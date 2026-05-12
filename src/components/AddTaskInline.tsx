@@ -2,30 +2,30 @@
 
 import { useRef, useState, useTransition } from "react";
 import { createTask } from "@/app/actions";
-import type { Context, Priority } from "@/lib/types";
-
-const CONTEXTS: { slug: Context; label: string }[] = [
-  { slug: "facultad", label: "Facultad" },
-  { slug: "newfolio", label: "NewFolio" },
-  { slug: "casa", label: "Casa" },
-];
+import type { Priority } from "@/lib/types";
 
 const PRIORITIES: { value: Priority; label: string }[] = [
-  { value: "alta", label: "Alta" },
+  { value: "alta",  label: "Alta"  },
   { value: "media", label: "Media" },
-  { value: "baja", label: "Baja" },
+  { value: "baja",  label: "Baja"  },
 ];
 
-interface Props {
-  defaultContext?: Context;
-  defaultDueDate?: string;
+interface SubjectOption {
+  id: number;
+  name: string;
 }
 
-export default function AddTaskInline({ defaultContext = "casa", defaultDueDate }: Props) {
-  const [open, setOpen] = useState(false);
-  const [context, setContext] = useState<Context>(defaultContext);
+interface Props {
+  defaultDueDate?: string;
+  subjectId?: number;          // if provided, task is pre-linked to this subject
+  subjects?: SubjectOption[];  // if provided, shows subject picker
+}
+
+export default function AddTaskInline({ defaultDueDate, subjectId, subjects }: Props) {
+  const [open,     setOpen]     = useState(false);
   const [priority, setPriority] = useState<Priority>("media");
-  const [pending, startTransition] = useTransition();
+  const [selSubjectId, setSelSubjectId] = useState<number | "">(subjectId ?? "");
+  const [pending,  startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleOpen() {
@@ -33,16 +33,13 @@ export default function AddTaskInline({ defaultContext = "casa", defaultDueDate 
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  function handleClose() {
-    setOpen(false);
-  }
-
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const fd = new FormData(form);
-    fd.set("context", context);
+    fd.set("context", "facultad");
     fd.set("priority", priority);
+    if (selSubjectId) fd.set("subject_id", String(selSubjectId));
     startTransition(async () => {
       await createTask(fd);
       form.reset();
@@ -63,10 +60,7 @@ export default function AddTaskInline({ defaultContext = "casa", defaultDueDate 
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border border-slate-700 rounded-lg p-3 bg-slate-900 space-y-3"
-    >
+    <form onSubmit={handleSubmit} className="border border-slate-700 rounded-lg p-3 bg-slate-900 space-y-3">
       <input
         ref={inputRef}
         name="title"
@@ -74,32 +68,14 @@ export default function AddTaskInline({ defaultContext = "casa", defaultDueDate 
         placeholder="Título de la tarea..."
         required
         disabled={pending}
-        onKeyDown={(e) => e.key === "Escape" && handleClose()}
+        onKeyDown={e => e.key === "Escape" && setOpen(false)}
         className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-600 outline-none"
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        {/* Context selector */}
+        {/* Priority */}
         <div className="flex gap-1">
-          {CONTEXTS.map((c) => (
-            <button
-              key={c.slug}
-              type="button"
-              onClick={() => setContext(c.slug)}
-              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                context === c.slug
-                  ? "bg-slate-700 text-slate-100"
-                  : "text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Priority selector */}
-        <div className="flex gap-1">
-          {PRIORITIES.map((p) => (
+          {PRIORITIES.map(p => (
             <button
               key={p.value}
               type="button"
@@ -115,6 +91,20 @@ export default function AddTaskInline({ defaultContext = "casa", defaultDueDate 
           ))}
         </div>
 
+        {/* Subject picker — shown only when subjects prop is passed and subjectId not fixed */}
+        {subjects && subjects.length > 0 && !subjectId && (
+          <select
+            value={selSubjectId}
+            onChange={e => setSelSubjectId(e.target.value ? Number(e.target.value) : "")}
+            className="bg-slate-800 text-xs text-slate-400 rounded px-2 py-0.5 outline-none border border-slate-700 [color-scheme:dark]"
+          >
+            <option value="">Sin materia</option>
+            {subjects.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        )}
+
         {/* Due date */}
         <input
           name="due_date"
@@ -126,7 +116,7 @@ export default function AddTaskInline({ defaultContext = "casa", defaultDueDate 
         <div className="ml-auto flex gap-2">
           <button
             type="button"
-            onClick={handleClose}
+            onClick={() => setOpen(false)}
             className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
           >
             Cancelar

@@ -13,6 +13,7 @@ const PRIORITY_DOT: Record<string, string> = {
 interface Props {
   task: Task;
   showDueDate?: boolean;
+  isStale?: boolean;   // overdue by ≥3 days — shows orange left border
 }
 
 function formatDate(s: string) {
@@ -20,7 +21,7 @@ function formatDate(s: string) {
   return `${d}/${m}`;
 }
 
-export default function TaskItem({ task, showDueDate }: Props) {
+export default function TaskItem({ task, showDueDate, isStale }: Props) {
   const [pending, startTransition] = useTransition();
 
   function handleToggle() {
@@ -37,7 +38,7 @@ export default function TaskItem({ task, showDueDate }: Props) {
     <div
       className={`group flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
         pending ? "opacity-50" : ""
-      } hover:bg-slate-900`}
+      } hover:bg-slate-900 ${isStale ? "border-l-2 border-orange-700 pl-2" : ""}`}
     >
       {/* Checkbox */}
       <button

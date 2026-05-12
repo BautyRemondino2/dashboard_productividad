@@ -33,6 +33,12 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# SQLite database — datos locales, no van al repo
+/data/
+
+# Claude Code session files
+.claude/
+
 # vercel
 .vercel
 
