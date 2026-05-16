@@ -1,16 +1,51 @@
-export type Context = "facultad" | "newfolio" | "casa";
 export type Priority = "alta" | "media" | "baja";
 export type TaskStatus = "pendiente" | "hecha";
+export type ExamType = "parcial" | "tp" | "final" | "quiz";
+
+export interface Subject {
+  id: number;
+  name: string;
+  short: string;
+  hue: number;
+  credits: number;
+}
+
+export interface ClassItem {
+  id: number;
+  subject_id: number;
+  week: number;
+  title: string;
+  date: string;
+  summarized: number;  // 0 | 1 (SQLite boolean)
+  summary: string | null;
+  tasks_total: number;
+  tasks_done: number;
+  is_new: number;      // 0 | 1
+}
+
+export interface Exam {
+  id: number;
+  subject_id: number;
+  title: string;
+  type: ExamType;
+  date: string;
+  grade: number | null;
+  weight: number;
+}
 
 export interface Task {
   id: number;
   title: string;
-  context: Context;
+  context: string;
   priority: Priority;
   due_date: string | null;
+  subject_id: number | null;
+  material_id: number | null;
   status: TaskStatus;
   created_at: string;
   completed_at: string | null;
+  // optional join field
+  subject_name?: string;
 }
 
 export interface Habit {
@@ -25,12 +60,6 @@ export interface HabitLog {
   habit_id: number;
   date: string;
 }
-
-export const CONTEXTS: { slug: Context; label: string }[] = [
-  { slug: "facultad", label: "Facultad" },
-  { slug: "newfolio", label: "NewFolio" },
-  { slug: "casa", label: "Casa" },
-];
 
 export const PRIORITY_ORDER: Record<Priority, number> = {
   alta: 1,

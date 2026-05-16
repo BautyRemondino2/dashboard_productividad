@@ -2,22 +2,25 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
-import type { Context, Priority } from "@/lib/types";
+import type { Priority } from "@/lib/types";
+import type { GlossaryTerm } from "@/lib/glossary";
 
-// ── Tasks ─────────────────────────────────────────────────────────────────────
+// ── Tasks ──────────────────────────────────────────────────────────────────
 
 export async function createTask(formData: FormData) {
   const title = (formData.get("title") as string)?.trim();
   if (!title) return;
 
-  const context = (formData.get("context") as Context) || "casa";
   const priority = (formData.get("priority") as Priority) || "media";
   const due_date = (formData.get("due_date") as string) || null;
+  const subject_id = formData.get("subject_id")
+    ? Number(formData.get("subject_id"))
+    : null;
 
   const db = getDb();
   db.prepare(
-    "INSERT INTO tasks (title, context, priority, due_date) VALUES (?, ?, ?, ?)"
-  ).run(title, context, priority, due_date);
+    "INSERT INTO tasks (title, priority, due_date, subject_id) VALUES (?, ?, ?, ?)"
+  ).run(title, priority, due_date, subject_id);
 
   revalidatePath("/", "layout");
 }
@@ -47,11 +50,46 @@ export async function deleteTask(id: number) {
 }
 
 export async function updateTaskPriority(id: number, priority: Priority) {
-  getDb().prepare("UPDATE tasks SET priority = ? WHERE id = ?").run(priority, id);
+  getDb()
+    .prepare("UPDATE tasks SET priority = ? WHERE id = ?")
+    .run(priority, id);
   revalidatePath("/", "layout");
 }
 
-// ── Habits ────────────────────────────────────────────────────────────────────
+// ── Classes ────────────────────────────────────────────────────────────────
+
+export async function addClass(formData: FormData) {
+  const subject_id = Number(formData.get("subject_id"));
+  const title = (formData.get("title") as string)?.trim();
+  const date = (formData.get("date") as string) || new Date().toISOString().slice(0, 10);
+  if (!title || !subject_id) return;
+
+  const db = getDb();
+  const maxWeek = (
+    db
+      .prepare(
+        "SELECT COALESCE(MAX(week), 0) as m FROM classes WHERE subject_id = ?"
+      )
+      .get(subject_id) as { m: number }
+  ).m;
+
+  db.prepare(
+    "INSERT INTO classes (subject_id, week, title, date) VALUES (?, ?, ?, ?)"
+  ).run(subject_id, maxWeek + 1, title, date);
+
+  revalidatePath(`/facultad/${subject_id}`);
+  revalidatePath("/");
+}
+
+export async function setSummarized(classId: number, subjectId: number) {
+  getDb()
+    .prepare("UPDATE classes SET summarized = 1 WHERE id = ?")
+    .run(classId);
+  revalidatePath(`/facultad/${subjectId}`);
+  revalidatePath("/");
+}
+
+// ── Habits ────────────────────────────────────────────────────────────────
 
 export async function toggleHabitLog(habitId: number, date: string) {
   const db = getDb();
@@ -73,4 +111,61 @@ export async function createHabit(formData: FormData) {
   if (!name) return;
   getDb().prepare("INSERT OR IGNORE INTO habits (name) VALUES (?)").run(name);
   revalidatePath("/habitos");
+}
+
+// ── Exams ──────────────────────────────────────────────────────────────────
+
+export async function setExamGrade(examId: number, grade: number, subjectId: number) {
+  getDb()
+    .prepare("UPDATE exams SET grade = ? WHERE id = ?")
+    .run(grade, examId);
+  revalidatePath(`/facultad/${subjectId}`);
+}
+
+// ── Glossary ───────────────────────────────────────────────────────────────
+
+const GLOSSARY_ALLOWED = ["term", "category", "short_def", "detail", "example", "ticker"];
+
+export async function updateGlossaryTerm(
+  id: number,
+  field: string,
+  value: string | null
+) {
+  if (!GLOSSARY_ALLOWED.includes(field)) return;
+  getDb()
+    .prepare(`UPDATE glossary_terms SET ${field} = ? WHERE id = ?`)
+    .run(value, id);
+  revalidatePath("/glossary");
+}
+
+export async function createGlossaryTerm(
+  formData: FormData
+): Promise<GlossaryTerm | null> {
+  const term = (formData.get("term") as string)?.trim();
+  const category = (formData.get("category") as string)?.trim();
+  const short_def = (formData.get("short_def") as string)?.trim();
+  const detail = (formData.get("detail") as string)?.trim();
+  const example = (formData.get("example") as string)?.trim();
+  const ticker = (formData.get("ticker") as string)?.trim() || null;
+
+  if (!term || !category || !short_def || !detail || !example) return null;
+
+  const db = getDb();
+  const result = db
+    .prepare(
+      "INSERT INTO glossary_terms (term, category, short_def, detail, example, ticker) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+    .run(term, category, short_def, detail, example, ticker);
+
+  const newTerm = db
+    .prepare("SELECT * FROM glossary_terms WHERE id = ?")
+    .get(result.lastInsertRowid) as GlossaryTerm | undefined;
+
+  revalidatePath("/glossary");
+  return newTerm ?? null;
+}
+
+export async function deleteGlossaryTerm(id: number) {
+  getDb().prepare("DELETE FROM glossary_terms WHERE id = ?").run(id);
+  revalidatePath("/glossary");
 }
