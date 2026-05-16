@@ -16,9 +16,8 @@ interface Props {
 }
 
 const NAV = [
-  { href: "/",          label: "Dashboard", icon: "◆" },
-  { href: "/examenes",  label: "Exámenes",  icon: "◫" },
-  { href: "/glossary",  label: "Glosario",  icon: "◉" },
+  { href: "/",         label: "Hoy",       icon: "◆" },
+  { href: "/glossary", label: "Glosario",  icon: "◉" },
 ] as const;
 
 export default function Sidebar({ subjects }: Props) {
