@@ -29,3 +29,23 @@ body {
 main > * {
   animation: fadeIn 0.2s ease-out;
 }
+
+/* Staggered fade-up for sections */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up   { animation: fadeUp 0.35s ease-out both; }
+.fade-up-1 { animation-delay: 0ms; }
+.fade-up-2 { animation-delay: 40ms; }
+.fade-up-3 { animation-delay: 80ms; }
+
+/* Subtle scrollbar */
+::-webkit-scrollbar       { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgb(30,41,59); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(51,65,85); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Tabular nums helper */
+.tabular { font-variant-numeric: tabular-nums; }

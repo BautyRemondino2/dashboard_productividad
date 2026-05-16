@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
 import { localDateStr } from "@/lib/utils";
 import type { Priority, ExamType } from "@/lib/types";
+import type { GlossaryTerm } from "@/lib/glossary";
 import Anthropic from "@anthropic-ai/sdk";
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
@@ -329,3 +330,51 @@ type LocalClassMaterial = {
   filename: string | null; original_content: string | null;
   date: string; created_at: string;
 };
+
+// ── Glossary ───────────────────────────────────────────────────────────────
+
+const GLOSSARY_ALLOWED = ["term", "category", "short_def", "detail", "example", "ticker"];
+
+export async function updateGlossaryTerm(
+  id: number,
+  field: string,
+  value: string | null
+) {
+  if (!GLOSSARY_ALLOWED.includes(field)) return;
+  getDb()
+    .prepare(`UPDATE glossary_terms SET ${field} = ? WHERE id = ?`)
+    .run(value, id);
+  revalidatePath("/glossary");
+}
+
+export async function createGlossaryTerm(
+  formData: FormData
+): Promise<GlossaryTerm | null> {
+  const term      = (formData.get("term")      as string)?.trim();
+  const category  = (formData.get("category")  as string)?.trim();
+  const short_def = (formData.get("short_def") as string)?.trim();
+  const detail    = (formData.get("detail")    as string)?.trim();
+  const example   = (formData.get("example")   as string)?.trim();
+  const ticker    = (formData.get("ticker")    as string)?.trim() || null;
+
+  if (!term || !category || !short_def || !detail || !example) return null;
+
+  const db = getDb();
+  const result = db
+    .prepare(
+      "INSERT INTO glossary_terms (term, category, short_def, detail, example, ticker) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+    .run(term, category, short_def, detail, example, ticker);
+
+  const newTerm = db
+    .prepare("SELECT * FROM glossary_terms WHERE id = ?")
+    .get(result.lastInsertRowid) as GlossaryTerm | undefined;
+
+  revalidatePath("/glossary");
+  return newTerm ?? null;
+}
+
+export async function deleteGlossaryTerm(id: number) {
+  getDb().prepare("DELETE FROM glossary_terms WHERE id = ?").run(id);
+  revalidatePath("/glossary");
+}

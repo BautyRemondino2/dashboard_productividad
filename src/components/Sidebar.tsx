@@ -38,9 +38,8 @@ export default function Sidebar({ subjects }: Props) {
 
       {/* Main navigation */}
       <div className="space-y-0.5">
-        <NavLink href="/today"    label="Hoy"           icon="◈" active={isActive("/today")} />
-        <NavLink href="/examenes" label="Exámenes"      icon="◫" active={isActive("/examenes")} />
-        <NavLink href="/stats"    label="Estadísticas"  icon="▣" active={isActive("/stats")} />
+        <NavLink href="/today"    label="Hoy"      icon="◈" active={isActive("/today")} />
+        <NavLink href="/glossary" label="Glosario" icon="◉" active={isActive("/glossary")} />
       </div>
 
       {/* Subjects */}
