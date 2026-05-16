@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const subjects = getDb()
-    .prepare("SELECT id, name FROM subjects ORDER BY name")
-    .all() as { id: number; name: string }[];
+    .prepare("SELECT id, name, short, hue FROM subjects ORDER BY name")
+    .all() as { id: number; name: string; short: string; hue: number }[];
 
   return (
     <html lang="es" className={`${geist.variable} dark h-full`}>

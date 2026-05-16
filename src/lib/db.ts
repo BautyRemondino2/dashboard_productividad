@@ -105,6 +105,26 @@ function initSchema(db: Database.Database) {
   try { db.exec("ALTER TABLE tasks ADD COLUMN material_id INTEGER REFERENCES class_materials(id) ON DELETE SET NULL"); } catch { /* exists */ }
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_material ON tasks(material_id)"); } catch { /* exists */ }
 
+  // Subject hue + short name columns
+  try { db.exec("ALTER TABLE subjects ADD COLUMN hue INTEGER NOT NULL DEFAULT 220"); } catch { /* exists */ }
+  try { db.exec("ALTER TABLE subjects ADD COLUMN short TEXT NOT NULL DEFAULT ''"); } catch { /* exists */ }
+
+  // Backfill hues and short names for known subjects
+  {
+    const hueMap: Record<string, { short: string; hue: number }> = {
+      "Capital Markets":                { short: "Capital Markets",   hue: 200 },
+      "International Finance":          { short: "Int'l Finance",     hue: 100 },
+      "Financial Engineering":          { short: "Fin. Engineering",  hue: 280 },
+      "Applied Programming in Finance": { short: "Appl. Programming", hue: 340 },
+      "Econometrics":                   { short: "Econometrics",      hue: 30  },
+      "Computational Finance":          { short: "Comp. Finance",     hue: 160 },
+    };
+    const updSubj = db.prepare("UPDATE subjects SET short = ?, hue = ? WHERE name = ?");
+    for (const [name, { short, hue }] of Object.entries(hueMap)) {
+      updSubj.run(short, hue, name);
+    }
+  }
+
   // Glossary
   db.exec(`
     CREATE TABLE IF NOT EXISTS glossary_terms (
