@@ -17,7 +17,15 @@ export default function FacultadPage() {
   const db    = getDb();
   const today = localDateStr();
 
-  const subjects = db.prepare("SELECT * FROM subjects ORDER BY name").all() as Subject[];
+  // Only subjects in the active semester
+  const activeSem = db
+    .prepare("SELECT id FROM semesters WHERE status='active' ORDER BY id DESC LIMIT 1")
+    .get() as { id: number } | undefined;
+  const subjects = activeSem
+    ? (db
+        .prepare("SELECT * FROM subjects WHERE semester_id = ? ORDER BY name")
+        .all(activeSem.id) as Subject[])
+    : (db.prepare("SELECT * FROM subjects WHERE semester_id IS NULL ORDER BY name").all() as Subject[]);
 
   const stats: SubjectStats[] = subjects.map(subject => {
     const materials = (db.prepare(

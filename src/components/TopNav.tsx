@@ -28,6 +28,7 @@ export default function TopNav() {
 
       <NavLink href="/today"    label="Hoy"      active={isActive("/today")} />
       <NavLink href="/glossary" label="Glosario"  active={isActive("/glossary")} />
+      <NavLink href="/archivo"  label="Archivo"   active={isActive("/archivo")} />
     </nav>
   );
 }

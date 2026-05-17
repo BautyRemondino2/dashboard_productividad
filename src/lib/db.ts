@@ -1,13 +1,11 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
-import { localDateStr } from "@/lib/utils";
 
 const DB_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DB_DIR, "dashboard.db");
 
 declare global {
-  // eslint-disable-next-line no-var
   var __db: Database.Database | undefined;
 }
 
@@ -17,12 +15,21 @@ function initSchema(db: Database.Database) {
 
   // Core tables
   db.exec(`
+    CREATE TABLE IF NOT EXISTS semesters (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT    NOT NULL,
+      status      TEXT    NOT NULL DEFAULT 'active' CHECK(status IN ('active','archived')),
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      archived_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS subjects (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      name       TEXT    NOT NULL UNIQUE,
-      short      TEXT    NOT NULL,
-      hue        INTEGER NOT NULL DEFAULT 220,
-      credits    INTEGER NOT NULL DEFAULT 4
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT    NOT NULL,
+      short       TEXT    NOT NULL,
+      hue         INTEGER NOT NULL DEFAULT 220,
+      credits     INTEGER NOT NULL DEFAULT 4,
+      semester_id INTEGER REFERENCES semesters(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS classes (
@@ -109,87 +116,46 @@ function initSchema(db: Database.Database) {
   // Glossary migrations
   try { db.exec("ALTER TABLE glossary_terms ADD COLUMN term_type TEXT NOT NULL DEFAULT 'concepto'"); } catch { /* exists */ }
   try { db.exec("ALTER TABLE glossary_terms ADD COLUMN formula TEXT"); } catch { /* exists */ }
+
+  // Semester migration: drop UNIQUE constraint on subjects.name (so multiple semesters can share names)
+  // and add semester_id column
+  try { db.exec("ALTER TABLE subjects ADD COLUMN semester_id INTEGER REFERENCES semesters(id) ON DELETE CASCADE"); } catch { /* exists */ }
+
+  // Ensure at least one active semester exists; backfill subjects without a semester
+  const hasSemester = db.prepare("SELECT COUNT(*) as n FROM semesters").get() as { n: number };
+  if (hasSemester.n === 0) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const half = now.getMonth() < 6 ? "1S" : "2S";
+    const name = `${year}-${half}`;
+    const r = db.prepare("INSERT INTO semesters (name, status) VALUES (?, 'active')").run(name);
+    db.prepare("UPDATE subjects SET semester_id = ? WHERE semester_id IS NULL").run(r.lastInsertRowid);
+  }
 }
 
 function seedData(db: Database.Database) {
   const subjectCount = (db.prepare("SELECT COUNT(*) as n FROM subjects").get() as { n: number }).n;
   if (subjectCount > 0) return;
 
-  const today = localDateStr();
-  const daysAgo = (n: number) => localDateStr(-n);
-  const daysAhead = (n: number) => localDateStr(n);
+  // Ensure active semester
+  const activeSem = db.prepare("SELECT id FROM semesters WHERE status='active' ORDER BY id DESC LIMIT 1").get() as { id: number } | undefined;
+  const semId = activeSem
+    ? activeSem.id
+    : (() => {
+        const now = new Date();
+        const name = `${now.getFullYear()}-${now.getMonth() < 6 ? "1S" : "2S"}`;
+        return Number(db.prepare("INSERT INTO semesters (name, status) VALUES (?, 'active')").run(name).lastInsertRowid);
+      })();
 
-  // Seed subjects
-  const insSubject = db.prepare("INSERT INTO subjects (name, short, hue, credits) VALUES (?, ?, ?, ?)");
-  insSubject.run("Capital Markets",                "Capital Markets",   200, 6);
-  insSubject.run("Financial Engineering",          "Fin. Engineering",  280, 6);
-  insSubject.run("Computational Finance",          "Comp. Finance",     160, 4);
-  insSubject.run("Econometrics",                   "Econometrics",       30, 6);
-  insSubject.run("Applied Programming in Finance", "Appl. Programming", 340, 4);
+  // Seed subjects (5 correct subjects)
+  const insSubject = db.prepare("INSERT INTO subjects (name, short, hue, credits, semester_id) VALUES (?, ?, ?, ?, ?)");
+  insSubject.run("Pronósticos Financieros",  "Pronósticos",  200, 6, semId);
+  insSubject.run("Instrumentos Financieros", "Instrumentos", 100, 6, semId);
+  insSubject.run("Ingeniería Financiera",    "Ing. Financiera", 280, 6, semId);
+  insSubject.run("Finanzas Corporativas",    "Fin. Corporativas", 340, 6, semId);
+  insSubject.run("Taller de Tesis",          "Tesis",         30, 4, semId);
 
-  const subjects = db.prepare("SELECT id, name FROM subjects ORDER BY id").all() as { id: number; name: string }[];
-  const s = (name: string) => subjects.find(x => x.name === name)!.id;
-
-  // Seed classes
-  const insCls = db.prepare(
-    "INSERT INTO classes (subject_id, week, title, date, summarized, tasks_total, tasks_done) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  );
-
-  // Capital Markets
-  insCls.run(s("Capital Markets"), 1, "Mercados primarios y secundarios",   daysAgo(35), 1, 0, 0);
-  insCls.run(s("Capital Markets"), 2, "Bonos cupón cero y duration",        daysAgo(28), 1, 2, 2);
-  insCls.run(s("Capital Markets"), 3, "Curva de rendimientos",              daysAgo(21), 1, 3, 2);
-  insCls.run(s("Capital Markets"), 4, "Estructura temporal de tasas",       daysAgo(14), 1, 2, 2);
-  insCls.run(s("Capital Markets"), 5, "Modelo CAPM",                        daysAgo(7),  1, 4, 2);
-  insCls.run(s("Capital Markets"), 6, "Frontera eficiente de Markowitz",    today,       0, 0, 0);
-
-  // Financial Engineering
-  insCls.run(s("Financial Engineering"), 1, "Derivados: forwards y futuros",   daysAgo(33), 1, 1, 1);
-  insCls.run(s("Financial Engineering"), 2, "Pricing de opciones europeas",     daysAgo(26), 1, 3, 3);
-  insCls.run(s("Financial Engineering"), 3, "Black-Scholes-Merton",             daysAgo(19), 1, 2, 1);
-  insCls.run(s("Financial Engineering"), 4, "Las griegas: Δ Γ Θ ν",             daysAgo(12), 0, 0, 0);
-  insCls.run(s("Financial Engineering"), 5, "Cobertura delta y gamma",          daysAgo(5),  0, 0, 0);
-
-  // Computational Finance
-  insCls.run(s("Computational Finance"), 1, "Monte Carlo: fundamentos",        daysAgo(32), 1, 2, 2);
-  insCls.run(s("Computational Finance"), 2, "Reducción de varianza",            daysAgo(25), 1, 1, 1);
-  insCls.run(s("Computational Finance"), 3, "Diferencias finitas explícitas",   daysAgo(18), 1, 2, 2);
-  insCls.run(s("Computational Finance"), 4, "Esquemas implícitos · Crank-N.",   daysAgo(11), 1, 3, 2);
-  insCls.run(s("Computational Finance"), 5, "Calibración por gradient descent", daysAgo(4),  1, 2, 1);
-
-  // Econometrics — most unsummarized
-  insCls.run(s("Econometrics"), 1, "OLS y supuestos clásicos",          daysAgo(34), 1, 2, 2);
-  insCls.run(s("Econometrics"), 2, "Heterocedasticidad",                 daysAgo(27), 1, 3, 1);
-  insCls.run(s("Econometrics"), 3, "Autocorrelación · Durbin-Watson",    daysAgo(20), 0, 0, 0);
-  insCls.run(s("Econometrics"), 4, "Variables instrumentales",           daysAgo(13), 0, 0, 0);
-  insCls.run(s("Econometrics"), 5, "Series de tiempo: ARIMA",            daysAgo(6),  0, 0, 0);
-
-  // Applied Programming
-  insCls.run(s("Applied Programming in Finance"), 1, "Numpy + pandas refresher",    daysAgo(31), 1, 1, 1);
-  insCls.run(s("Applied Programming in Finance"), 2, "Backtesting con vectorbt",     daysAgo(24), 1, 2, 2);
-  insCls.run(s("Applied Programming in Finance"), 3, "API trading con ccxt",         daysAgo(17), 1, 3, 2);
-  insCls.run(s("Applied Programming in Finance"), 4, "Persistencia · SQLite + ORM",  daysAgo(10), 1, 2, 2);
-  insCls.run(s("Applied Programming in Finance"), 5, "Despliegue · Docker básico",   daysAgo(3),  1, 4, 2);
-
-  // Seed exams
-  const insExam = db.prepare("INSERT INTO exams (subject_id, title, type, date, grade, weight) VALUES (?, ?, ?, ?, ?, ?)");
-  insExam.run(s("Econometrics"),                   "Parcial 1",  "parcial", daysAhead(3),  null, 0.4);
-  insExam.run(s("Financial Engineering"),          "TP entrega", "tp",      daysAhead(8),  null, 0.2);
-  insExam.run(s("Capital Markets"),                "Parcial 1",  "parcial", daysAgo(20),   8.5,  0.4);
-  insExam.run(s("Computational Finance"),          "TP1",        "tp",      daysAgo(15),   9.0,  0.3);
-  insExam.run(s("Applied Programming in Finance"), "TP1",        "tp",      daysAgo(10),   9.5,  0.3);
-  insExam.run(s("Financial Engineering"),          "Quiz 1",     "quiz",    daysAgo(22),   7.0,  0.1);
-  insExam.run(s("Econometrics"),                   "Quiz",       "quiz",    daysAgo(8),    6.0,  0.1);
-
-  // Seed tasks (facultad only)
-  const insTask = db.prepare(
-    "INSERT INTO tasks (title, priority, due_date, subject_id) VALUES (?, ?, ?, ?)"
-  );
-  insTask.run("Resolver práctica TP3: tests de heterocedasticidad", "alta", daysAhead(2), s("Econometrics"));
-  insTask.run("Revisar parcial corregido de Capital Markets",        "media", daysAhead(1), s("Capital Markets"));
-  insTask.run("Implementar pricer de opciones en Python",            "media", daysAhead(5), s("Financial Engineering"));
-  insTask.run("Entregar TP de simulación Monte Carlo",               "alta",  daysAhead(4), s("Computational Finance"));
-  insTask.run("Completar ejercicios de Docker",                      "baja",  daysAhead(7), s("Applied Programming in Finance"));
+  // No demo classes/exams/tasks seeded — start with empty subjects so the user fills them in.
 }
 
 function seedGlossary(db: Database.Database) {

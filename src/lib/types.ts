@@ -8,6 +8,15 @@ export interface Subject {
   short: string;
   hue: number;
   credits: number;
+  semester_id: number | null;
+}
+
+export interface Semester {
+  id: number;
+  name: string;
+  status: "active" | "archived";
+  created_at: string;
+  archived_at: string | null;
 }
 
 export interface ClassItem {

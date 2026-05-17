@@ -1,8 +1,10 @@
 import { getDb } from "@/lib/db";
 import { localDateStr } from "@/lib/utils";
 import { subjectColor, subjectColorSoft } from "@/lib/subjectColors";
-import type { Subject, ClassItem, Exam, Task } from "@/lib/types";
+import type { Subject, ClassItem, Exam, Task, Semester } from "@/lib/types";
 import Link from "next/link";
+import FocusWeek from "@/components/FocusWeek";
+import SemesterControl from "@/components/SemesterControl";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -32,12 +34,14 @@ function Topbar({
   pendingTasks,
   overdueCount,
   productivity,
+  semester,
 }: {
   today: string;
   doneTasks: number;
   pendingTasks: number;
   overdueCount: number;
   productivity: number;
+  semester: Semester | null;
 }) {
   const ringColor =
     productivity >= 80
@@ -51,16 +55,22 @@ function Topbar({
   return (
     <div className="flex items-end justify-between gap-6 mb-6">
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-slate-600 mb-1">
-          Dashboard
-        </p>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-[11px] uppercase tracking-widest text-slate-600">Dashboard</p>
+          {semester && (
+            <>
+              <span className="text-slate-700 text-[10px]">·</span>
+              <span className="text-[11px] text-slate-500 tabular">{semester.name}</span>
+            </>
+          )}
+        </div>
         <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">
           {formatDayName(today)}
         </h1>
         <p className="text-sm text-slate-500 mt-0.5">{formatDateLong(today)}</p>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-5">
         {/* Quick stats */}
         <div className="flex items-center gap-5 text-right">
           <Stat label="hechas hoy" value={doneTasks} color="text-emerald-400" />
@@ -88,6 +98,9 @@ function Topbar({
             {productivity}%
           </div>
         </div>
+
+        {/* Semester control */}
+        {semester && <SemesterControl semesterName={semester.name} />}
       </div>
     </div>
   );
@@ -106,88 +119,6 @@ function Stat({
     <div>
       <p className={`text-2xl font-semibold tabular leading-none ${color}`}>{value}</p>
       <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">{label}</p>
-    </div>
-  );
-}
-
-// ─── Focus Block ─────────────────────────────────────────────────────────────
-
-function FocusBlock({
-  task,
-  subject,
-  nearestExam,
-  today,
-}: {
-  task: Task;
-  subject: Subject;
-  nearestExam: Exam | null;
-  today: string;
-}) {
-  const daysUntilDue = task.due_date ? daysBetween(today, task.due_date) : null;
-
-  return (
-    <div
-      className="relative overflow-hidden rounded-xl border border-slate-800 p-5 mb-6 fade-up fade-up-2"
-      style={{
-        background: `linear-gradient(135deg, ${subjectColorSoft(subject.hue)} 0%, rgba(15,23,42,0.4) 60%)`,
-      }}
-    >
-      {/* accent bar */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-        style={{ background: subjectColor(subject.hue, 70) }}
-      />
-
-      <div className="flex items-start gap-5">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span
-              className="text-[10px] font-semibold uppercase tracking-widest"
-              style={{ color: subjectColor(subject.hue, 78) }}
-            >
-              ◎ Foco del día
-            </span>
-            <span className="text-[10px] text-slate-500">
-              · sugerido por prioridad + cercanía de examen
-            </span>
-          </div>
-          <h2 className="text-lg font-medium text-slate-100 leading-snug mb-2">
-            {task.title}
-          </h2>
-          <div className="flex flex-wrap items-center gap-3 text-[11px]">
-            <span className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300">
-              {subject.short}
-            </span>
-            <span className="text-red-400 font-medium">● alta</span>
-            {daysUntilDue !== null && (
-              <span className="text-slate-500">
-                vence en {daysUntilDue} día{daysUntilDue !== 1 ? "s" : ""}
-              </span>
-            )}
-            {nearestExam && (
-              <span className="text-slate-500">
-                · {nearestExam.title} en{" "}
-                {daysBetween(today, nearestExam.date)} días
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 shrink-0">
-          <button
-            className="px-4 py-2 rounded-lg text-[12px] font-medium transition-colors text-slate-100 border"
-            style={{
-              background: subjectColor(subject.hue, 25),
-              borderColor: subjectColor(subject.hue, 45),
-            }}
-          >
-            Empezar pomodoro
-          </button>
-          <button className="px-4 py-2 rounded-lg text-[12px] font-medium bg-slate-800/60 hover:bg-slate-800 text-slate-300 transition-colors border border-slate-700/50">
-            Marcar hecha
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -407,7 +338,6 @@ function heatmapColor(v: number): string {
 
 function ActivityHeatmap({
   data,
-  today,
   className = "",
 }: {
   data: { date: string; count: number }[];
@@ -796,39 +726,58 @@ export default function TodayPage() {
   const db = getDb();
   const today = localDateStr();
 
-  const subjects = db
-    .prepare("SELECT * FROM subjects ORDER BY id")
-    .all() as Subject[];
+  // Active semester
+  const semester = db
+    .prepare("SELECT * FROM semesters WHERE status = 'active' ORDER BY id DESC LIMIT 1")
+    .get() as Semester | undefined;
 
-  const allClasses = db
-    .prepare("SELECT * FROM classes ORDER BY subject_id, week")
-    .all() as ClassItem[];
+  const subjects = semester
+    ? (db
+        .prepare("SELECT * FROM subjects WHERE semester_id = ? ORDER BY id")
+        .all(semester.id) as Subject[])
+    : [];
 
-  const exams = db
-    .prepare("SELECT * FROM exams ORDER BY date")
-    .all() as Exam[];
+  const subjectIds = subjects.map((s) => s.id);
+  const inList = subjectIds.length > 0 ? subjectIds.map(() => "?").join(",") : "NULL";
 
-  // Tasks stats
+  const allClasses = subjectIds.length
+    ? (db
+        .prepare(`SELECT * FROM classes WHERE subject_id IN (${inList}) ORDER BY subject_id, week`)
+        .all(...subjectIds) as ClassItem[])
+    : [];
+
+  const exams = subjectIds.length
+    ? (db
+        .prepare(`SELECT * FROM exams WHERE subject_id IN (${inList}) ORDER BY date`)
+        .all(...subjectIds) as Exam[])
+    : [];
+
+  // Tasks stats — only tasks belonging to current semester's subjects (or unlinked tasks)
+  const taskFilter = subjectIds.length
+    ? `(subject_id IN (${inList}) OR subject_id IS NULL)`
+    : "subject_id IS NULL";
+  const taskParams = subjectIds.length ? subjectIds : [];
+
   const doneTasks = (
     db
       .prepare(
-        "SELECT COUNT(*) as n FROM tasks WHERE status = 'hecha' AND date(completed_at) = ?"
+        `SELECT COUNT(*) as n FROM tasks WHERE status = 'hecha' AND date(completed_at) = ? AND ${taskFilter}`
       )
-      .get(today) as { n: number }
+      .get(today, ...taskParams) as { n: number }
   ).n;
 
   const pendingTasks = (
     db
-      .prepare("SELECT COUNT(*) as n FROM tasks WHERE status = 'pendiente'")
-      .get() as { n: number }
+      .prepare(`SELECT COUNT(*) as n FROM tasks WHERE status = 'pendiente' AND ${taskFilter}`)
+      .get(...taskParams) as { n: number }
   ).n;
 
   const overdueCount = (
     db
       .prepare(
-        "SELECT COUNT(*) as n FROM tasks WHERE status = 'pendiente' AND due_date < ?"
+        `SELECT COUNT(*) as n FROM tasks WHERE status = 'pendiente' AND due_date < ? AND ${taskFilter}`
       )
-      .get(today) as { n: number }
+      .get(today, ...taskParams) as { n: number }
   ).n;
 
   const productivity =
@@ -836,17 +785,21 @@ export default function TodayPage() {
       ? Math.round((doneTasks / (doneTasks + pendingTasks)) * 100)
       : 0;
 
-  // Focus task: highest priority pending task with nearest due date
+  // Focus task of the week: pending task in active semester, ordered by:
+  //   1) overdue first, 2) priority, 3) earliest due
   const focusTask = db
     .prepare(
       `SELECT t.*, s.name as subject_name FROM tasks t
        LEFT JOIN subjects s ON s.id = t.subject_id
-       WHERE t.status = 'pendiente'
-       ORDER BY CASE t.priority WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END,
-                t.due_date ASC NULLS LAST
+       WHERE t.status = 'pendiente' AND ${taskFilter.replace(/subject_id/g, "t.subject_id")}
+       ORDER BY
+         CASE WHEN t.due_date IS NOT NULL AND t.due_date < ? THEN 0 ELSE 1 END,
+         CASE t.priority WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END,
+         CASE WHEN t.due_date IS NULL THEN 1 ELSE 0 END,
+         t.due_date ASC
        LIMIT 1`
     )
-    .get() as (Task & { subject_name: string }) | undefined;
+    .get(...taskParams, today) as (Task & { subject_name: string }) | undefined;
 
   const focusSubject = focusTask?.subject_id
     ? subjects.find((s) => s.id === focusTask.subject_id) ?? null
@@ -878,17 +831,25 @@ export default function TodayPage() {
           pendingTasks={pendingTasks}
           overdueCount={overdueCount}
           productivity={productivity}
+          semester={semester ?? null}
         />
       </div>
 
-      {/* Focus block */}
-      {focusTask && focusSubject && (
-        <FocusBlock
+      {/* Focus block — semanal */}
+      {focusTask && focusSubject ? (
+        <FocusWeek
           task={focusTask}
           subject={focusSubject}
           nearestExam={focusNearestExam}
           today={today}
         />
+      ) : (
+        <div className="rounded-xl border border-dashed border-slate-800 px-5 py-4 mb-6 fade-up fade-up-2">
+          <p className="text-[11px] uppercase tracking-widest text-slate-600 mb-1">◎ Foco de la semana</p>
+          <p className="text-[13px] text-slate-500">
+            No hay tareas pendientes esta semana. Agregá una tarea desde una materia para verla acá.
+          </p>
+        </div>
       )}
 
       {/* Subject columns */}
@@ -897,18 +858,32 @@ export default function TodayPage() {
           <h2 className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
             Materias · semana en curso
           </h2>
+          {subjects.length > 0 && (
+            <span className="text-[10px] text-slate-600 tabular">
+              {subjects.length} materia{subjects.length !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
-        <div className="grid grid-cols-5 gap-3">
-          {subjects.map((s) => (
-            <SubjectColumn
-              key={s.id}
-              subject={s}
-              classes={classesBySubject(s.id)}
-              nextExam={nextExamFor(s.id)}
-              today={today}
-            />
-          ))}
-        </div>
+        {subjects.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-800 px-6 py-10 text-center">
+            <p className="text-[13px] text-slate-500 mb-1">No hay materias en el semestre activo</p>
+            <p className="text-[11px] text-slate-600">
+              Cerrá el semestre desde el botón &ldquo;Cerrar&rdquo; para crear uno nuevo, o agregalas desde la sidebar.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-5 gap-3">
+            {subjects.map((s) => (
+              <SubjectColumn
+                key={s.id}
+                subject={s}
+                classes={classesBySubject(s.id)}
+                nextExam={nextExamFor(s.id)}
+                today={today}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Charts */}

@@ -171,3 +171,60 @@ export async function deleteGlossaryTerm(id: number) {
   getDb().prepare("DELETE FROM glossary_terms WHERE id = ?").run(id);
   revalidatePath("/glossary");
 }
+
+// ── Semesters ──────────────────────────────────────────────────────────────
+
+const DEFAULT_SUBJECT_TEMPLATE: { name: string; short: string; hue: number; credits: number }[] = [
+  { name: "Pronósticos Financieros",  short: "Pronósticos",       hue: 200, credits: 6 },
+  { name: "Instrumentos Financieros", short: "Instrumentos",      hue: 100, credits: 6 },
+  { name: "Ingeniería Financiera",    short: "Ing. Financiera",   hue: 280, credits: 6 },
+  { name: "Finanzas Corporativas",    short: "Fin. Corporativas", hue: 340, credits: 6 },
+  { name: "Taller de Tesis",          short: "Tesis",              hue: 30,  credits: 4 },
+];
+
+function nextSemesterName(currentName: string): string {
+  // "2026-1S" -> "2026-2S"; "2026-2S" -> "2027-1S"
+  const m = /^(\d{4})-(1S|2S)$/.exec(currentName);
+  if (!m) {
+    const now = new Date();
+    return `${now.getFullYear()}-${now.getMonth() < 6 ? "1S" : "2S"}`;
+  }
+  const year = Number(m[1]);
+  const half = m[2];
+  return half === "1S" ? `${year}-2S` : `${year + 1}-1S`;
+}
+
+export async function closeSemester() {
+  const db = getDb();
+  const active = db
+    .prepare("SELECT id, name FROM semesters WHERE status = 'active' ORDER BY id DESC LIMIT 1")
+    .get() as { id: number; name: string } | undefined;
+
+  if (!active) return;
+
+  const tx = db.transaction(() => {
+    // archive current
+    db.prepare(
+      "UPDATE semesters SET status = 'archived', archived_at = datetime('now') WHERE id = ?"
+    ).run(active.id);
+
+    // create new semester
+    const newName = nextSemesterName(active.name);
+    const r = db
+      .prepare("INSERT INTO semesters (name, status) VALUES (?, 'active')")
+      .run(newName);
+    const newSemId = Number(r.lastInsertRowid);
+
+    // seed with the 5 template subjects (empty — no classes/exams/tasks)
+    const ins = db.prepare(
+      "INSERT INTO subjects (name, short, hue, credits, semester_id) VALUES (?, ?, ?, ?, ?)"
+    );
+    for (const t of DEFAULT_SUBJECT_TEMPLATE) {
+      ins.run(t.name, t.short, t.hue, t.credits, newSemId);
+    }
+  });
+
+  tx();
+  revalidatePath("/", "layout");
+}
+
