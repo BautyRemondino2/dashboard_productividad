@@ -1194,6 +1194,7 @@ export default function GlossaryClient({ terms: initialTerms }: Props) {
     );
 
   return (
+    <>
     <div className="fade-up fade-up-2">
       {/* Search + new */}
       <div className="flex items-center gap-4 mb-5">
@@ -1269,14 +1270,6 @@ export default function GlossaryClient({ terms: initialTerms }: Props) {
             </div>
           )}
 
-          <div className="mt-10 pt-4 border-t border-slate-900 flex items-center gap-4 text-[10px] text-slate-700 font-mono flex-wrap">
-            {([["⌘K", "buscar"], ["⌘N", "nuevo"], ["Esc", "cerrar"]] as [string, string][]).map(([k, l]) => (
-              <span key={k} className="flex items-center gap-1.5">
-                <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-400 text-[9px]">{k}</kbd>
-                <span>{l}</span>
-              </span>
-            ))}
-          </div>
         </div>
 
         <AlphaRail available={availableLetters} onJump={l => {
@@ -1285,28 +1278,39 @@ export default function GlossaryClient({ terms: initialTerms }: Props) {
         }} />
       </div>
 
-      <Drawer term={selected} allTerms={localTerms} onClose={() => setSelectedId(null)}
-        onToggleFav={toggleFav} onDelete={deleteTerm} onUpdate={updateTerm}
-        onOpenTerm={setSelectedId} onAddToCompare={toggleCompare}
-        isInCompare={selected ? compareIds.includes(selected.id) : false} />
-
-      {showCompare && comparedTerms.length >= 2 && (
-        <CompareView terms={comparedTerms} onClose={() => setShowCompare(false)}
-          onRemove={id => {
-            const next = compareIds.filter(x => x !== id);
-            setCompareIds(next);
-            if (next.length < 2) setShowCompare(false);
-          }}
-          onOpenTerm={id => { setShowCompare(false); setSelectedId(id); }} />
-      )}
-
-      <CompareBar terms={comparedTerms}
-        onRemove={id => setCompareIds(prev => prev.filter(x => x !== id))}
-        onClear={() => setCompareIds([])}
-        onOpen={() => setShowCompare(true)}
-        max={COMPARE_MAX} />
-
-      {showAdd && <AddTermModal onClose={() => setShowAdd(false)} onAdded={handleTermAdded} />}
+      <div className="mt-10 pt-4 border-t border-slate-900 flex items-center gap-4 text-[10px] text-slate-700 font-mono flex-wrap">
+        {([["⌘K", "buscar"], ["⌘N", "nuevo"], ["Esc", "cerrar"]] as [string, string][]).map(([k, l]) => (
+          <span key={k} className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-400 text-[9px]">{k}</kbd>
+            <span>{l}</span>
+          </span>
+        ))}
+      </div>
     </div>
+
+    {/* fixed portals — outside the fade-up div to avoid transform containing-block bug */}
+    <Drawer term={selected} allTerms={localTerms} onClose={() => setSelectedId(null)}
+      onToggleFav={toggleFav} onDelete={deleteTerm} onUpdate={updateTerm}
+      onOpenTerm={setSelectedId} onAddToCompare={toggleCompare}
+      isInCompare={selected ? compareIds.includes(selected.id) : false} />
+
+    {showCompare && comparedTerms.length >= 2 && (
+      <CompareView terms={comparedTerms} onClose={() => setShowCompare(false)}
+        onRemove={id => {
+          const next = compareIds.filter(x => x !== id);
+          setCompareIds(next);
+          if (next.length < 2) setShowCompare(false);
+        }}
+        onOpenTerm={id => { setShowCompare(false); setSelectedId(id); }} />
+    )}
+
+    <CompareBar terms={comparedTerms}
+      onRemove={id => setCompareIds(prev => prev.filter(x => x !== id))}
+      onClear={() => setCompareIds([])}
+      onOpen={() => setShowCompare(true)}
+      max={COMPARE_MAX} />
+
+    {showAdd && <AddTermModal onClose={() => setShowAdd(false)} onAdded={handleTermAdded} />}
+    </>
   );
 }

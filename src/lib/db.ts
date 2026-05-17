@@ -105,6 +105,10 @@ function initSchema(db: Database.Database) {
   // Remove stale non-faculty data
   try { db.exec("DELETE FROM tasks WHERE context IS NOT NULL AND context != 'facultad'"); } catch { /* no column */ }
   try { db.exec("DELETE FROM tasks WHERE title LIKE '%arancel%'"); } catch { /* ok */ }
+
+  // Glossary migrations
+  try { db.exec("ALTER TABLE glossary_terms ADD COLUMN term_type TEXT NOT NULL DEFAULT 'concepto'"); } catch { /* exists */ }
+  try { db.exec("ALTER TABLE glossary_terms ADD COLUMN formula TEXT"); } catch { /* exists */ }
 }
 
 function seedData(db: Database.Database) {
