@@ -1,304 +1,441 @@
-import { getDb } from "@/lib/db";
-import type { Subject, ClassMaterial, Summary, Task, Exam } from "@/lib/types";
-import { localDateStr } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import { getDb } from "@/lib/db";
+import { localDateStr } from "@/lib/utils";
+import { subjectColor, subjectColorSoft } from "@/lib/subjectColors";
+import type { Subject, ClassItem, Exam, Task } from "@/lib/types";
 import Link from "next/link";
-import MaterialUpload from "@/components/MaterialUpload";
-import DeleteMaterialButton from "@/components/DeleteMaterialButton";
-import RegenerateSummaryButton from "@/components/RegenerateSummaryButton";
-import TaskItem from "@/components/TaskItem";
-import AddTaskInline from "@/components/AddTaskInline";
-import AddExamInline from "@/components/AddExamInline";
-import DeleteExamButton from "@/components/DeleteExamButton";
-import RecordGradeButton from "@/components/RecordGradeButton";
 
-type MaterialRow = ClassMaterial & {
-  summary: Summary | null;
-  tasks: Task[];
-};
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
-function fmtDate(d: string) {
-  const [, m, day] = d.split("-");
-  const months = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-  return `${parseInt(day)} ${months[parseInt(m) - 1]}`;
+function daysBetween(a: string, b: string): number {
+  return Math.round(
+    (new Date(b + "T12:00:00").getTime() - new Date(a + "T12:00:00").getTime()) /
+      86400000
+  );
 }
 
-const EXAM_TYPE_LABEL: Record<string, string> = {
-  parcial: "Parcial", final: "Final", tp: "TP", quiz: "Quiz", otro: "Otro",
-};
+function formatDateShort(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  const months = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
 
-const EXAM_TYPE_COLOR: Record<string, string> = {
-  parcial: "text-violet-400 border-violet-800",
-  final:   "text-red-400 border-red-800",
-  tp:      "text-blue-400 border-blue-800",
-  quiz:    "text-amber-400 border-amber-800",
-  otro:    "text-slate-400 border-slate-700",
-};
-
-const PRIORITY_SORT = `CASE priority WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 END`;
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function SubjectPage({
   params,
 }: {
   params: Promise<{ subjectId: string }>;
 }) {
-  const { subjectId: raw } = await params;
-  const db        = getDb();
-  const subjectId = Number(raw);
-  const today     = localDateStr();
+  const { subjectId } = await params;
+  const db = getDb();
+  const today = localDateStr();
 
-  const subject = db.prepare("SELECT * FROM subjects WHERE id = ?").get(subjectId) as Subject | undefined;
+  const subject = db
+    .prepare("SELECT * FROM subjects WHERE id = ?")
+    .get(Number(subjectId)) as Subject | undefined;
+
   if (!subject) notFound();
 
-  /* ── Materials with summaries ── */
-  const materials = db
-    .prepare("SELECT * FROM class_materials WHERE subject_id = ? ORDER BY date DESC, created_at DESC")
-    .all(subjectId) as ClassMaterial[];
+  const classes = db
+    .prepare("SELECT * FROM classes WHERE subject_id = ? ORDER BY week ASC")
+    .all(subject.id) as ClassItem[];
 
-  const summaryMap = new Map<number, Summary>();
-  if (materials.length > 0) {
-    const ids = materials.map(m => m.id).join(",");
-    const sums = db.prepare(`SELECT * FROM summaries WHERE material_id IN (${ids})`).all() as Summary[];
-    for (const s of sums) summaryMap.set(s.material_id, s);
-  }
+  const exams = db
+    .prepare("SELECT * FROM exams WHERE subject_id = ? ORDER BY date ASC")
+    .all(subject.id) as Exam[];
 
-  /* ── Tasks linked to each material ── */
-  const allSubjectTasks = db
-    .prepare(`SELECT * FROM tasks WHERE subject_id = ? ORDER BY ${PRIORITY_SORT}, due_date, created_at`)
-    .all(subjectId) as Task[];
+  const pendingTasks = db
+    .prepare(
+      `SELECT t.* FROM tasks t
+       WHERE t.subject_id = ? AND t.status = 'pendiente'
+       ORDER BY CASE t.priority WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, t.due_date ASC NULLS LAST`
+    )
+    .all(subject.id) as Task[];
 
-  const tasksByMaterial = new Map<number | null, Task[]>();
-  for (const t of allSubjectTasks) {
-    const key = t.material_id ?? null;
-    if (!tasksByMaterial.has(key)) tasksByMaterial.set(key, []);
-    tasksByMaterial.get(key)!.push(t);
-  }
+  const doneTasks = db
+    .prepare(
+      `SELECT t.* FROM tasks t
+       WHERE t.subject_id = ? AND t.status = 'hecha'
+       ORDER BY t.completed_at DESC LIMIT 10`
+    )
+    .all(subject.id) as Task[];
 
-  const materialRows: MaterialRow[] = materials.map(m => ({
-    ...m,
-    summary: summaryMap.get(m.id) ?? null,
-    tasks: tasksByMaterial.get(m.id) ?? [],
-  }));
+  const upcomingExams = exams.filter((e) => e.date >= today && !e.grade);
+  const pastExams = exams.filter((e) => e.date < today || e.grade !== null);
 
-  /* Manually-added tasks (no material link) */
-  const manualPending = (tasksByMaterial.get(null) ?? []).filter(t => t.status === "pendiente");
-  const manualDone    = (tasksByMaterial.get(null) ?? []).filter(t => t.status === "hecha").slice(0, 3);
-
-  const totalPending = allSubjectTasks.filter(t => t.status === "pendiente").length;
-
-  /* ── Exams ── */
-  const upcomingExams = db
-    .prepare("SELECT * FROM exams WHERE subject_id = ? AND date >= ? ORDER BY date ASC")
-    .all(subjectId, today) as Exam[];
-
-  const pastExams = db
-    .prepare("SELECT * FROM exams WHERE subject_id = ? AND date < ? ORDER BY date DESC")
-    .all(subjectId, today) as Exam[];
-
-  const gradedExams = pastExams.filter(e => e.grade != null);
-  const avgGrade    = gradedExams.length > 0
-    ? (gradedExams.reduce((s, e) => s + (e.grade ?? 0), 0) / gradedExams.length).toFixed(1)
-    : null;
-
-  const pendingSummaries = materialRows.filter(m => !m.summary).length;
+  const summarizedCount = classes.filter((c) => c.summarized).length;
+  const graded = pastExams.filter((e) => e.grade !== null);
+  const avgGrade =
+    graded.length > 0
+      ? graded.reduce((s, e) => s + (e.grade ?? 0), 0) / graded.length
+      : null;
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
+    <div className="px-8 py-7 max-w-[1200px]">
+      {/* Back link */}
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300 transition-colors mb-6"
+      >
+        ← Dashboard
+      </Link>
 
-      {/* ── Header ── */}
-      <div className="mb-7">
+      {/* Subject header */}
+      <div
+        className="relative rounded-xl border border-slate-800 p-6 mb-6 overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, ${subjectColorSoft(subject.hue)} 0%, rgba(15,23,42,0.4) 60%)`,
+          borderTop: `2px solid ${subjectColor(subject.hue, 70)}`,
+        }}
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-100">{subject.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-              <span className="text-xs text-slate-600">{materials.length} clase{materials.length !== 1 ? "s" : ""}</span>
-              {totalPending > 0 && (
-                <span className="text-xs text-amber-500">{totalPending} tarea{totalPending !== 1 ? "s" : ""} pendiente{totalPending !== 1 ? "s" : ""}</span>
-              )}
-              {avgGrade && (
-                <span className="text-xs text-emerald-500">promedio {avgGrade}</span>
-              )}
-              {pendingSummaries > 0 && (
-                <span className="text-xs text-slate-600">{pendingSummaries} sin resumir</span>
-              )}
-            </div>
+            <p
+              className="text-[11px] font-semibold uppercase tracking-widest mb-1"
+              style={{ color: subjectColor(subject.hue, 70) }}
+            >
+              Materia
+            </p>
+            <h1 className="text-2xl font-semibold text-slate-100 mb-1">
+              {subject.name}
+            </h1>
+            <p className="text-sm text-slate-500">
+              {subject.credits} créditos
+            </p>
           </div>
-          {upcomingExams.length > 0 && (() => {
-            const d = Math.round((new Date(upcomingExams[0].date + "T12:00:00").getTime() - new Date().getTime()) / 86_400_000);
-            return (
-              <div className={`shrink-0 text-right text-xs rounded-lg border px-3 py-2 ${d <= 3 ? "border-red-800 text-red-400" : d <= 7 ? "border-amber-800 text-amber-400" : "border-slate-700 text-slate-500"}`}>
-                <p className="font-semibold">{EXAM_TYPE_LABEL[upcomingExams[0].type]}</p>
-                <p className="opacity-70">{d === 0 ? "Hoy" : d === 1 ? "Mañana" : `en ${d}d`}</p>
-              </div>
-            );
-          })()}
+
+          {/* Summary stats */}
+          <div className="flex items-center gap-6 text-right">
+            <SubjectStat
+              label="clases"
+              value={`${summarizedCount}/${classes.length}`}
+              color="text-slate-200"
+            />
+            <div className="w-px h-8 bg-slate-800" />
+            <SubjectStat
+              label="pendientes"
+              value={pendingTasks.length}
+              color="text-amber-400"
+            />
+            {avgGrade !== null && (
+              <>
+                <div className="w-px h-8 bg-slate-800" />
+                <SubjectStat
+                  label="promedio"
+                  value={avgGrade.toFixed(1)}
+                  color={
+                    avgGrade >= 7
+                      ? "text-emerald-400"
+                      : avgGrade >= 4
+                      ? "text-amber-400"
+                      : "text-red-400"
+                  }
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-4 flex items-center gap-3">
+          <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${classes.length > 0 ? (summarizedCount / classes.length) * 100 : 0}%`,
+                background: subjectColor(subject.hue, 70),
+              }}
+            />
+          </div>
+          <span className="text-[11px] text-slate-500 shrink-0 tabular">
+            {summarizedCount}/{classes.length} resumidas
+          </span>
         </div>
       </div>
 
-      {/* ══ SECCIÓN: EXÁMENES ══ */}
-      <section className="mb-10">
-        <h2 className="section-title">Exámenes y TPs</h2>
-
-        {upcomingExams.map(ex => {
-          const d = Math.round((new Date(ex.date + "T12:00:00").getTime() - new Date().getTime()) / 86_400_000);
-          return (
-            <div key={ex.id} className="group flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 mb-2 hover:border-slate-700 transition-colors">
-              <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded border ${EXAM_TYPE_COLOR[ex.type]}`}>
-                {EXAM_TYPE_LABEL[ex.type]}
-              </span>
-              <p className="flex-1 text-sm text-slate-200">{ex.title}</p>
-              <span className={`shrink-0 text-xs font-medium tabular-nums ${d <= 0 ? "text-red-400" : d <= 3 ? "text-amber-400" : "text-slate-500"}`}>
-                {d <= 0 ? "Hoy" : d === 1 ? "Mañana" : fmtDate(ex.date)}
-              </span>
-              <DeleteExamButton id={ex.id} />
-            </div>
-          );
-        })}
-
-        {pastExams.map(ex => (
-          <div key={ex.id} className="group flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-slate-900 transition-colors">
-            <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded border opacity-50 ${EXAM_TYPE_COLOR[ex.type]}`}>
-              {EXAM_TYPE_LABEL[ex.type]}
-            </span>
-            <p className="flex-1 text-sm text-slate-500">{ex.title}</p>
-            <span className="text-xs text-slate-700 tabular-nums shrink-0">{fmtDate(ex.date)}</span>
-            <RecordGradeButton examId={ex.id} currentGrade={ex.grade} />
-            <DeleteExamButton id={ex.id} />
-          </div>
-        ))}
-
-        <div className="mt-3">
-          <AddExamInline subjects={[subject]} fixedSubjectId={subjectId} />
-        </div>
-      </section>
-
-      {/* ══ SECCIÓN: TAREAS ══ */}
-      <section className="mb-10">
-        <h2 className="section-title">Tareas pendientes</h2>
-
-        {totalPending === 0 && manualDone.length === 0 && (
-          <p className="text-sm text-slate-600 py-1 mb-3">Sin tareas pendientes. ¡Al día!</p>
-        )}
-
-        {/* Tasks linked to specific materials */}
-        {materialRows.filter(m => m.tasks.some(t => t.status === "pendiente")).map(m => (
-          <div key={m.id} className="mb-4">
-            <p className="text-[10px] text-slate-700 uppercase tracking-wider mb-1 pl-1">
-              Clase {fmtDate(m.date)}{m.filename ? ` · ${m.filename}` : ""}
-            </p>
-            <div className="space-y-1">
-              {m.tasks.filter(t => t.status === "pendiente").map(task => (
-                <TaskItem key={task.id} task={task} showDueDate
-                  isStale={task.due_date !== null && task.due_date < today && task.due_date <= localDateStr(-3)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* Manually-added tasks */}
-        {manualPending.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[10px] text-slate-700 uppercase tracking-wider mb-1 pl-1">Manual</p>
-            <div className="space-y-1">
-              {manualPending.map(task => (
-                <TaskItem key={task.id} task={task} showDueDate
-                  isStale={task.due_date !== null && task.due_date < today && task.due_date <= localDateStr(-3)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Recently done */}
-        {manualDone.length > 0 && (
-          <div className="space-y-1 opacity-40 mb-2">
-            {manualDone.map(t => <TaskItem key={t.id} task={t} />)}
-          </div>
-        )}
-
-        <div className="mt-3">
-          <AddTaskInline subjectId={subjectId} />
-        </div>
-      </section>
-
-      {/* ══ SECCIÓN: CLASES ══ */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title !mb-0">Clases</h2>
-          <span className="text-xs text-slate-700">{materials.length} subida{materials.length !== 1 ? "s" : ""}</span>
-        </div>
-
-        {/* Upload form */}
-        <div className="mb-6">
-          <MaterialUpload subjectId={subjectId} today={today} />
-        </div>
-
-        {materialRows.length === 0 && (
-          <p className="text-sm text-slate-600">
-            Todavía no subiste ninguna clase. Subí un PDF o pegá el texto de la clase — Claude generará el resumen y extraerá los ejercicios automáticamente.
-          </p>
-        )}
-
-        <div className="space-y-3">
-          {materialRows.map(mat => {
-            const pendingCount = mat.tasks.filter(t => t.status === "pendiente").length;
-            const doneCount    = mat.tasks.filter(t => t.status === "hecha").length;
-
-            return (
-              <div key={mat.id} className="group bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-colors">
-                {/* Top row: date + type + filename + actions */}
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-medium text-slate-400 tabular-nums">{fmtDate(mat.date)}</span>
-                    <span className="text-[10px] text-slate-700 border border-slate-800 rounded px-1">
-                      {mat.type === "pdf" ? "PDF" : "texto"}
-                    </span>
-                    {mat.filename && (
-                      <span className="text-[11px] text-slate-600 truncate max-w-48">{mat.filename}</span>
-                    )}
-                    {pendingCount > 0 && (
-                      <span className="text-[10px] bg-amber-950/60 border border-amber-800 text-amber-400 rounded px-1.5 py-0.5">
-                        {pendingCount} tarea{pendingCount !== 1 ? "s" : ""}
-                      </span>
-                    )}
-                    {doneCount > 0 && pendingCount === 0 && (
-                      <span className="text-[10px] text-emerald-600">✓ {doneCount} hecha{doneCount !== 1 ? "s" : ""}</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {mat.summary && (
-                      <Link
-                        href={`/facultad/${subjectId}/summary/${mat.summary.id}`}
-                        className="text-xs text-slate-500 hover:text-slate-300 transition-colors opacity-0 group-hover:opacity-100"
+      <div className="grid grid-cols-3 gap-6">
+        {/* Left: Classes */}
+        <div className="col-span-2 space-y-6">
+          {/* Upcoming exams */}
+          {upcomingExams.length > 0 && (
+            <section>
+              <SectionTitle>Próximos exámenes</SectionTitle>
+              <div className="space-y-2">
+                {upcomingExams.map((exam) => {
+                  const daysLeft = daysBetween(today, exam.date);
+                  return (
+                    <div
+                      key={exam.id}
+                      className="flex items-center justify-between px-4 py-3 bg-slate-900/60 border border-slate-800 rounded-xl"
+                    >
+                      <div>
+                        <p className="text-[13px] text-slate-100 font-medium">
+                          {exam.title}
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          {formatDateShort(exam.date)} · peso {Math.round(exam.weight * 100)}%
+                        </p>
+                      </div>
+                      <span
+                        className={`text-[12px] font-semibold tabular px-2.5 py-1 rounded-lg ${
+                          daysLeft <= 3
+                            ? "bg-red-950/60 text-red-300 border border-red-900/50"
+                            : daysLeft <= 7
+                            ? "bg-amber-950/60 text-amber-300 border border-amber-900/50"
+                            : "bg-slate-800 text-slate-300 border border-slate-700"
+                        }`}
                       >
-                        ver resumen →
-                      </Link>
-                    )}
-                    <DeleteMaterialButton id={mat.id} />
-                  </div>
-                </div>
-
-                {/* Summary or status */}
-                {mat.summary ? (
-                  <Link
-                    href={`/facultad/${subjectId}/summary/${mat.summary.id}`}
-                    className="block text-xs text-slate-500 hover:text-slate-300 transition-colors line-clamp-2 leading-relaxed"
-                  >
-                    {mat.summary.content.slice(0, 180)}…
-                  </Link>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
-                    <span className="text-xs text-slate-600">Generando resumen y ejercicios…</span>
-                    <RegenerateSummaryButton materialId={mat.id} />
-                  </div>
-                )}
+                        {daysLeft === 0
+                          ? "hoy"
+                          : daysLeft === 1
+                          ? "mañana"
+                          : `${daysLeft}d`}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </section>
+          )}
+
+          {/* Classes list */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <SectionTitle>Clases</SectionTitle>
+              <button
+                className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1"
+                style={{ color: subjectColor(subject.hue, 65) }}
+              >
+                + nueva clase
+              </button>
+            </div>
+            <div className="space-y-2">
+              {classes.map((cls) => (
+                <ClassCard key={cls.id} cls={cls} hue={subject.hue} />
+              ))}
+              {classes.length === 0 && (
+                <p className="text-[13px] text-slate-600 py-4 text-center">
+                  No hay clases registradas aún.
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* Past exams with grades */}
+          {pastExams.length > 0 && (
+            <section>
+              <SectionTitle>Historial de evaluaciones</SectionTitle>
+              <div className="space-y-2">
+                {pastExams.map((exam) => (
+                  <div
+                    key={exam.id}
+                    className="flex items-center justify-between px-4 py-3 bg-slate-900/40 border border-slate-800/60 rounded-xl"
+                  >
+                    <div>
+                      <p className="text-[13px] text-slate-300">{exam.title}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {formatDateShort(exam.date)} · peso{" "}
+                        {Math.round(exam.weight * 100)}%
+                      </p>
+                    </div>
+                    {exam.grade !== null ? (
+                      <span
+                        className="text-[14px] font-semibold tabular px-2.5 py-1 rounded-lg"
+                        style={{
+                          color:
+                            exam.grade >= 7
+                              ? "rgb(52,211,153)"
+                              : exam.grade >= 4
+                              ? "rgb(251,191,36)"
+                              : "rgb(248,113,113)",
+                          background: "rgb(15,23,42)",
+                        }}
+                      >
+                        {exam.grade.toFixed(1)}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-600">sin nota</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
-      </section>
+
+        {/* Right: Tasks */}
+        <div className="space-y-6">
+          <section>
+            <SectionTitle>Tareas pendientes</SectionTitle>
+            {pendingTasks.length === 0 ? (
+              <p className="text-[13px] text-slate-600 py-4 text-center">
+                Sin tareas pendientes 🎉
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {pendingTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} hue={subject.hue} today={today} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {doneTasks.length > 0 && (
+            <section>
+              <SectionTitle>Completadas recientemente</SectionTitle>
+              <div className="space-y-2 opacity-60">
+                {doneTasks.slice(0, 5).map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-start gap-2.5 px-3 py-2 text-[12px] text-slate-500 line-through"
+                  >
+                    <span className="mt-0.5 shrink-0">✓</span>
+                    <span className="leading-tight">{task.title}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function SubjectStat({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  color: string;
+}) {
+  return (
+    <div>
+      <p className={`text-xl font-semibold tabular leading-none ${color}`}>{value}</p>
+      <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">{label}</p>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">
+      {children}
+    </h2>
+  );
+}
+
+function ClassCard({ cls, hue }: { cls: ClassItem; hue: number }) {
+  return (
+    <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden hover:border-slate-700 transition-colors">
+      <div className="flex items-start gap-3 px-4 py-3">
+        {/* Week badge */}
+        <div
+          className="shrink-0 mt-0.5 text-[10px] font-semibold tabular w-7 h-6 rounded flex items-center justify-center"
+          style={{
+            background: subjectColorSoft(hue),
+            color: subjectColor(hue, 80),
+          }}
+        >
+          {cls.week}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] text-slate-100 leading-tight font-medium">
+            {cls.title}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">{formatDateShort(cls.date)}</p>
+          <div className="flex items-center gap-2 mt-1.5">
+            {cls.summarized ? (
+              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/80">
+                <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                resumen listo
+              </span>
+            ) : (
+              <button
+                className="inline-flex items-center gap-1 text-[10px] text-amber-400/80 hover:text-amber-300 transition-colors"
+              >
+                <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                sin resumir · generar
+              </button>
+            )}
+            {cls.tasks_total > 0 && (
+              <span className="text-[10px] text-slate-500">
+                · {cls.tasks_done}/{cls.tasks_total} tareas
+              </span>
+            )}
+          </div>
+          {cls.summary && (
+            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed line-clamp-2">
+              {cls.summary}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TaskCard({
+  task,
+  hue,
+  today,
+}: {
+  task: Task;
+  hue: number;
+  today: string;
+}) {
+  const isOverdue = task.due_date && task.due_date < today;
+  const daysLeft = task.due_date ? daysBetween(today, task.due_date) : null;
+
+  return (
+    <div className="bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3 hover:border-slate-700 transition-colors">
+      <div className="flex items-start gap-2.5">
+        <div
+          className="shrink-0 mt-0.5 w-3.5 h-3.5 rounded-sm border flex items-center justify-center"
+          style={{ borderColor: subjectColor(hue, 50) }}
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] text-slate-100 leading-tight">{task.title}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span
+              className={`text-[10px] font-medium ${
+                task.priority === "alta"
+                  ? "text-red-400"
+                  : task.priority === "media"
+                  ? "text-amber-400"
+                  : "text-slate-500"
+              }`}
+            >
+              {task.priority}
+            </span>
+            {task.due_date && (
+              <span
+                className={`text-[10px] tabular ${
+                  isOverdue
+                    ? "text-red-400"
+                    : daysLeft !== null && daysLeft <= 2
+                    ? "text-amber-400"
+                    : "text-slate-500"
+                }`}
+              >
+                {isOverdue
+                  ? `vencida hace ${Math.abs(daysLeft!)}d`
+                  : daysLeft === 0
+                  ? "hoy"
+                  : daysLeft === 1
+                  ? "mañana"
+                  : `en ${daysLeft}d`}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

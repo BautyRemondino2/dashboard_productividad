@@ -1,4 +1,6 @@
 /** Shared types for the glossary module. */
+export type TermType = "concepto" | "instrumento" | "metrica";
+
 export interface GlossaryTerm {
   id: number;
   term: string;
@@ -7,6 +9,8 @@ export interface GlossaryTerm {
   detail: string;
   example: string;
   ticker: string | null;
+  term_type: TermType;
+  formula: string | null;
   created_at: string;
 }
 
