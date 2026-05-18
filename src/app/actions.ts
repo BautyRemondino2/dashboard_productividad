@@ -463,6 +463,34 @@ export async function importFolder(formData: FormData): Promise<IngestResult> {
   return ingestMaterialFiles(subjectId, files);
 }
 
+/** Delete every unassigned (inbox) material for a subject — both DB rows and files on disk. */
+export async function clearInbox(subjectId: number): Promise<{ deleted: number }> {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM class_materials WHERE subject_id = ? AND class_id IS NULL")
+    .all(subjectId) as ClassMaterial[];
+
+  for (const r of rows) {
+    try {
+      const abs = path.join(MATERIALS_ROOT, r.file_path);
+      if (fs.existsSync(abs)) fs.unlinkSync(abs);
+    } catch { /* ignore */ }
+  }
+
+  // Also try to remove the now-empty inbox directory
+  try {
+    const dir = subjectMaterialDir(subjectId, null);
+    if (fs.existsSync(dir)) {
+      const remaining = fs.readdirSync(dir);
+      if (remaining.length === 0) fs.rmdirSync(dir);
+    }
+  } catch { /* ignore */ }
+
+  db.prepare("DELETE FROM class_materials WHERE subject_id = ? AND class_id IS NULL").run(subjectId);
+  revalidatePath(`/facultad/${subjectId}`);
+  return { deleted: rows.length };
+}
+
 export async function deleteMaterial(id: number) {
   const db = getDb();
   const row = db.prepare("SELECT * FROM class_materials WHERE id = ?").get(id) as ClassMaterial | undefined;

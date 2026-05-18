@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useRef, useTransition, useEffect } from "react";
 import { importZip, importFolder } from "@/app/actions";
 
 interface Props { subjectId: number }
@@ -13,12 +13,124 @@ interface Result {
   message?: string;
 }
 
+// ─── FileSystemEntry helpers (cross-browser folder traversal) ────────────────
+// Used by drag-and-drop. The webkitGetAsEntry API works in Safari, Chrome and
+// Firefox and preserves the dropped folder structure, unlike <input webkitdirectory>
+// which can return empty webkitRelativePath in some browsers.
+
+interface FSEntry {
+  isFile: boolean;
+  isDirectory: boolean;
+  name: string;
+  file?: (cb: (f: File) => void, err?: (e: unknown) => void) => void;
+  createReader?: () => FSDirReader;
+}
+interface FSDirReader {
+  readEntries: (cb: (entries: FSEntry[]) => void, err?: (e: unknown) => void) => void;
+}
+
+async function walkEntry(entry: FSEntry, parentPath: string): Promise<{ path: string; file: File }[]> {
+  const here = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+
+  if (entry.isFile && entry.file) {
+    const f = await new Promise<File>((resolve, reject) => {
+      entry.file!(resolve, reject);
+    });
+    return [{ path: here, file: f }];
+  }
+
+  if (entry.isDirectory && entry.createReader) {
+    const reader = entry.createReader();
+    const collected: { path: string; file: File }[] = [];
+    // readEntries returns at most ~100 at a time — loop until empty.
+    while (true) {
+      const batch = await new Promise<FSEntry[]>((resolve, reject) =>
+        reader.readEntries(resolve, reject)
+      );
+      if (batch.length === 0) break;
+      for (const e of batch) {
+        const inner = await walkEntry(e, here);
+        collected.push(...inner);
+      }
+    }
+    return collected;
+  }
+
+  return [];
+}
+
+async function filesFromDataTransfer(items: DataTransferItemList): Promise<{ path: string; file: File }[]> {
+  const out: { path: string; file: File }[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    // webkitGetAsEntry is the API name across browsers (incl. Safari)
+    const entry = (item as unknown as { webkitGetAsEntry?: () => FSEntry | null }).webkitGetAsEntry?.();
+    if (entry) {
+      const walked = await walkEntry(entry, "");
+      out.push(...walked);
+    } else {
+      // Fallback: just a file with no folder info
+      const f = item.getAsFile();
+      if (f) out.push({ path: f.name, file: f });
+    }
+  }
+  return out;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function ImportMaterialsButton({ subjectId }: Props) {
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const zipInputRef    = useRef<HTMLInputElement | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [result, setResult] = useState<Result | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
+  const [drag, setDrag] = useState(false);
+
+  // Set webkitdirectory imperatively — React strips it in some setups
+  useEffect(() => {
+    if (folderInputRef.current) {
+      folderInputRef.current.setAttribute("webkitdirectory", "");
+      folderInputRef.current.setAttribute("directory", "");
+    }
+  }, []);
+
+  const uploadFiles = (files: { path: string; file: File }[]) => {
+    if (files.length === 0) {
+      setResult({ ok: false, message: "La carpeta no tiene archivos válidos" });
+      return;
+    }
+
+    setResult(null);
+    setProgress(`Subiendo ${files.length} archivos…`);
+
+    const fd = new FormData();
+    fd.set("subject_id", String(subjectId));
+    let kept = 0;
+    for (const { path: relPath, file } of files) {
+      if (!relPath) continue;
+      const segments = relPath.split("/");
+      if (segments.some(p => p.startsWith("."))) continue;
+      if (relPath.includes("__MACOSX/")) continue;
+      const named = new File([file], relPath, { type: file.type, lastModified: file.lastModified });
+      fd.append("files", named);
+      kept++;
+    }
+
+    if (kept === 0) {
+      setProgress(null);
+      setResult({ ok: false, message: "La carpeta no tiene archivos válidos" });
+      return;
+    }
+
+    startTransition(async () => {
+      const r = await importFolder(fd);
+      setResult(r);
+      setProgress(null);
+      if (folderInputRef.current) folderInputRef.current.value = "";
+      setTimeout(() => setResult(null), 10000);
+    });
+  };
 
   const handleZip = (file: File) => {
     setResult(null);
@@ -35,65 +147,60 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
     });
   };
 
-  const handleFolder = (files: FileList) => {
-    setResult(null);
-    if (files.length === 0) return;
-    setProgress(`Subiendo ${files.length} archivos…`);
-
-    const fd = new FormData();
-    fd.set("subject_id", String(subjectId));
-    let kept = 0;
-    for (const f of Array.from(files)) {
-      // Skip hidden files and macOS metadata noise here too (faster than server)
-      const rel = f.webkitRelativePath || f.name;
-      if (!rel) continue;
-      if (rel.split("/").some(p => p.startsWith("."))) continue;
-      if (rel.includes("__MACOSX/")) continue;
-      // Re-create File with relative path as the name so the server can read it
-      const named = new File([f], rel, { type: f.type, lastModified: f.lastModified });
-      fd.append("files", named);
-      kept++;
-    }
-    if (kept === 0) {
-      setProgress(null);
-      setResult({ ok: false, message: "La carpeta no tiene archivos válidos" });
+  const handleFolderInput = (files: FileList) => {
+    const list = Array.from(files).map(f => ({
+      path: f.webkitRelativePath || f.name,
+      file: f,
+    }));
+    // Detect broken Safari case: every webkitRelativePath is empty so all paths are basenames
+    const hasFolderInfo = list.some(item => item.path.includes("/"));
+    if (!hasFolderInfo) {
+      setResult({
+        ok: false,
+        message: "Tu navegador no preservó la estructura de carpetas. Arrastrá la carpeta directamente sobre la zona violeta, o usá .zip.",
+      });
       return;
     }
+    uploadFiles(list);
+  };
 
-    startTransition(async () => {
-      const r = await importFolder(fd);
-      setResult(r);
-      setProgress(null);
-      if (folderInputRef.current) folderInputRef.current.value = "";
-      setTimeout(() => setResult(null), 10000);
-    });
+  const onDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDrag(false);
+    if (!e.dataTransfer) return;
+
+    setProgress("Leyendo carpeta…");
+
+    // If we have items, use the entry API for folder support
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      try {
+        const walked = await filesFromDataTransfer(e.dataTransfer.items);
+        uploadFiles(walked);
+        return;
+      } catch (err) {
+        setProgress(null);
+        setResult({ ok: false, message: `Error leyendo la carpeta: ${err instanceof Error ? err.message : String(err)}` });
+        return;
+      }
+    }
+
+    // Fallback: just files (no folder info)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const list = Array.from(e.dataTransfer.files).map(f => ({ path: f.name, file: f }));
+      uploadFiles(list);
+    }
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {/* Folder input (primary) */}
+    <div className="flex flex-col items-end gap-2">
+      {/* Hidden inputs */}
       <input
         ref={folderInputRef}
         type="file"
-        // @ts-expect-error — webkitdirectory + directory are browser-only attrs not in React types
-        webkitdirectory=""
-        directory=""
         multiple
         className="hidden"
-        onChange={e => e.target.files && handleFolder(e.target.files)}
+        onChange={e => e.target.files && handleFolderInput(e.target.files)}
       />
-      <button
-        onClick={() => folderInputRef.current?.click()}
-        disabled={isPending}
-        className="px-3 py-1.5 rounded-lg text-[12px] font-medium bg-violet-700/30 hover:bg-violet-700/50 text-violet-100 border border-violet-700/60 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-        </svg>
-        {isPending ? "Importando…" : "Importar carpeta"}
-      </button>
-
-      {/* Zip input (secondary) */}
       <input
         ref={zipInputRef}
         type="file"
@@ -104,17 +211,39 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
           if (f) handleZip(f);
         }}
       />
-      <button
-        onClick={() => zipInputRef.current?.click()}
-        disabled={isPending}
-        className="text-[11px] text-slate-500 hover:text-slate-200 transition-colors disabled:opacity-50"
-        title="También podés subir un .zip"
-      >
-        · zip
-      </button>
 
+      {/* Drag & drop area — primary path */}
+      <div
+        onDragOver={e => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={onDrop}
+        className={`rounded-lg border border-dashed transition-colors px-4 py-2.5 cursor-pointer ${
+          drag
+            ? "border-violet-400 bg-violet-950/40"
+            : "border-violet-700/60 bg-violet-950/20 hover:bg-violet-950/30"
+        }`}
+        onClick={() => folderInputRef.current?.click()}
+      >
+        <div className="flex items-center gap-3">
+          <svg className="w-4 h-4 text-violet-300 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+          </svg>
+          <div className="flex flex-col">
+            <span className="text-[12px] text-violet-100 font-medium">
+              {drag ? "Soltá la carpeta acá" : "Arrastrá la carpeta de la materia"}
+            </span>
+            <span className="text-[10px] text-violet-300/70">
+              o <button onClick={e => { e.stopPropagation(); folderInputRef.current?.click(); }} className="underline">elegirla</button>
+              {" · "}
+              <button onClick={e => { e.stopPropagation(); zipInputRef.current?.click(); }} className="underline">subir .zip</button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Status */}
       {progress && (
-        <span className="text-[11px] text-slate-400 ml-1 flex items-center gap-1.5">
+        <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-full border border-slate-700 border-t-slate-400 animate-spin shrink-0" />
           {progress}
         </span>
@@ -122,7 +251,7 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
 
       {result && (
         <div
-          className={`text-[11px] px-2.5 py-1.5 rounded-md border ${
+          className={`text-[11px] px-2.5 py-1.5 rounded-md border max-w-[420px] ${
             result.ok
               ? "bg-emerald-950/40 border-emerald-800/60 text-emerald-300"
               : "bg-red-950/40 border-red-800/60 text-red-300"

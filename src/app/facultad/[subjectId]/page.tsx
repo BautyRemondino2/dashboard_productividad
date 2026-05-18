@@ -8,6 +8,7 @@ import ImportMaterialsButton from "@/components/ImportMaterialsButton";
 import MaterialDropzone from "@/components/MaterialDropzone";
 import MaterialItem from "@/components/MaterialItem";
 import ClaudeProjectInput from "@/components/ClaudeProjectInput";
+import ClearInboxButton from "@/components/ClearInboxButton";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -247,14 +248,17 @@ export default async function SubjectPage({
           {/* Inbox: unassigned materials */}
           {inboxMaterials.length > 0 && (
             <section>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 gap-2">
                 <SectionTitle>📥 Inbox · sin asignar</SectionTitle>
-                <span className="text-[10px] text-slate-600 tabular">
-                  {inboxMaterials.length} archivo{inboxMaterials.length !== 1 ? "s" : ""}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-slate-600 tabular">
+                    {inboxMaterials.length} archivo{inboxMaterials.length !== 1 ? "s" : ""}
+                  </span>
+                  <ClearInboxButton subjectId={subject.id} count={inboxMaterials.length} />
+                </div>
               </div>
               <p className="text-[10px] text-slate-600 mb-2">
-                Archivos del zip que no pudieron asignarse automáticamente. Click en &ldquo;Mover&rdquo; para asignar a una clase.
+                Archivos que no pudieron asignarse automáticamente. Click en &ldquo;Mover&rdquo; para asignar a una clase, o vaciá el inbox y reintentá la importación.
               </p>
               <div className="bg-slate-900/40 border border-slate-800 rounded-xl px-3 py-2 space-y-0.5">
                 {inboxMaterials.map(m => (
