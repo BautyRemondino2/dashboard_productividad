@@ -394,7 +394,7 @@ function ActivityHeatmap({
                     rx={2}
                     fill={heatmapColor(day.count)}
                   >
-                    <title>{day.date} · {day.count > 0 ? "actividad" : "sin actividad"}</title>
+                    <title>{`${day.date} · ${day.count > 0 ? "actividad" : "sin actividad"}`}</title>
                   </rect>
                 ) : null
               )

@@ -9,6 +9,7 @@ export interface Subject {
   hue: number;
   credits: number;
   semester_id: number | null;
+  claude_project_url: string | null;
 }
 
 export interface Semester {

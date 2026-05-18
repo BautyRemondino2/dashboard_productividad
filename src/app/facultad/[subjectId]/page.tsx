@@ -7,6 +7,7 @@ import Link from "next/link";
 import ImportZipButton from "@/components/ImportZipButton";
 import MaterialDropzone from "@/components/MaterialDropzone";
 import MaterialItem from "@/components/MaterialItem";
+import ClaudeProjectInput from "@/components/ClaudeProjectInput";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -110,9 +111,13 @@ export default async function SubjectPage({
             <h1 className="text-2xl font-semibold text-slate-100 mb-1">
               {subject.name}
             </h1>
-            <p className="text-sm text-slate-500">
-              {subject.credits} créditos
-            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-sm text-slate-500">{subject.credits} créditos</p>
+              <span className="text-slate-700">·</span>
+              <div className="relative">
+                <ClaudeProjectInput subjectId={subject.id} currentUrl={subject.claude_project_url} />
+              </div>
+            </div>
           </div>
 
           {/* Summary stats */}
@@ -225,6 +230,8 @@ export default async function SubjectPage({
                   cls={cls}
                   hue={subject.hue}
                   subjectId={subject.id}
+                  subjectName={subject.name}
+                  claudeProjectUrl={subject.claude_project_url}
                   materials={materialsByClass(cls.id)}
                   allClasses={classes}
                 />
@@ -251,7 +258,13 @@ export default async function SubjectPage({
               </p>
               <div className="bg-slate-900/40 border border-slate-800 rounded-xl px-3 py-2 space-y-0.5">
                 {inboxMaterials.map(m => (
-                  <MaterialItem key={m.id} material={m} classes={classes} />
+                  <MaterialItem
+                    key={m.id}
+                    material={m}
+                    classes={classes}
+                    subjectName={subject.name}
+                    claudeProjectUrl={subject.claude_project_url}
+                  />
                 ))}
               </div>
             </section>
@@ -369,12 +382,16 @@ function ClassCard({
   cls,
   hue,
   subjectId,
+  subjectName,
+  claudeProjectUrl,
   materials,
   allClasses,
 }: {
   cls: ClassItem;
   hue: number;
   subjectId: number;
+  subjectName: string;
+  claudeProjectUrl: string | null;
   materials: ClassMaterial[];
   allClasses: ClassItem[];
 }) {
@@ -424,7 +441,13 @@ function ClassCard({
       {materials.length > 0 && (
         <div className="border-t border-slate-800/70 px-3 py-2 space-y-0.5 bg-slate-950/40">
           {materials.map(m => (
-            <MaterialItem key={m.id} material={m} classes={allClasses} />
+            <MaterialItem
+              key={m.id}
+              material={m}
+              classes={allClasses}
+              subjectName={subjectName}
+              claudeProjectUrl={claudeProjectUrl}
+            />
           ))}
         </div>
       )}

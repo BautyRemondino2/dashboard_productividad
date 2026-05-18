@@ -13,7 +13,6 @@ import {
 import path from "path";
 import fs from "fs";
 import AdmZip from "adm-zip";
-import Anthropic from "@anthropic-ai/sdk";
 
 const MATERIALS_ROOT = path.join(process.cwd(), "data", "materials");
 const MAX_FILE_BYTES = 50 * 1024 * 1024;   // 50 MB single file
@@ -458,78 +457,25 @@ export async function updateMaterialKind(materialId: number, kind: MaterialKind)
   revalidatePath(`/facultad/${row.subject_id}`);
 }
 
-/** Manually trigger an AI summary of a material via Claude. */
-export async function summarizeMaterial(materialId: number): Promise<{ ok: boolean; summary?: string; message?: string }> {
+/** Save a summary that the user pasted back from Claude.ai. */
+export async function updateMaterialSummary(materialId: number, summary: string | null) {
   const db = getDb();
-  const row = db.prepare("SELECT * FROM class_materials WHERE id = ?").get(materialId) as ClassMaterial | undefined;
-  if (!row) return { ok: false, message: "Material no encontrado" };
+  const row = db.prepare("SELECT subject_id FROM class_materials WHERE id = ?").get(materialId) as { subject_id: number } | undefined;
+  if (!row) return;
+  const trimmed = summary && summary.trim() ? summary.trim() : null;
+  db.prepare("UPDATE class_materials SET summary = ? WHERE id = ?").run(trimmed, materialId);
+  revalidatePath(`/facultad/${row.subject_id}`);
+}
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return { ok: false, message: "Falta ANTHROPIC_API_KEY en el .env del proyecto" };
+/** Set or clear the Claude.ai Project URL for a subject (used by "Preguntar a Claude"). */
+export async function setSubjectClaudeProject(subjectId: number, url: string | null) {
+  const trimmed = url && url.trim() ? url.trim() : null;
+  if (trimmed && !/^https?:\/\/(claude\.ai|www\.claude\.ai)\//i.test(trimmed)) {
+    return { ok: false, message: "La URL tiene que empezar con https://claude.ai/..." };
   }
-
-  const ext = row.filename.toLowerCase().split(".").pop() ?? "";
-  if (!["pdf", "txt", "md"].includes(ext)) {
-    return {
-      ok: false,
-      message: `Por ahora solo se pueden resumir PDF, TXT y MD (este es .${ext}).`,
-    };
-  }
-
-  const abs = path.join(MATERIALS_ROOT, row.file_path);
-  if (!fs.existsSync(abs)) return { ok: false, message: "Archivo no encontrado en disco" };
-
-  const client = new Anthropic({ apiKey });
-
-  const prompt = `Resumí este material de la clase en español. Estructura el resumen así:
-
-**Conceptos clave** (5-8 bullets con los puntos centrales)
-**Fórmulas / expresiones** (si las hay, escribir en LaTeX inline)
-**Aplicaciones prácticas** (2-3 ejemplos o casos donde aplica)
-**Para repasar antes del examen** (3-5 ítems puntuales)
-
-Sé conciso pero específico — citá nombres, modelos, formulas exactas. No agregues introducciones ni cierres genéricos.`;
-
-  let content: Anthropic.MessageParam["content"];
-  if (ext === "pdf") {
-    const data = fs.readFileSync(abs).toString("base64");
-    content = [
-      {
-        type: "document",
-        source: { type: "base64", media_type: "application/pdf", data },
-      },
-      { type: "text", text: prompt },
-    ];
-  } else {
-    const txt = fs.readFileSync(abs, "utf8").slice(0, 200_000);
-    content = [{ type: "text", text: `${prompt}\n\n--- Contenido del archivo ---\n\n${txt}` }];
-  }
-
-  try {
-    const stream = client.messages.stream({
-      model: "claude-opus-4-7",
-      max_tokens: 2000,
-      thinking: { type: "adaptive" },
-      messages: [{ role: "user", content }],
-    });
-
-    const msg = await stream.finalMessage();
-    const text = msg.content
-      .filter((c): c is Anthropic.TextBlock => c.type === "text")
-      .map(c => c.text)
-      .join("\n")
-      .trim();
-
-    if (!text) return { ok: false, message: "El modelo no devolvió texto" };
-
-    db.prepare("UPDATE class_materials SET summary = ? WHERE id = ?").run(text, materialId);
-    revalidatePath(`/facultad/${row.subject_id}`);
-    return { ok: true, summary: text };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, message: `Error al llamar al modelo: ${msg}` };
-  }
+  getDb().prepare("UPDATE subjects SET claude_project_url = ? WHERE id = ?").run(trimmed, subjectId);
+  revalidatePath(`/facultad/${subjectId}`);
+  return { ok: true };
 }
 
 // ── Semesters ──────────────────────────────────────────────────────────────

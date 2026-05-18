@@ -137,6 +137,9 @@ function initSchema(db: Database.Database) {
   // and add semester_id column
   try { db.exec("ALTER TABLE subjects ADD COLUMN semester_id INTEGER REFERENCES semesters(id) ON DELETE CASCADE"); } catch { /* exists */ }
 
+  // Claude.ai Project link per subject
+  try { db.exec("ALTER TABLE subjects ADD COLUMN claude_project_url TEXT"); } catch { /* exists */ }
+
   // Ensure at least one active semester exists; backfill subjects without a semester
   const hasSemester = db.prepare("SELECT COUNT(*) as n FROM semesters").get() as { n: number };
   if (hasSemester.n === 0) {

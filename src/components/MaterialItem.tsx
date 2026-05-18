@@ -11,38 +11,23 @@ import {
   deleteMaterial,
   assignMaterialToClass,
   updateMaterialKind,
-  summarizeMaterial,
 } from "@/app/actions";
+import AskClaudeButton from "@/components/AskClaudeButton";
 
 interface Props {
   material: ClassMaterial;
   classes: ClassItem[];
+  subjectName: string;
+  claudeProjectUrl: string | null;
 }
 
 const KIND_OPTIONS: MaterialKind[] = ["slide", "ejercicio", "excel", "lectura", "notas", "imagen", "otro"];
 
-export default function MaterialItem({ material, classes }: Props) {
+export default function MaterialItem({ material, classes, subjectName, claudeProjectUrl }: Props) {
   const [, startTransition] = useTransition();
-  const [busy, setBusy] = useState<"none" | "summarize" | "delete">("none");
+  const [busy, setBusy] = useState<"none" | "delete">("none");
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [localSummary, setLocalSummary] = useState<string | null>(material.summary);
-
-  const handleSummarize = () => {
-    setBusy("summarize");
-    setError(null);
-    startTransition(async () => {
-      const r = await summarizeMaterial(material.id);
-      setBusy("none");
-      if (r.ok && r.summary) {
-        setLocalSummary(r.summary);
-        setSummaryOpen(true);
-      } else {
-        setError(r.message ?? "Error al resumir");
-      }
-    });
-  };
 
   const handleDelete = () => {
     if (!confirm(`¿Eliminar "${material.filename}"? No se puede deshacer.`)) return;
@@ -83,7 +68,7 @@ export default function MaterialItem({ material, classes }: Props) {
         </a>
         <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-600 tabular">
           <span>{formatBytes(material.size_bytes)}</span>
-          {localSummary && (
+          {material.summary && (
             <button
               onClick={() => setSummaryOpen(true)}
               className="text-emerald-400/80 hover:text-emerald-300 underline decoration-dotted"
@@ -96,16 +81,7 @@ export default function MaterialItem({ material, classes }: Props) {
 
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        {!localSummary && ["pdf", "txt", "md"].includes(material.filename.toLowerCase().split(".").pop() ?? "") && (
-          <button
-            onClick={handleSummarize}
-            disabled={busy !== "none"}
-            title="Resumir con IA"
-            className="text-[10px] px-1.5 py-0.5 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-colors disabled:opacity-50"
-          >
-            {busy === "summarize" ? "…" : "Resumir"}
-          </button>
-        )}
+        <AskClaudeButton material={material} subjectName={subjectName} claudeProjectUrl={claudeProjectUrl} />
         <button
           onClick={() => setPickerOpen(o => !o)}
           title="Cambiar de clase"
@@ -128,15 +104,11 @@ export default function MaterialItem({ material, classes }: Props) {
         <ClassPicker classes={classes} currentClassId={material.class_id} onPick={handleAssign} onClose={() => setPickerOpen(false)} />
       )}
 
-      {error && (
-        <span className="absolute right-2 top-2 text-[10px] text-red-400">{error}</span>
-      )}
-
       {/* Summary modal */}
-      {summaryOpen && localSummary && (
+      {summaryOpen && material.summary && (
         <SummaryModal
           filename={material.filename}
-          summary={localSummary}
+          summary={material.summary}
           onClose={() => setSummaryOpen(false)}
         />
       )}
