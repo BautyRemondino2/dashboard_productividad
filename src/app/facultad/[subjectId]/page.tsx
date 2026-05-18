@@ -4,7 +4,7 @@ import { localDateStr } from "@/lib/utils";
 import { subjectColor, subjectColorSoft } from "@/lib/subjectColors";
 import type { Subject, ClassItem, Exam, Task, ClassMaterial } from "@/lib/types";
 import Link from "next/link";
-import ImportZipButton from "@/components/ImportZipButton";
+import ImportMaterialsButton from "@/components/ImportMaterialsButton";
 import MaterialDropzone from "@/components/MaterialDropzone";
 import MaterialItem from "@/components/MaterialItem";
 import ClaudeProjectInput from "@/components/ClaudeProjectInput";
@@ -218,10 +218,10 @@ export default async function SubjectPage({
           <section>
             <div className="flex items-center justify-between mb-3">
               <SectionTitle>Clases · materiales</SectionTitle>
-              <ImportZipButton subjectId={subject.id} />
+              <ImportMaterialsButton subjectId={subject.id} />
             </div>
             <p className="text-[10px] text-slate-600 mb-3">
-              Subí un .zip con las clases ordenadas en carpetas, o arrastrá archivos sueltos sobre cada clase.
+              Seleccioná la carpeta de la materia (cada subcarpeta = una clase) o arrastrá archivos sueltos sobre cada clase.
             </p>
             <div className="space-y-2">
               {classes.map((cls) => (

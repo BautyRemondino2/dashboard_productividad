@@ -276,14 +276,125 @@ export async function uploadMaterial(formData: FormData): Promise<ClassMaterial 
   return row;
 }
 
-/** Bulk-import a .zip whose top-level directories are class folders. */
-export async function importZip(formData: FormData): Promise<{
+/** Common ingest logic: takes a flat list of files with their relative paths and
+ *  groups them into classes by top-level directory. */
+type IngestResult = {
   ok: boolean;
   classesCreated: number;
   filesImported: number;
   filesSkipped: number;
   message?: string;
-}> {
+};
+
+function ingestMaterialFiles(
+  subjectId: number,
+  files: { path: string; data: Buffer }[]
+): IngestResult {
+  if (files.length === 0) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "No hay archivos" };
+  }
+
+  // Normalize + filter
+  const normalized = files
+    .map(f => ({ path: f.path.replace(/^\/+/, "").replace(/\\/g, "/"), data: f.data }))
+    .filter(f => f.path && !f.path.includes("..") && !f.path.startsWith("__MACOSX/"));
+
+  if (normalized.length === 0) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "No hay archivos válidos" };
+  }
+
+  // Detect single top-level wrapper folder
+  const topLevels = new Set<string>();
+  for (const f of normalized) {
+    const parts = f.path.split("/");
+    if (parts.length >= 1) topLevels.add(parts[0]);
+  }
+  const stripWrapper = topLevels.size === 1 && normalized.some(f => f.path.includes("/"));
+
+  // Group: classFolder -> [{fileName, data}]
+  const groups = new Map<string, { fileName: string; data: Buffer }[]>();
+  const INBOX = "__inbox__";
+
+  for (const f of normalized) {
+    let rawPath = f.path;
+    if (stripWrapper) {
+      const parts = rawPath.split("/");
+      parts.shift();
+      rawPath = parts.join("/");
+    }
+    if (!rawPath) continue;
+
+    const parts = rawPath.split("/");
+    const fileName = sanitizeFilename(parts[parts.length - 1]);
+    if (!fileName || fileName.startsWith(".")) continue;
+    if (!isAllowedFile(fileName)) continue;
+    if (f.data.length > MAX_FILE_BYTES) continue;
+
+    const folder = parts.length > 1 ? parts.slice(0, -1).join(" / ") : INBOX;
+    if (!groups.has(folder)) groups.set(folder, []);
+    groups.get(folder)!.push({ fileName, data: f.data });
+  }
+
+  if (groups.size === 0) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "Ningún archivo pasó los filtros (extensión no permitida o demasiado grande)" };
+  }
+
+  const db = getDb();
+  let classesCreated = 0;
+  let filesImported = 0;
+  let filesSkipped = 0;
+
+  const tx = db.transaction(() => {
+    for (const [folder, items] of groups.entries()) {
+      let classId: number | null = null;
+
+      if (folder !== INBOX) {
+        const { week, title } = parseClassFolder(folder);
+        const existing = week !== null
+          ? db.prepare("SELECT id FROM classes WHERE subject_id = ? AND week = ?").get(subjectId, week) as { id: number } | undefined
+          : undefined;
+
+        if (existing) {
+          classId = existing.id;
+        } else {
+          const nextWeek = week ?? (db.prepare("SELECT COALESCE(MAX(week),0)+1 as w FROM classes WHERE subject_id = ?").get(subjectId) as { w: number }).w;
+          const today = new Date().toISOString().slice(0, 10);
+          const r = db
+            .prepare("INSERT INTO classes (subject_id, week, title, date) VALUES (?, ?, ?, ?)")
+            .run(subjectId, nextWeek, title || folder.slice(0, 80), today);
+          classId = Number(r.lastInsertRowid);
+          classesCreated++;
+        }
+      }
+
+      const dir = subjectMaterialDir(subjectId, classId);
+      for (const item of items) {
+        try {
+          const finalPath = uniqueFilePath(dir, item.fileName);
+          fs.writeFileSync(finalPath, item.data);
+          const kind = inferMaterialKind(item.fileName);
+          const mime = mimeFromExt(item.fileName);
+          const relPath = path.relative(MATERIALS_ROOT, finalPath);
+          db.prepare(
+            "INSERT INTO class_materials (subject_id, class_id, kind, filename, file_path, mime, size_bytes) VALUES (?, ?, ?, ?, ?, ?, ?)"
+          ).run(subjectId, classId, kind, item.fileName, relPath, mime, item.data.length);
+          filesImported++;
+        } catch {
+          filesSkipped++;
+        }
+      }
+    }
+  });
+
+  tx();
+  revalidatePath(`/facultad/${subjectId}`);
+  revalidatePath("/today");
+
+  return { ok: true, classesCreated, filesImported, filesSkipped };
+}
+
+/** Bulk-import a .zip whose top-level directories are class folders. */
+export async function importZip(formData: FormData): Promise<IngestResult> {
   const subjectIdRaw = formData.get("subject_id");
   const file = formData.get("file") as File | null;
 
@@ -313,102 +424,43 @@ export async function importZip(formData: FormData): Promise<{
     return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "No se pudo abrir el zip" };
   }
 
-  // Group entries by their top-level directory
-  // If everything lives under a single top-level dir (e.g. "Materia/"), we unwrap it.
-  const allEntries = zip.getEntries().filter(e => !e.isDirectory);
-  if (allEntries.length === 0) {
-    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "Zip vacío" };
+  const entries = zip.getEntries().filter(e => !e.isDirectory);
+  const files = entries.map(e => ({ path: e.entryName, data: e.getData() }));
+
+  return ingestMaterialFiles(subjectId, files);
+}
+
+/** Bulk-import a folder picked via <input webkitdirectory>. Files come in with
+ *  their relative path encoded as the filename. */
+export async function importFolder(formData: FormData): Promise<IngestResult> {
+  const subjectIdRaw = formData.get("subject_id");
+  const allFiles = formData.getAll("files");
+
+  if (!subjectIdRaw) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "Materia no especificada" };
+  }
+  const subjectId = Number(subjectIdRaw);
+  if (!Number.isFinite(subjectId)) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "Materia inválida" };
+  }
+  if (allFiles.length === 0) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "No hay archivos en la carpeta" };
   }
 
-  // Detect single top-level wrapper
-  const topLevels = new Set<string>();
-  for (const e of allEntries) {
-    const parts = e.entryName.replace(/^\/+/, "").split("/");
-    if (parts.length >= 1) topLevels.add(parts[0]);
-  }
-  const stripWrapper = topLevels.size === 1;
-
-  // Group: classFolder -> [{relativePath, data}]
-  const groups = new Map<string, { fileName: string; data: Buffer; rel: string }[]>();
-  const INBOX = "__inbox__";
-
-  for (const entry of allEntries) {
-    let rawPath = entry.entryName.replace(/^\/+/, "");
-    if (stripWrapper) {
-      const parts = rawPath.split("/");
-      parts.shift();
-      rawPath = parts.join("/");
+  const files: { path: string; data: Buffer }[] = [];
+  let totalBytes = 0;
+  for (const f of allFiles) {
+    if (!(f instanceof File)) continue;
+    totalBytes += f.size;
+    if (totalBytes > MAX_ZIP_BYTES) {
+      return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "Carpeta demasiado pesada (>250 MB total)" };
     }
-    if (!rawPath) continue;
-    if (rawPath.includes("..")) continue;          // path traversal guard
-    if (rawPath.startsWith("__MACOSX/")) continue; // mac noise
-
-    const parts = rawPath.split("/");
-    const fileName = sanitizeFilename(parts[parts.length - 1]);
-    if (!fileName || fileName.startsWith(".")) continue;
-    if (!isAllowedFile(fileName)) continue;
-
-    const folder = parts.length > 1 ? parts.slice(0, -1).join(" / ") : INBOX;
-    const data = entry.getData();
-    if (data.length > MAX_FILE_BYTES) continue;
-
-    if (!groups.has(folder)) groups.set(folder, []);
-    groups.get(folder)!.push({ fileName, data, rel: rawPath });
+    const buf = Buffer.from(await f.arrayBuffer());
+    // The webkitRelativePath is encoded into f.name by the client
+    files.push({ path: f.name, data: buf });
   }
 
-  const db = getDb();
-  let classesCreated = 0;
-  let filesImported = 0;
-  let filesSkipped = 0;
-
-  const tx = db.transaction(() => {
-    for (const [folder, files] of groups.entries()) {
-      let classId: number | null = null;
-
-      if (folder !== INBOX) {
-        // Try to match an existing class by parsed week, else create one
-        const { week, title } = parseClassFolder(folder);
-        const existing = week !== null
-          ? db.prepare("SELECT id FROM classes WHERE subject_id = ? AND week = ?").get(subjectId, week) as { id: number } | undefined
-          : undefined;
-
-        if (existing) {
-          classId = existing.id;
-        } else {
-          const nextWeek = week ?? (db.prepare("SELECT COALESCE(MAX(week),0)+1 as w FROM classes WHERE subject_id = ?").get(subjectId) as { w: number }).w;
-          const today = new Date().toISOString().slice(0, 10);
-          const r = db
-            .prepare("INSERT INTO classes (subject_id, week, title, date) VALUES (?, ?, ?, ?)")
-            .run(subjectId, nextWeek, title || folder.slice(0, 80), today);
-          classId = Number(r.lastInsertRowid);
-          classesCreated++;
-        }
-      }
-
-      const dir = subjectMaterialDir(subjectId, classId);
-      for (const f of files) {
-        try {
-          const finalPath = uniqueFilePath(dir, f.fileName);
-          fs.writeFileSync(finalPath, f.data);
-          const kind = inferMaterialKind(f.fileName);
-          const mime = mimeFromExt(f.fileName);
-          const relPath = path.relative(MATERIALS_ROOT, finalPath);
-          db.prepare(
-            "INSERT INTO class_materials (subject_id, class_id, kind, filename, file_path, mime, size_bytes) VALUES (?, ?, ?, ?, ?, ?, ?)"
-          ).run(subjectId, classId, kind, f.fileName, relPath, mime, f.data.length);
-          filesImported++;
-        } catch {
-          filesSkipped++;
-        }
-      }
-    }
-  });
-
-  tx();
-  revalidatePath(`/facultad/${subjectId}`);
-  revalidatePath("/today");
-
-  return { ok: true, classesCreated, filesImported, filesSkipped };
+  return ingestMaterialFiles(subjectId, files);
 }
 
 export async function deleteMaterial(id: number) {
