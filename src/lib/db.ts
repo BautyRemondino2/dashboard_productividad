@@ -102,6 +102,22 @@ function initSchema(db: Database.Database) {
       created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_glossary_category ON glossary_terms(category);
+
+    CREATE TABLE IF NOT EXISTS class_materials (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject_id  INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+      class_id    INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+      kind        TEXT NOT NULL DEFAULT 'otro'
+                  CHECK(kind IN ('slide','ejercicio','excel','lectura','notas','imagen','otro')),
+      filename    TEXT NOT NULL,
+      file_path   TEXT NOT NULL,
+      mime        TEXT,
+      size_bytes  INTEGER NOT NULL DEFAULT 0,
+      summary     TEXT,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_materials_subject ON class_materials(subject_id);
+    CREATE INDEX IF NOT EXISTS idx_materials_class   ON class_materials(class_id);
   `);
 
   // Migrations for existing installs

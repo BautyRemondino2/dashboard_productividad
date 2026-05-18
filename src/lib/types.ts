@@ -70,6 +70,21 @@ export interface HabitLog {
   date: string;
 }
 
+export type MaterialKind = "slide" | "ejercicio" | "excel" | "lectura" | "notas" | "imagen" | "otro";
+
+export interface ClassMaterial {
+  id: number;
+  subject_id: number;
+  class_id: number | null;
+  kind: MaterialKind;
+  filename: string;
+  file_path: string;
+  mime: string | null;
+  size_bytes: number;
+  summary: string | null;
+  created_at: string;
+}
+
 export const PRIORITY_ORDER: Record<Priority, number> = {
   alta: 1,
   media: 2,

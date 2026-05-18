@@ -2,8 +2,11 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { localDateStr } from "@/lib/utils";
 import { subjectColor, subjectColorSoft } from "@/lib/subjectColors";
-import type { Subject, ClassItem, Exam, Task } from "@/lib/types";
+import type { Subject, ClassItem, Exam, Task, ClassMaterial } from "@/lib/types";
 import Link from "next/link";
+import ImportZipButton from "@/components/ImportZipButton";
+import MaterialDropzone from "@/components/MaterialDropzone";
+import MaterialItem from "@/components/MaterialItem";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -60,6 +63,13 @@ export default async function SubjectPage({
        ORDER BY t.completed_at DESC LIMIT 10`
     )
     .all(subject.id) as Task[];
+
+  // Materials for this subject
+  const materials = db
+    .prepare("SELECT * FROM class_materials WHERE subject_id = ? ORDER BY kind, filename")
+    .all(subject.id) as ClassMaterial[];
+  const inboxMaterials = materials.filter(m => m.class_id === null);
+  const materialsByClass = (classId: number) => materials.filter(m => m.class_id === classId);
 
   const upcomingExams = exams.filter((e) => e.date >= today && !e.grade);
   const pastExams = exams.filter((e) => e.date < today || e.grade !== null);
@@ -202,25 +212,50 @@ export default async function SubjectPage({
           {/* Classes list */}
           <section>
             <div className="flex items-center justify-between mb-3">
-              <SectionTitle>Clases</SectionTitle>
-              <button
-                className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1"
-                style={{ color: subjectColor(subject.hue, 65) }}
-              >
-                + nueva clase
-              </button>
+              <SectionTitle>Clases · materiales</SectionTitle>
+              <ImportZipButton subjectId={subject.id} />
             </div>
+            <p className="text-[10px] text-slate-600 mb-3">
+              Subí un .zip con las clases ordenadas en carpetas, o arrastrá archivos sueltos sobre cada clase.
+            </p>
             <div className="space-y-2">
               {classes.map((cls) => (
-                <ClassCard key={cls.id} cls={cls} hue={subject.hue} />
+                <ClassCard
+                  key={cls.id}
+                  cls={cls}
+                  hue={subject.hue}
+                  subjectId={subject.id}
+                  materials={materialsByClass(cls.id)}
+                  allClasses={classes}
+                />
               ))}
               {classes.length === 0 && (
                 <p className="text-[13px] text-slate-600 py-4 text-center">
-                  No hay clases registradas aún.
+                  No hay clases todavía. Subí un .zip o creá una clase manualmente.
                 </p>
               )}
             </div>
           </section>
+
+          {/* Inbox: unassigned materials */}
+          {inboxMaterials.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <SectionTitle>📥 Inbox · sin asignar</SectionTitle>
+                <span className="text-[10px] text-slate-600 tabular">
+                  {inboxMaterials.length} archivo{inboxMaterials.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-600 mb-2">
+                Archivos del zip que no pudieron asignarse automáticamente. Click en &ldquo;Mover&rdquo; para asignar a una clase.
+              </p>
+              <div className="bg-slate-900/40 border border-slate-800 rounded-xl px-3 py-2 space-y-0.5">
+                {inboxMaterials.map(m => (
+                  <MaterialItem key={m.id} material={m} classes={classes} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Past exams with grades */}
           {pastExams.length > 0 && (
@@ -330,9 +365,21 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ClassCard({ cls, hue }: { cls: ClassItem; hue: number }) {
+function ClassCard({
+  cls,
+  hue,
+  subjectId,
+  materials,
+  allClasses,
+}: {
+  cls: ClassItem;
+  hue: number;
+  subjectId: number;
+  materials: ClassMaterial[];
+  allClasses: ClassItem[];
+}) {
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden hover:border-slate-700 transition-colors">
+    <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden hover:border-slate-700/80 transition-colors">
       <div className="flex items-start gap-3 px-4 py-3">
         {/* Week badge */}
         <div
@@ -346,23 +393,18 @@ function ClassCard({ cls, hue }: { cls: ClassItem; hue: number }) {
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] text-slate-100 leading-tight font-medium">
-            {cls.title}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[13px] text-slate-100 leading-tight font-medium truncate">
+              {cls.title}
+            </p>
+            <MaterialDropzone subjectId={subjectId} classId={cls.id} compact />
+          </div>
           <p className="text-[11px] text-slate-500 mt-0.5">{formatDateShort(cls.date)}</p>
           <div className="flex items-center gap-2 mt-1.5">
-            {cls.summarized ? (
-              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/80">
-                <span className="w-1 h-1 rounded-full bg-emerald-400" />
-                resumen listo
+            {materials.length > 0 && (
+              <span className="text-[10px] text-slate-500">
+                <span className="tabular text-slate-300">{materials.length}</span> archivo{materials.length !== 1 ? "s" : ""}
               </span>
-            ) : (
-              <button
-                className="inline-flex items-center gap-1 text-[10px] text-amber-400/80 hover:text-amber-300 transition-colors"
-              >
-                <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
-                sin resumir · generar
-              </button>
             )}
             {cls.tasks_total > 0 && (
               <span className="text-[10px] text-slate-500">
@@ -377,6 +419,15 @@ function ClassCard({ cls, hue }: { cls: ClassItem; hue: number }) {
           )}
         </div>
       </div>
+
+      {/* Materials list */}
+      {materials.length > 0 && (
+        <div className="border-t border-slate-800/70 px-3 py-2 space-y-0.5 bg-slate-950/40">
+          {materials.map(m => (
+            <MaterialItem key={m.id} material={m} classes={allClasses} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
