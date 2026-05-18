@@ -9,6 +9,7 @@ import MaterialDropzone from "@/components/MaterialDropzone";
 import MaterialItem from "@/components/MaterialItem";
 import ClaudeProjectInput from "@/components/ClaudeProjectInput";
 import ClearInboxButton from "@/components/ClearInboxButton";
+import ClearAllMaterialsButton from "@/components/ClearAllMaterialsButton";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -217,8 +218,15 @@ export default async function SubjectPage({
 
           {/* Classes list */}
           <section>
-            <div className="flex items-center justify-between mb-3">
-              <SectionTitle>Clases · materiales</SectionTitle>
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <div className="flex items-center gap-3">
+                <SectionTitle>Clases · materiales</SectionTitle>
+                <ClearAllMaterialsButton
+                  subjectId={subject.id}
+                  classCount={classes.length}
+                  materialCount={materials.length}
+                />
+              </div>
               <ImportMaterialsButton subjectId={subject.id} />
             </div>
             <p className="text-[10px] text-slate-600 mb-3">

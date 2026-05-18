@@ -463,6 +463,33 @@ export async function importFolder(formData: FormData): Promise<IngestResult> {
   return ingestMaterialFiles(subjectId, files);
 }
 
+/** Nuclear option — wipe every class + material for a subject (preserves the subject row,
+ *  its exams and tasks). Use to restart the import from scratch. */
+export async function clearAllSubjectMaterials(subjectId: number): Promise<{
+  materialsDeleted: number;
+  classesDeleted: number;
+}> {
+  const db = getDb();
+  const materials = db
+    .prepare("SELECT id FROM class_materials WHERE subject_id = ?")
+    .all(subjectId) as { id: number }[];
+
+  // Remove the whole subject directory tree on disk (much faster than file-by-file)
+  try {
+    const subjectDir = path.join(MATERIALS_ROOT, `subject-${subjectId}`);
+    if (fs.existsSync(subjectDir)) {
+      fs.rmSync(subjectDir, { recursive: true, force: true });
+    }
+  } catch { /* ignore */ }
+
+  // Delete materials first (class_id may reference classes)
+  db.prepare("DELETE FROM class_materials WHERE subject_id = ?").run(subjectId);
+  const classRes = db.prepare("DELETE FROM classes WHERE subject_id = ?").run(subjectId);
+
+  revalidatePath(`/facultad/${subjectId}`);
+  return { materialsDeleted: materials.length, classesDeleted: Number(classRes.changes) };
+}
+
 /** Delete every unassigned (inbox) material for a subject — both DB rows and files on disk. */
 export async function clearInbox(subjectId: number): Promise<{ deleted: number }> {
   const db = getDb();
