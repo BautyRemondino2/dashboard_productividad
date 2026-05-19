@@ -432,7 +432,7 @@ export async function importZip(formData: FormData): Promise<IngestResult> {
 
 /** Bulk-import a folder picked via <input webkitdirectory>. Files come in with
  *  their relative path encoded as the filename. */
-export async function importFolder(formData: FormData): Promise<IngestResult> {
+export async function importFolder(formData: FormData): Promise<IngestResult & { samplePaths?: string[] }> {
   const subjectIdRaw = formData.get("subject_id");
   const allFiles = formData.getAll("files");
 
@@ -460,7 +460,19 @@ export async function importFolder(formData: FormData): Promise<IngestResult> {
     files.push({ path: f.name, data: buf });
   }
 
-  return ingestMaterialFiles(subjectId, files);
+  // Diagnostic: log the actual paths we received to /tmp for inspection
+  try {
+    const logPath = path.join(process.cwd(), "data", "last-folder-upload.log");
+    const summary = [
+      `[${new Date().toISOString()}] subject=${subjectId}, total files=${files.length}`,
+      "Paths received:",
+      ...files.map(f => `  ${f.path}`),
+    ].join("\n");
+    fs.writeFileSync(logPath, summary);
+  } catch { /* ignore */ }
+
+  const result = ingestMaterialFiles(subjectId, files);
+  return { ...result, samplePaths: files.slice(0, 5).map(f => f.path) };
 }
 
 /** Nuclear option — wipe every class + material for a subject (preserves the subject row,

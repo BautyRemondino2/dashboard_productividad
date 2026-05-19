@@ -11,6 +11,7 @@ interface Result {
   filesImported?: number;
   filesSkipped?: number;
   message?: string;
+  samplePaths?: string[];
 }
 
 // ─── FileSystemEntry helpers (cross-browser folder traversal) ────────────────
@@ -128,7 +129,8 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
       setResult(r);
       setProgress(null);
       if (folderInputRef.current) folderInputRef.current.value = "";
-      setTimeout(() => setResult(null), 10000);
+      // Only auto-dismiss on success — keep error visible so the user can read the diagnostic
+      if (r.ok) setTimeout(() => setResult(null), 12000);
     });
   };
 
@@ -143,7 +145,7 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
       setResult(r);
       setProgress(null);
       if (zipInputRef.current) zipInputRef.current.value = "";
-      setTimeout(() => setResult(null), 8000);
+      if (r.ok) setTimeout(() => setResult(null), 12000);
     });
   };
 
@@ -152,12 +154,15 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
       path: f.webkitRelativePath || f.name,
       file: f,
     }));
-    // Detect broken Safari case: every webkitRelativePath is empty so all paths are basenames
-    const hasFolderInfo = list.some(item => item.path.includes("/"));
-    if (!hasFolderInfo) {
+    // Detect the Safari quirk: webkitdirectory only returns top-level files, so
+    // every path has depth ≤ 1 (just "Wrapper/file.pdf"). If the user's folder
+    // really has nested subfolders, we'd see depth ≥ 2 somewhere.
+    const maxDepth = Math.max(...list.map(item => item.path.split("/").length));
+    if (maxDepth < 3) {
       setResult({
         ok: false,
-        message: "Tu navegador no preservó la estructura de carpetas. Arrastrá la carpeta directamente sobre la zona violeta, o usá .zip.",
+        message: `Tu navegador (probablemente Safari) flatteó la carpeta — solo recibí archivos al nivel raíz, sin las subcarpetas TEMA NN. Arrastrá la carpeta directamente sobre la zona violeta desde Finder, o subila como .zip.`,
+        samplePaths: list.slice(0, 5).map(i => i.path),
       });
       return;
     }
@@ -212,30 +217,31 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
         }}
       />
 
-      {/* Drag & drop area — primary path */}
+      {/* Drag & drop area — primary path. Does NOT open the picker on click
+          (Safari's picker doesn't traverse subdirectories). */}
       <div
         onDragOver={e => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={onDrop}
-        className={`rounded-lg border border-dashed transition-colors px-4 py-2.5 cursor-pointer ${
+        className={`rounded-lg border-2 border-dashed transition-colors px-5 py-4 ${
           drag
-            ? "border-violet-400 bg-violet-950/40"
-            : "border-violet-700/60 bg-violet-950/20 hover:bg-violet-950/30"
+            ? "border-violet-400 bg-violet-950/50"
+            : "border-violet-700/60 bg-violet-950/20"
         }`}
-        onClick={() => folderInputRef.current?.click()}
       >
         <div className="flex items-center gap-3">
-          <svg className="w-4 h-4 text-violet-300 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-violet-300 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
           </svg>
           <div className="flex flex-col">
-            <span className="text-[12px] text-violet-100 font-medium">
-              {drag ? "Soltá la carpeta acá" : "Arrastrá la carpeta de la materia"}
+            <span className="text-[13px] text-violet-100 font-medium">
+              {drag ? "Soltá la carpeta acá" : "Arrastrá la carpeta desde Finder"}
             </span>
             <span className="text-[10px] text-violet-300/70">
-              o <button onClick={e => { e.stopPropagation(); folderInputRef.current?.click(); }} className="underline">elegirla</button>
-              {" · "}
-              <button onClick={e => { e.stopPropagation(); zipInputRef.current?.click(); }} className="underline">subir .zip</button>
+              También podés{" "}
+              <button onClick={() => zipInputRef.current?.click()} className="underline hover:text-violet-100">subir un .zip</button>
+              {" "}o{" "}
+              <button onClick={() => folderInputRef.current?.click()} className="underline hover:text-violet-100">elegir carpeta (no funciona en Safari)</button>
             </span>
           </div>
         </div>
@@ -251,7 +257,7 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
 
       {result && (
         <div
-          className={`text-[11px] px-2.5 py-1.5 rounded-md border max-w-[420px] ${
+          className={`text-[11px] px-2.5 py-1.5 rounded-md border max-w-[480px] ${
             result.ok
               ? "bg-emerald-950/40 border-emerald-800/60 text-emerald-300"
               : "bg-red-950/40 border-red-800/60 text-red-300"
@@ -267,6 +273,14 @@ export default function ImportMaterialsButton({ subjectId }: Props) {
             </>
           ) : (
             <>✗ {result.message ?? "Error"}</>
+          )}
+          {result.samplePaths && result.samplePaths.length > 0 && (
+            <div className="mt-1.5 pt-1.5 border-t border-current/20">
+              <p className="text-[9px] uppercase tracking-widest opacity-60 mb-0.5">paths recibidos (muestra)</p>
+              <ul className="text-[10px] font-mono opacity-80 space-y-0.5">
+                {result.samplePaths.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
           )}
         </div>
       )}
