@@ -430,6 +430,86 @@ export async function importZip(formData: FormData): Promise<IngestResult> {
   return ingestMaterialFiles(subjectId, files);
 }
 
+/** Bulk-import a folder by its absolute path on disk. The Next.js dev server
+ *  runs on the user's machine, so it can read filesystem paths directly — no
+ *  browser folder-upload quirks involved. THIS IS THE RECOMMENDED METHOD. */
+export async function importLocalFolder(
+  subjectId: number,
+  folderPath: string
+): Promise<IngestResult> {
+  if (!folderPath || typeof folderPath !== "string") {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "Sin ruta" };
+  }
+  if (!Number.isFinite(subjectId)) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "Materia inválida" };
+  }
+
+  // Expand ~ to home dir for convenience
+  let pathStr = folderPath.trim();
+  // Strip surrounding quotes that some terminals/Finder paste with
+  if ((pathStr.startsWith('"') && pathStr.endsWith('"')) || (pathStr.startsWith("'") && pathStr.endsWith("'"))) {
+    pathStr = pathStr.slice(1, -1);
+  }
+  if (pathStr.startsWith("~")) {
+    pathStr = path.join(process.env.HOME ?? "", pathStr.slice(1));
+  }
+  const resolved = path.resolve(pathStr);
+
+  if (!fs.existsSync(resolved)) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: `La ruta no existe: ${resolved}` };
+  }
+  const stat = fs.statSync(resolved);
+  if (!stat.isDirectory()) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "La ruta no apunta a una carpeta" };
+  }
+
+  const files: { path: string; data: Buffer }[] = [];
+  let totalBytes = 0;
+  let tooBig = false;
+
+  const walk = (dir: string, relBase: string) => {
+    if (tooBig) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      if (entry.name === "__MACOSX") continue;
+      const full = path.join(dir, entry.name);
+      const rel = relBase ? `${relBase}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(full, rel);
+      } else if (entry.isFile()) {
+        let st: fs.Stats;
+        try { st = fs.statSync(full); } catch { continue; }
+        if (st.size > MAX_FILE_BYTES) continue;
+        totalBytes += st.size;
+        if (totalBytes > MAX_ZIP_BYTES) { tooBig = true; return; }
+        try {
+          const data = fs.readFileSync(full);
+          files.push({ path: rel, data });
+        } catch { /* skip unreadable */ }
+      }
+    }
+  };
+
+  try {
+    walk(resolved, "");
+  } catch (err) {
+    return {
+      ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0,
+      message: `Error leyendo la carpeta: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  if (tooBig) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "Carpeta demasiado pesada (>250 MB total)" };
+  }
+  if (files.length === 0) {
+    return { ok: false, classesCreated: 0, filesImported: 0, filesSkipped: 0, message: "No se encontraron archivos en la carpeta" };
+  }
+
+  return ingestMaterialFiles(subjectId, files);
+}
+
 /** Bulk-import a folder picked via <input webkitdirectory>. Files come in with
  *  their relative path encoded as the filename. */
 export async function importFolder(formData: FormData): Promise<IngestResult & { samplePaths?: string[] }> {
