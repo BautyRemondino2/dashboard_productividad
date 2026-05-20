@@ -34,157 +34,164 @@ function buildPrompt(
   previousClassTitle: string | null,
 ): string {
   const fileList = materials.length === 0
-    ? "(esta clase no tiene archivos cargados — usá lo que sepas)"
+    ? "(esta clase no tiene archivos cargados — basate solo en el título)"
     : materials.map(m => `- ${MATERIAL_KIND_LABEL[m.kind]}: ${m.filename}`).join("\n");
+
+  // Format syntax cheatsheet — shared across templates, deliberately content-neutral.
+  // Placeholders like [...] are descriptions, not real examples, so the model doesn't
+  // copy them or get biased toward a particular discipline.
+  const SYNTAX = `# Formato de salida (Markdown extendido)
+
+Vas a escribir el resumen usando exactamente esta sintaxis — un renderer custom la entiende y la muestra bonita.
+
+**Headings jerárquicos:**
+\`## Sección principal\`
+\`### Subsección\`
+
+**Cajas semánticas** (abren y cierran con \`:::\` en su propia línea, opcional título después del tipo):
+
+\`\`\`
+::: definicion [Término opcional]
+[Definición formal y precisa del concepto. Pon en **negrita** el término que se define.]
+:::
+
+::: nota
+[Observación práctica, intuición, conexión con otro tema visto previamente.]
+:::
+
+::: warning
+[Error típico, punto donde es fácil confundirse, advertencia importante.]
+:::
+
+::: ejemplo [Título opcional del ejemplo]
+[Caso concreto con números, valores específicos o derivación paso a paso.]
+:::
+
+::: teorema
+[Enunciado formal de un teorema, propiedad o resultado importante.]
+:::
+
+::: codigo [lenguaje]
+[Bloque de código relevante para la disciplina — si aplica.]
+:::
+\`\`\`
+
+**Fórmulas matemáticas** (siempre en LaTeX, NUNCA en texto plano):
+- Inline: \`$ [expresión] $\`
+- Display (centrada, en su propia línea):
+\`\`\`
+$$
+[expresión más larga]
+$$
+\`\`\`
+
+**Tablas** en Markdown estándar (pipes \`|\` y separador \`|---|---|\`).
+
+**Listas** numeradas (\`1.\`) o con bullets (\`-\`), pueden anidarse.
+
+**Inline:** \`**negrita**\`, \`*itálica*\`, \`\\\`código inline\\\`\`.`;
+
+  const HARD_RULES = `# Reglas estrictas
+
+- **El contenido sale 100% de los archivos adjuntos.** No inventes temas, modelos, autores o ejemplos que no estén en los materiales que te pasé. Si un archivo no contiene cierto detalle, no lo agregues — limitate a lo que está.
+- **Materia: ${subjectName}.** Si la clase trata de un tema X, el resumen es sobre X. No mezcles con otras materias ni asumas contenido típico de un curso "tipo X".
+- **Negrita en TODOS los términos clave** — el renderer los va a chipear automáticamente como conceptos al final del documento.
+- **Fórmulas SIEMPRE en LaTeX.** Si los archivos tienen ecuaciones, transcribilas con \`\\dfrac\`, \`\\sum\`, \`\\int\`, subíndices con \`_\`, superíndices con \`^\`, griegas con \`\\alpha\`, etc. Nunca escribas "y = a*x + b" en texto plano.
+- **Tono académico**, no conversacional. Nada de "espero que te sirva", "¡importantísimo!", emojis, ni preámbulos.
+- **Empezá directo con el contenido** (la primera línea es un \`##\`).
+- **Citá la fuente cuando puedas:** "(slide 12)", "(Cap. 4 — autor)", etc.
+- Si hay **derivaciones o demostraciones** en los archivos, reproducílas paso a paso en \`::: ejemplo\`.
+- Si hay **código** (Stata, Python, R, Excel, etc.) en los archivos, transcribílo en \`::: codigo <lenguaje>\`.
+- **Sin abreviar.** Apuntá a un resumen de ~10 páginas A4 cuando se imprima — entre 10 y 18 secciones \`##\` cuando la clase es densa, varias subsecciones \`###\`, múltiples cajas por sección. Mejor exhaustivo que escueto.`;
 
   const header = `Materia: ${subjectName}
 Clase ${classItem.week}: ${classItem.title}
 
-Archivos de la clase (te los voy a soltar acá al lado):
+Archivos adjuntos (te los voy a soltar al chat):
 ${fileList}
 `;
 
   switch (tpl) {
     case "resumen":
       return `${header}
-Necesito un **resumen académico riguroso** de esta clase, estilo apunte de cátedra universitario (similar a un resumen LaTeX de UdeSA). No es un resumen ejecutivo — es un documento de estudio exhaustivo.
+Quiero un **resumen académico exhaustivo de aproximadamente 10 páginas** de esta clase de **${subjectName}**, escrito como apunte de cátedra universitario.
 
-# Formato de salida (estricto)
+${SYNTAX}
 
-Usá **Markdown extendido** con esta sintaxis exacta:
+# Estructura obligatoria del documento
 
-- Headings jerárquicos: \`## Sección\` y \`### Subsección\`
-- Cajas semánticas (cada una en su propia línea, abre y cierra con \`:::\`):
+1. \`## Tabla de contenidos\` — lista numerada de las secciones que vas a desarrollar (el renderer la auto-genera también, pero ponela vos como referencia).
 
-\`\`\`
-::: definicion
-Texto formal y preciso de la definición. Negrita en **el término definido**.
-:::
+2. **Una sección \`##\` por cada tema/concepto principal** que aparezca en los archivos. Por cada sección:
+   - Una o más \`::: definicion\` con los términos formales
+   - Fórmulas en display \`$$...$$\` cuando corresponda
+   - \`::: ejemplo\` con casos concretos del material
+   - \`::: nota\` para conexiones, intuiciones, contexto histórico
+   - \`::: warning\` para errores típicos o sutilezas
+   - \`::: codigo <lenguaje>\` si hay snippets en los archivos
+   - Tablas comparativas cuando ayuden a contrastar
 
-::: nota
-Observación práctica, contexto, conexión con otra clase, intuición.
-:::
+3. \`## Tabla resumen\` — al final, tabla markdown con dos columnas (\`Concepto\` / \`Definición / Propiedad clave\`), una fila por término importante de toda la clase.
 
-::: warning
-Errores típicos, puntos donde es fácil confundirse en un parcial.
-:::
+4. \`## Checklist para el examen\` — 5-8 bullets puntuales con lo que hay que dominar.
 
-::: ejemplo
-Caso concreto con números o derivación paso a paso.
-:::
-
-::: teorema
-Enunciado formal de un teorema o resultado importante.
-:::
-
-::: codigo Stata
-arima y, arima(1,0,1)
-:::
-\`\`\`
-
-- Fórmulas inline: \`$y = \\rho x + \\epsilon$\`
-- Fórmulas display (centradas, en su propia línea):
-\`\`\`
-$$
-y_t = c + \\sum_{i=1}^{p} \\rho_i \\, y_{t-i} + \\epsilon_t
-$$
-\`\`\`
-- Tablas markdown estándar (con pipes \`|\`)
-- Bloques de código con fence triple y lenguaje
-- Listas anidadas con bullets o números
-
-# Estructura obligatoria
-
-## Tabla de contenidos
-Lista numerada de las secciones que vas a desarrollar (yo después la auto-genero, pero ponela vos también).
-
-## Sección 1 — [Primer concepto principal]
-Desarrollá con definiciones formales en cajas \`::: definicion\`, fórmulas en display, ejemplos numéricos en \`::: ejemplo\`, advertencias en \`::: warning\`, y notas de conexión en \`::: nota\`. Profundizá.
-
-## Sección 2 — [Segundo concepto principal]
-Igual.
-
-(Cuantas secciones haga falta — no abrevies por brevedad. Mejor exhaustivo.)
-
-## Tabla resumen
-Tabla markdown final con dos columnas: \`Concepto\` y \`Definición / Propiedad clave\`. Una fila por término importante.
-
-## Checklist para el examen
-5-7 ítems puntuales con lo que tengo que dominar de esta clase.
-
-# Reglas estrictas
-
-- **Negrita en TODOS los términos clave** — van a chiparse automáticamente al final del documento.
-- **Fórmulas siempre en LaTeX** con \`\\dfrac\`, \`\\sum\`, \`\\int\`, subíndices, etc. No escribas "y_t = c + ..." en texto plano.
-- **Citá literatura** cuando aplique (autor + año entre paréntesis).
-- **Nada de preámbulos ni cierres genéricos** — entrá directo al contenido.
-- **Tono académico**, no conversacional.
-- Si hay derivaciones o demostraciones en los archivos, **reproducilas paso a paso** en cajas \`::: ejemplo\`.
-- Si hay comandos de Stata/Python/R/Excel, va en \`::: codigo <lenguaje>\` o en \`\`\`<lenguaje>.
-- **No abrevies por miedo a ser largo** — un buen resumen tiene 8-15 secciones cuando la clase es densa.`;
+${HARD_RULES}`;
 
     case "comparar":
       return `${header}
-${previousClassTitle ? `Clase anterior: ${previousClassTitle}\n` : ""}
-Compará este material con la clase anterior — formato académico riguroso, mismo estilo que un resumen de cátedra UdeSA.
+${previousClassTitle ? `Clase anterior (semana ${classItem.week - 1}): **${previousClassTitle}**\n` : "(No tengo título de clase anterior — basate en lo que infieras de los archivos sobre qué se vio antes.)\n"}
+Compará el material de esta clase con el de la anterior. Materia: **${subjectName}**.
 
-# Formato
+${SYNTAX}
 
-Usá Markdown extendido con headings \`##\`, cajas semánticas \`::: tipo ... :::\` (definicion / nota / warning / ejemplo / teorema), fórmulas LaTeX en \`$...$\` y \`$$...$$\`, tablas markdown.
+# Estructura obligatoria
 
-# Estructura
+1. \`## Continuidad\` — qué conceptos de la clase anterior se **retoman y profundizan**. Una \`::: definicion\` por concepto retomado + \`::: nota\` con la conexión específica.
 
-## Continuidad
-Qué conceptos de la clase anterior **se retoman y profundizan**. Una caja \`::: definicion\` por cada concepto importante; \`::: nota\` con la conexión específica.
+2. \`## Novedades\` — qué se introduce **nuevo**. Definiciones formales + ejemplos.
 
-## Novedades
-Conceptos **nuevos** que se introducen. Mismo formato — definiciones formales y ejemplos.
+3. \`## Puente conceptual\` — cómo encajan las dos clases en un marco mayor. Si hay una fórmula que generaliza, mostrala en \`$$...$$\`.
 
-## Puente conceptual
-Cómo encaja la lógica de las dos clases en un mismo marco mayor. Si hay una fórmula que generaliza, mostrala en \`$$...$$\`.
+4. \`## Errores típicos al mezclar las dos\` — \`::: warning\` por cada confusión común.
 
-## Errores típicos
-Caja \`::: warning\` por cada confusión común entre los dos materiales.
+5. \`## Tabla comparativa\` — markdown con tres columnas (\`Aspecto\` | \`Clase anterior\` | \`Esta clase\`).
 
-## Tabla comparativa
-Markdown table con tres columnas: \`Aspecto\`, \`Clase anterior\`, \`Esta clase\`.
-
-# Reglas
-
-Negrita en términos clave. Fórmulas siempre en LaTeX. Citá conceptos exactos, no generalidades. Tono académico, no conversacional.`;
+${HARD_RULES}`;
 
     case "parcial":
       return `${header}
-Armame **10 preguntas tipo parcial** sobre esta clase, con dificultad creciente. Formato académico estilo UdeSA.
+Armame **10 preguntas tipo parcial** sobre el material de esta clase. Materia: **${subjectName}**.
 
-# Formato
+${SYNTAX}
 
-Markdown extendido. Para cada pregunta usá esta estructura:
+# Estructura
+
+Para cada pregunta usá esta plantilla:
 
 \`\`\`
-## Pregunta N · [Dificultad ★/★★/★★★/★★★★/★★★★★]
+## Pregunta N · ★★★
 
-**Enunciado:** texto del problema con fórmulas en LaTeX \`$...$\` si corresponde.
+**Enunciado:** [texto del problema con fórmulas LaTeX si corresponde]
 
 ::: definicion
-Respuesta esperada — 2-4 oraciones. Incluí fórmulas, derivaciones, valores numéricos.
+[Respuesta esperada — 2-4 oraciones. Incluí fórmulas, derivaciones, valores numéricos.]
 :::
 
 ::: nota
-Pista para reconocer este tipo de problema en el parcial real (qué señales lo identifican).
+[Pista para reconocer este tipo de problema en el parcial real — qué señales lo identifican.]
 :::
 \`\`\`
 
-# Distribución de dificultad
+# Distribución de dificultad (en este orden)
 
-- Preguntas 1-3 (★): Conceptuales — definiciones, identificar conceptos
-- Preguntas 4-6 (★★): Aplicación — resolver caso simple, elegir el modelo correcto
-- Preguntas 7-9 (★★★): Análisis — comparar enfoques, justificar elección, derivar fórmula
-- Pregunta 10 (★★★★/★★★★★): Integradora — problema con múltiples conceptos
+- **Preguntas 1-3 (★):** Conceptuales — definiciones, identificar conceptos del material.
+- **Preguntas 4-6 (★★):** Aplicación — resolver caso simple, elegir el modelo correcto.
+- **Preguntas 7-9 (★★★ / ★★★★):** Análisis — comparar enfoques, justificar elección, derivar fórmula.
+- **Pregunta 10 (★★★★★):** Integradora — problema con múltiples conceptos de la clase.
 
-# Reglas
+${HARD_RULES}
 
-Sé **exigente** — quiero prepararme bien. Fórmulas siempre en LaTeX. Si la respuesta involucra una derivación, mostrala paso a paso. Citá los archivos cuando hagas referencia ("en la slide X de Y").`;
+Sé **exigente** — quiero prepararme bien.`;
 
     case "custom":
       return `${header}
@@ -192,13 +199,15 @@ Sé **exigente** — quiero prepararme bien. Fórmulas siempre en LaTeX. Si la r
 
 ---
 
-**Si querés que la respuesta tenga formato académico (compatible con el renderer del dashboard), pedile a Claude que use:**
+**Para que la respuesta se rendere bonita en el dashboard, pedile a Claude que use esta sintaxis:**
 
 - Headings: \`## Sección\` / \`### Subsección\`
 - Cajas semánticas: \`::: definicion\` / \`::: nota\` / \`::: warning\` / \`::: ejemplo\` / \`::: teorema\` / \`::: codigo <lang>\`
 - Fórmulas LaTeX: \`$x^2$\` inline, \`$$y = x^2$$\` display
 - Tablas markdown
-- Negrita en términos clave (se chipean automáticamente)`;
+- Negrita en términos clave (se chipean automáticamente)
+
+**Recordá:** el contenido es de **${subjectName}** — los archivos que adjunto son la única fuente.`;
   }
 }
 
