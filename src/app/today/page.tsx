@@ -637,9 +637,7 @@ function WeeklyTasksChart({
                       fill={subjectColor(subjects[j].hue, 68)}
                       rx={j === sids.length - 1 ? 2 : 0}
                     >
-                      <title>
-                        {subjects[j].short}: {v}
-                      </title>
+                      <title>{`${subjects[j].short}: ${v}`}</title>
                     </rect>
                   );
                 })}

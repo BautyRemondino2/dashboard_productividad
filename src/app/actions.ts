@@ -148,6 +148,67 @@ export async function setSummarized(classId: number, subjectId: number) {
   revalidatePath("/");
 }
 
+/** Save (or clear) the per-class summary. Pasting from claude.ai lands here. */
+export async function updateClassSummary(classId: number, summary: string | null) {
+  const db = getDb();
+  const row = db.prepare("SELECT subject_id FROM classes WHERE id = ?").get(classId) as { subject_id: number } | undefined;
+  if (!row) return;
+  const trimmed = summary && summary.trim() ? summary.trim() : null;
+  db.prepare("UPDATE classes SET summary = ?, summarized = ? WHERE id = ?").run(trimmed, trimmed ? 1 : 0, classId);
+  revalidatePath(`/facultad/${row.subject_id}`);
+  revalidatePath("/");
+}
+
+/** Update class title and/or week — for inline editing. */
+export async function updateClass(classId: number, patch: { title?: string; week?: number }) {
+  const db = getDb();
+  const row = db.prepare("SELECT subject_id FROM classes WHERE id = ?").get(classId) as { subject_id: number } | undefined;
+  if (!row) return;
+
+  if (patch.title !== undefined) {
+    const t = patch.title.trim();
+    if (t) db.prepare("UPDATE classes SET title = ? WHERE id = ?").run(t, classId);
+  }
+  if (patch.week !== undefined && Number.isFinite(patch.week) && patch.week > 0) {
+    db.prepare("UPDATE classes SET week = ? WHERE id = ?").run(patch.week, classId);
+  }
+  revalidatePath(`/facultad/${row.subject_id}`);
+}
+
+/** Delete a class. Its materials fall to the inbox (class_id set to NULL). */
+export async function deleteClass(classId: number) {
+  const db = getDb();
+  const row = db.prepare("SELECT subject_id FROM classes WHERE id = ?").get(classId) as { subject_id: number } | undefined;
+  if (!row) return;
+
+  const tx = db.transaction(() => {
+    // Materials: detach to inbox (class_id NULL). The ON DELETE SET NULL FK does this
+    // automatically, but we run it explicitly to also move files on disk later if we
+    // want to. For now the FK handles the DB side and the files keep their disk paths.
+    db.prepare("UPDATE class_materials SET class_id = NULL WHERE class_id = ?").run(classId);
+    db.prepare("DELETE FROM classes WHERE id = ?").run(classId);
+  });
+  tx();
+
+  revalidatePath(`/facultad/${row.subject_id}`);
+  revalidatePath("/");
+}
+
+/** Create a task linked to a specific class (material_id is the class id per the schema). */
+export async function createTaskForClass(classId: number, title: string, priority: Priority = "media", dueDate: string | null = null) {
+  const db = getDb();
+  const row = db.prepare("SELECT subject_id FROM classes WHERE id = ?").get(classId) as { subject_id: number } | undefined;
+  if (!row) return null;
+  const t = title.trim();
+  if (!t) return null;
+  const r = db
+    .prepare("INSERT INTO tasks (title, priority, due_date, subject_id, material_id) VALUES (?, ?, ?, ?, ?)")
+    .run(t, priority, dueDate, row.subject_id, classId);
+  revalidatePath(`/facultad/${row.subject_id}`);
+  revalidatePath("/");
+  return Number(r.lastInsertRowid);
+}
+
 // ── Habits ────────────────────────────────────────────────────────────────
 
 export async function toggleHabitLog(habitId: number, date: string) {

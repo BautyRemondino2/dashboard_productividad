@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, useMemo, useCallback, useTransition } from "react";
+import { useState, useMemo, useCallback, useTransition, useEffect, useRef } from "react";
 import type { Subject, ClassItem, Exam, Task, ClassMaterial } from "@/lib/types";
 import { subjectColor, subjectColorSoft } from "@/lib/subjectColors";
 import { MATERIAL_KIND_LABEL, MATERIAL_KIND_STYLE, formatBytes } from "@/lib/materials";
-import { toggleTask } from "@/app/actions";
+import {
+  toggleTask,
+  updateClass,
+  deleteClass,
+  createTaskForClass,
+} from "@/app/actions";
 import ImportMaterialsButton from "@/components/ImportMaterialsButton";
 import ClearAllMaterialsButton from "@/components/ClearAllMaterialsButton";
 import ClaudeProjectInput from "@/components/ClaudeProjectInput";
 import MaterialItem from "@/components/MaterialItem";
+import ClassClaudeButton from "@/components/ClassClaudeButton";
 
 // ── Status types ──────────────────────────────────────────────────────────────
 type SummaryStatus = "done" | "draft" | "pending" | "empty";
@@ -221,7 +227,7 @@ function StatTile({ label, value, sub, accent, valueColor }: {
 }
 
 // ── Class Rail ────────────────────────────────────────────────────────────────
-function ClassRail({ classes, selectedId, onSelect, filter, setFilter, search, setSearch }: {
+function ClassRail({ classes, selectedId, onSelect, filter, setFilter, search, setSearch, searchInputRef }: {
   classes: ClassWithStats[];
   selectedId: number | null;
   onSelect: (id: number) => void;
@@ -229,6 +235,7 @@ function ClassRail({ classes, selectedId, onSelect, filter, setFilter, search, s
   setFilter: (f: "all" | "pending" | "tasks") => void;
   search: string;
   setSearch: (s: string) => void;
+  searchInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const filtered = classes.filter(c => {
     if (filter === "pending" && c.summaryStatus !== "pending" && c.summaryStatus !== "draft") return false;
@@ -244,10 +251,12 @@ function ClassRail({ classes, selectedId, onSelect, filter, setFilter, search, s
     <aside className="w-80 shrink-0 border-r border-slate-900 pr-4 self-start sticky top-2 max-h-[calc(100vh-2rem)] flex flex-col">
       <div className="relative mb-3 mt-1">
         <input
+          ref={searchInputRef}
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar clase…"
+          onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); setSearch(""); (e.target as HTMLInputElement).blur(); } }}
+          placeholder="Buscar clase… (/)"
           className="w-full bg-slate-900/60 border border-slate-800 focus:border-slate-600 rounded-md pl-7 pr-2 py-1.5 text-[12px] text-slate-200 placeholder-slate-600 outline-none transition-colors"
         />
         <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -316,6 +325,8 @@ function ClassRail({ classes, selectedId, onSelect, filter, setFilter, search, s
 }
 
 // ── Class Detail ──────────────────────────────────────────────────────────────
+type DetailTab = "summary" | "files" | "tasks";
+
 function ClassDetail({
   cls,
   materials,
@@ -324,6 +335,10 @@ function ClassDetail({
   subjectName,
   claudeProjectUrl,
   today,
+  tab,
+  setTab,
+  previousClassTitle,
+  triggerTitleEdit,
 }: {
   cls: ClassWithStats;
   materials: ClassMaterial[];
@@ -332,16 +347,17 @@ function ClassDetail({
   subjectName: string;
   claudeProjectUrl: string | null;
   today: string;
+  tab: DetailTab;
+  setTab: (t: DetailTab) => void;
+  previousClassTitle: string | null;
+  triggerTitleEdit: number;
 }) {
-  // Tab state is local; ClassDetail is keyed by cls.id by the parent so this
-  // resets to "summary" when the selected class changes.
-  const [tab, setTab] = useState<"summary" | "files" | "tasks">("summary");
   const st = STATUS[cls.summaryStatus];
 
-  const tabs = [
-    { id: "summary" as const, label: "Resumen",  badge: cls.summary ? null : "vacío" },
-    { id: "files" as const,   label: "Archivos", badge: materials.length || null },
-    { id: "tasks" as const,   label: "Tareas",   badge: tasks.length || null },
+  const tabs: { id: DetailTab; label: string; badge: string | number | null }[] = [
+    { id: "summary", label: "Resumen",  badge: cls.summary ? null : "vacío" },
+    { id: "files",   label: "Archivos", badge: materials.length || null },
+    { id: "tasks",   label: "Tareas",   badge: tasks.length || null },
   ];
 
   return (
@@ -350,22 +366,22 @@ function ClassDetail({
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="text-[11px] font-mono tabular px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400 whitespace-nowrap">
-                Clase {cls.week}
-              </span>
+              <EditableWeek classId={cls.id} week={cls.week} />
               <StatusDot status={cls.summaryStatus} />
               <span className="text-[11px] whitespace-nowrap" style={{ color: st.color }}>{st.label}</span>
               {cls.date && (
                 <span className="text-[11px] text-slate-600 whitespace-nowrap">· {fmtDate(cls.date)}</span>
               )}
             </div>
-            <h2 className="text-2xl font-semibold text-slate-100 tracking-tight text-pretty">{cls.title}</h2>
+            <EditableTitle classId={cls.id} title={cls.title} triggerEdit={triggerTitleEdit} />
             <p className="text-[12px] text-slate-500 mt-1">
               {materials.length > 0
                 ? `${materials.length} archivo${materials.length !== 1 ? "s" : ""} · ${tasks.length} tarea${tasks.length !== 1 ? "s" : ""}`
                 : "Sin archivos cargados"}
             </p>
           </div>
+
+          <DeleteClassButton classId={cls.id} classTitle={cls.title} materialCount={materials.length} />
         </div>
 
         {materials.length === 0 ? (
@@ -397,31 +413,221 @@ function ClassDetail({
 
       {materials.length > 0 && (
         <>
-          {tab === "summary" && <SummaryView cls={cls} />}
+          {tab === "summary" && (
+            <SummaryView
+              cls={cls}
+              materials={materials}
+              subjectName={subjectName}
+              claudeProjectUrl={claudeProjectUrl}
+              previousClassTitle={previousClassTitle}
+            />
+          )}
           {tab === "files"   && <FilesView materials={materials} allClasses={allClasses} subjectName={subjectName} claudeProjectUrl={claudeProjectUrl} />}
-          {tab === "tasks"   && <TasksView tasks={tasks} today={today} />}
+          {tab === "tasks"   && <TasksView classId={cls.id} tasks={tasks} today={today} />}
         </>
       )}
     </div>
   );
 }
 
+// ── Inline editable title (h2 click-to-edit) ──────────────────────────────────
+function EditableTitle({ classId, title, triggerEdit }: { classId: number; title: string; triggerEdit: number }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(title);
+  const [, startTransition] = useTransition();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Reset draft when title changes externally (server revalidation)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraft(title);
+  }, [title]);
+
+  // External trigger (e.g. keyboard shortcut `e`)
+  useEffect(() => {
+    if (triggerEdit > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditing(true);
+    }
+  }, [triggerEdit]);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    const t = draft.trim();
+    setEditing(false);
+    if (t && t !== title) {
+      startTransition(async () => { await updateClass(classId, { title: t }); });
+    } else {
+      setDraft(title);
+    }
+  };
+
+  const cancel = () => {
+    setDraft(title);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === "Enter") { e.preventDefault(); commit(); }
+          if (e.key === "Escape") { e.preventDefault(); cancel(); }
+        }}
+        className="w-full text-2xl font-semibold text-slate-100 tracking-tight bg-slate-950 border border-slate-700 rounded-md px-2 py-1 outline-none focus:border-slate-500"
+      />
+    );
+  }
+
+  return (
+    <h2
+      onClick={() => setEditing(true)}
+      title="Click para editar (o pulsá ‘e’)"
+      className="text-2xl font-semibold text-slate-100 tracking-tight text-pretty cursor-text rounded-md -mx-2 px-2 py-1 hover:bg-slate-900/60 transition-colors"
+    >
+      {title}
+    </h2>
+  );
+}
+
+// ── Inline editable week badge ────────────────────────────────────────────────
+function EditableWeek({ classId, week }: { classId: number; week: number }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(week));
+  const [, startTransition] = useTransition();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraft(String(week));
+  }, [week]);
+  useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
+
+  const commit = () => {
+    const n = parseInt(draft, 10);
+    setEditing(false);
+    if (Number.isFinite(n) && n > 0 && n !== week) {
+      startTransition(async () => { await updateClass(classId, { week: n }); });
+    } else {
+      setDraft(String(week));
+    }
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="number"
+        min={1}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === "Enter") { e.preventDefault(); commit(); }
+          if (e.key === "Escape") { e.preventDefault(); setEditing(false); setDraft(String(week)); }
+        }}
+        className="text-[11px] font-mono tabular w-16 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-700 text-slate-100 outline-none focus:border-slate-500"
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      title="Cambiar número de semana"
+      className="text-[11px] font-mono tabular px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors whitespace-nowrap"
+    >
+      Clase {week}
+    </button>
+  );
+}
+
+// ── Delete class ──────────────────────────────────────────────────────────────
+function DeleteClassButton({ classId, classTitle, materialCount }: { classId: number; classTitle: string; materialCount: number }) {
+  const [confirming, setConfirming] = useState(false);
+  const [, startTransition] = useTransition();
+
+  if (confirming) {
+    return (
+      <div className="shrink-0 inline-flex items-center gap-2 rounded-md bg-red-950/40 border border-red-900/60 px-2.5 py-1">
+        <span className="text-[10px] text-red-300">
+          ¿Borrar clase? {materialCount > 0 ? `${materialCount} archivos van al Inbox.` : "No tiene archivos."}
+        </span>
+        <button
+          onClick={() => startTransition(async () => { await deleteClass(classId); setConfirming(false); })}
+          className="text-[10px] font-medium text-red-300 hover:text-red-200 underline decoration-dotted"
+        >
+          Sí
+        </button>
+        <button onClick={() => setConfirming(false)} className="text-[10px] text-slate-500 hover:text-slate-300">no</button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setConfirming(true)}
+      title={`Borrar "${classTitle}"`}
+      className="shrink-0 w-8 h-8 rounded-md flex items-center justify-center text-slate-600 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+    >
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6M14 11v6M5 7l1 12.5a2 2 0 002 1.5h8a2 2 0 002-1.5L19 7M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+      </svg>
+    </button>
+  );
+}
+
 // ── Summary view ──────────────────────────────────────────────────────────────
-function SummaryView({ cls }: { cls: ClassWithStats }) {
+function SummaryView({ cls, materials, subjectName, claudeProjectUrl, previousClassTitle }: {
+  cls: ClassWithStats;
+  materials: ClassMaterial[];
+  subjectName: string;
+  claudeProjectUrl: string | null;
+  previousClassTitle: string | null;
+}) {
+  // Extract **bold** terms from the summary text as concept chips
+  const concepts = useMemo(() => {
+    if (!cls.summary) return [];
+    const set = new Set<string>();
+    const re = /\*\*([^*]+)\*\*/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(cls.summary))) {
+      const c = m[1].trim();
+      if (c.length >= 2 && c.length <= 50) set.add(c);
+    }
+    return Array.from(set).slice(0, 24);
+  }, [cls.summary]);
+
   if (!cls.summary) {
     return (
       <div className="rounded-xl border-2 border-dashed border-amber-900/40 bg-amber-950/10 p-8 text-center">
         <div className="text-3xl mb-3">✨</div>
         <p className="text-[14px] text-slate-200 font-medium mb-1">Sin resumen todavía</p>
-        <p className="text-[12px] text-slate-500 max-w-md mx-auto leading-relaxed">
-          Abrí un archivo de esta clase y usá <span className="text-violet-300">◆ Preguntar</span> para generarlo en Claude.ai.
-          Después pegá la respuesta en el material — el resumen aparece acá.
+        <p className="text-[12px] text-slate-500 max-w-md mx-auto leading-relaxed mb-5">
+          Generá un resumen unificado de los {materials.length} archivos con Claude. Elegís un template, te abro los archivos
+          y claude.ai en pestañas, pegás la respuesta y queda guardada acá.
         </p>
+        <ClassClaudeButton
+          classItem={cls}
+          materials={materials}
+          subjectName={subjectName}
+          claudeProjectUrl={claudeProjectUrl}
+          previousClassTitle={previousClassTitle}
+        />
       </div>
     );
   }
 
-  // Try to split summary into a TL;DR (first paragraph) and sections (rest)
   const parts = cls.summary.split(/\n\n+/);
   const tldr = parts[0];
   const rest = parts.slice(1).join("\n\n");
@@ -430,9 +636,7 @@ function SummaryView({ cls }: { cls: ClassWithStats }) {
     <div className="space-y-6">
       <div
         className="rounded-xl border border-slate-800 px-5 py-4"
-        style={{
-          background: "linear-gradient(135deg, oklch(28% 0.05 280 / 0.18) 0%, rgba(15, 23, 42, 0.3) 60%)",
-        }}
+        style={{ background: "linear-gradient(135deg, oklch(28% 0.05 280 / 0.18) 0%, rgba(15, 23, 42, 0.3) 60%)" }}
       >
         <p className="text-[10px] uppercase tracking-widest text-violet-400/80 mb-1.5">Resumen</p>
         <p className="text-[14px] text-slate-200 leading-relaxed text-pretty">
@@ -445,6 +649,50 @@ function SummaryView({ cls }: { cls: ClassWithStats }) {
           <MdLite text={rest} />
         </div>
       )}
+
+      {concepts.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Conceptos clave</p>
+          <div className="flex flex-wrap gap-1.5">
+            {concepts.map((c, i) => (
+              <span
+                key={i}
+                className="text-[11px] px-2 py-1 rounded-md bg-slate-900/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-300 transition-colors cursor-default whitespace-nowrap"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="pt-4 border-t border-slate-900 flex items-center justify-between gap-3 text-[11px]">
+        <p className="text-slate-600">
+          {cls.summarized ? "Marcada como resumida" : "Borrador"} · {materials.length} archivos
+        </p>
+        <div className="flex items-center gap-1.5">
+          <ClassClaudeButton
+            classItem={cls}
+            materials={materials}
+            subjectName={subjectName}
+            claudeProjectUrl={claudeProjectUrl}
+            previousClassTitle={previousClassTitle}
+            variant="ghost"
+            label="Editar"
+            initialTab="save"
+          />
+          <ClassClaudeButton
+            classItem={cls}
+            materials={materials}
+            subjectName={subjectName}
+            claudeProjectUrl={claudeProjectUrl}
+            previousClassTitle={previousClassTitle}
+            variant="ghost"
+            label="Regenerar"
+            initialTab="ask"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -472,26 +720,33 @@ function FilesView({ materials, allClasses, subjectName, claudeProjectUrl }: {
 }
 
 // ── Tasks view ────────────────────────────────────────────────────────────────
-function TasksView({ tasks, today }: { tasks: Task[]; today: string }) {
+function TasksView({ classId, tasks, today }: { classId: number; tasks: Task[]; today: string }) {
   const [, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useState<Record<number, boolean>>({});
+  const [draft, setDraft] = useState("");
+  const [priority, setPriority] = useState<"alta" | "media" | "baja">("media");
 
   const handleToggle = useCallback((id: number, currentDone: boolean) => {
     setOptimistic(prev => ({ ...prev, [id]: !currentDone }));
     startTransition(async () => { await toggleTask(id); });
   }, []);
 
-  if (tasks.length === 0) {
-    return (
-      <div className="rounded-xl border border-slate-800 px-5 py-8 text-center">
-        <p className="text-[13px] text-slate-400">Sin tareas en esta clase.</p>
-        <p className="text-[11px] text-slate-600 mt-1">Agregalas desde Hoy y enlazalas a esta clase.</p>
-      </div>
-    );
-  }
+  const handleAdd = () => {
+    const t = draft.trim();
+    if (!t) return;
+    setDraft("");
+    startTransition(async () => { await createTaskForClass(classId, t, priority, null); });
+  };
 
   return (
     <div className="space-y-1">
+      {tasks.length === 0 && (
+        <div className="rounded-xl border border-slate-800 px-5 py-6 text-center mb-2">
+          <p className="text-[13px] text-slate-400">Sin tareas en esta clase.</p>
+          <p className="text-[11px] text-slate-600 mt-1">Agregá una abajo o desde Hoy.</p>
+        </div>
+      )}
+
       {tasks.map(t => {
         const done = optimistic[t.id] ?? t.status === "hecha";
         const overdue = t.due_date && t.due_date < today && !done;
@@ -536,6 +791,35 @@ function TasksView({ tasks, today }: { tasks: Task[]; today: string }) {
           </div>
         );
       })}
+
+      {/* Quick-add task */}
+      <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-slate-800 hover:border-slate-700 transition-colors">
+        <span className="text-slate-700 text-base leading-none">+</span>
+        <input
+          type="text"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+          placeholder="Agregar tarea a esta clase…"
+          className="flex-1 bg-transparent text-[13px] text-slate-200 placeholder-slate-600 outline-none"
+        />
+        <select
+          value={priority}
+          onChange={e => setPriority(e.target.value as "alta" | "media" | "baja")}
+          className="bg-slate-950 border border-slate-800 rounded text-[10px] text-slate-400 px-1.5 py-0.5 outline-none focus:border-slate-600"
+        >
+          <option value="alta">alta</option>
+          <option value="media">media</option>
+          <option value="baja">baja</option>
+        </select>
+        <button
+          onClick={handleAdd}
+          disabled={!draft.trim()}
+          className="text-[11px] text-slate-400 hover:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 rounded hover:bg-slate-800 transition-colors"
+        >
+          ↵
+        </button>
+      </div>
     </div>
   );
 }
@@ -580,6 +864,9 @@ export default function MateriaWorkspace({
   const [selectedIdRaw, setSelectedId] = useState<number | null>(classesWithStats[0]?.id ?? null);
   const [filter, setFilter] = useState<"all" | "pending" | "tasks">("all");
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<DetailTab>("summary");
+  const [triggerTitleEdit, setTriggerTitleEdit] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   // Derive a valid selection — if the stored id no longer exists, fall back to the first class
   const selected = useMemo(() => {
@@ -589,6 +876,49 @@ export default function MateriaWorkspace({
     return match ?? classesWithStats[0] ?? null;
   }, [classesWithStats, selectedIdRaw]);
   const selectedId = selected?.id ?? null;
+
+  // Previous class (for the "Comparar con anterior" template)
+  const previousClass = useMemo(() => {
+    if (!selected) return null;
+    const idx = classesWithStats.findIndex(c => c.id === selected.id);
+    return idx > 0 ? classesWithStats[idx - 1] : null;
+  }, [classesWithStats, selected]);
+
+  // Keyboard shortcuts: j/k for class nav, 1/2/3 for tabs, / for search, e to edit title
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inField = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+
+      if (e.key === "/" && !inField) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+      if (inField) return;
+
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const idx = classesWithStats.findIndex(c => c.id === selectedId);
+      if (e.key === "j" && idx >= 0 && idx < classesWithStats.length - 1) {
+        e.preventDefault();
+        setSelectedId(classesWithStats[idx + 1].id);
+        return;
+      }
+      if (e.key === "k" && idx > 0) {
+        e.preventDefault();
+        setSelectedId(classesWithStats[idx - 1].id);
+        return;
+      }
+      if (e.key === "1") { e.preventDefault(); setTab("summary"); return; }
+      if (e.key === "2") { e.preventDefault(); setTab("files"); return; }
+      if (e.key === "3") { e.preventDefault(); setTab("tasks"); return; }
+      if (e.key === "e") { e.preventDefault(); setTriggerTitleEdit(n => n + 1); return; }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [classesWithStats, selectedId]);
   const nextExam = upcomingExams[0] ?? null;
 
   return (
@@ -611,29 +941,51 @@ export default function MateriaWorkspace({
           </p>
         </div>
       ) : (
-        <div className="flex gap-6 items-start">
-          <ClassRail
-            classes={classesWithStats}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            filter={filter}
-            setFilter={setFilter}
-            search={search}
-            setSearch={setSearch}
-          />
-          {selected && (
-            <ClassDetail
-              key={selected.id}
-              cls={selected}
-              materials={materialsByClass[selected.id] ?? []}
-              tasks={tasksByClass[selected.id] ?? []}
-              allClasses={classes}
-              subjectName={subject.name}
-              claudeProjectUrl={subject.claude_project_url}
-              today={today}
+        <>
+          <div className="flex gap-6 items-start">
+            <ClassRail
+              classes={classesWithStats}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              filter={filter}
+              setFilter={setFilter}
+              search={search}
+              setSearch={setSearch}
+              searchInputRef={searchInputRef}
             />
-          )}
-        </div>
+            {selected && (
+              <ClassDetail
+                key={selected.id}
+                cls={selected}
+                materials={materialsByClass[selected.id] ?? []}
+                tasks={tasksByClass[selected.id] ?? []}
+                allClasses={classes}
+                subjectName={subject.name}
+                claudeProjectUrl={subject.claude_project_url}
+                today={today}
+                tab={tab}
+                setTab={setTab}
+                previousClassTitle={previousClass?.title ?? null}
+                triggerTitleEdit={triggerTitleEdit}
+              />
+            )}
+          </div>
+
+          {/* Keyboard shortcuts hint */}
+          <div className="mt-6 pt-3 border-t border-slate-900 flex items-center gap-4 text-[10px] text-slate-700 font-mono flex-wrap">
+            {([
+              ["j/k", "siguiente/anterior clase"],
+              ["1/2/3", "Resumen / Archivos / Tareas"],
+              ["/", "buscar"],
+              ["e", "editar título"],
+            ] as [string, string][]).map(([k, l]) => (
+              <span key={k} className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-400 text-[9px]">{k}</kbd>
+                <span>{l}</span>
+              </span>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Inbox section */}
