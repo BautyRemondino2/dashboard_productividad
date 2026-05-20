@@ -194,6 +194,122 @@ export async function deleteClass(classId: number) {
   revalidatePath("/");
 }
 
+// ── Command Palette + Study Sessions ──────────────────────────────────────
+
+export interface CommandPaletteItem {
+  type: "subject" | "class" | "task" | "material" | "glossary";
+  id: number;
+  label: string;
+  subtitle?: string;
+  href?: string;
+  hue?: number;
+  priority?: Priority;
+  dueDate?: string | null;
+  kind?: MaterialKind;
+}
+
+export interface CommandPaletteData {
+  subjects: CommandPaletteItem[];
+  classes: CommandPaletteItem[];
+  tasks: CommandPaletteItem[];
+  materials: CommandPaletteItem[];
+  glossary: CommandPaletteItem[];
+}
+
+/** Fetch everything the Cmd+K palette can search through, scoped to the active semester. */
+export async function getCommandPaletteData(): Promise<CommandPaletteData> {
+  const db = getDb();
+  const active = db.prepare("SELECT id FROM semesters WHERE status='active' ORDER BY id DESC LIMIT 1").get() as { id: number } | undefined;
+  const semId = active?.id ?? null;
+
+  const subjectRows = semId
+    ? db.prepare("SELECT id, name, short, hue FROM subjects WHERE semester_id = ? ORDER BY name").all(semId) as { id: number; name: string; short: string; hue: number }[]
+    : [];
+
+  const subjectIds = subjectRows.map(s => s.id);
+  const inList = subjectIds.length ? subjectIds.map(() => "?").join(",") : "NULL";
+
+  const classRows = subjectIds.length
+    ? db.prepare(`SELECT c.id, c.subject_id, c.week, c.title, s.short as subject_short, s.hue as subject_hue FROM classes c JOIN subjects s ON s.id = c.subject_id WHERE c.subject_id IN (${inList}) ORDER BY c.subject_id, c.week`).all(...subjectIds) as { id: number; subject_id: number; week: number; title: string; subject_short: string; subject_hue: number }[]
+    : [];
+
+  const taskRows = subjectIds.length
+    ? db.prepare(`SELECT t.id, t.title, t.priority, t.due_date, t.subject_id, s.short as subject_short, s.hue as subject_hue FROM tasks t LEFT JOIN subjects s ON s.id = t.subject_id WHERE t.status = 'pendiente' AND (t.subject_id IN (${inList}) OR t.subject_id IS NULL) ORDER BY CASE t.priority WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, t.due_date ASC LIMIT 60`).all(...subjectIds) as { id: number; title: string; priority: Priority; due_date: string | null; subject_id: number | null; subject_short: string | null; subject_hue: number | null }[]
+    : [];
+
+  const materialRows = subjectIds.length
+    ? db.prepare(`SELECT m.id, m.filename, m.kind, m.subject_id, m.class_id, s.short as subject_short, s.hue as subject_hue, c.week as class_week, c.title as class_title FROM class_materials m JOIN subjects s ON s.id = m.subject_id LEFT JOIN classes c ON c.id = m.class_id WHERE m.subject_id IN (${inList}) ORDER BY m.created_at DESC LIMIT 40`).all(...subjectIds) as { id: number; filename: string; kind: MaterialKind; subject_id: number; class_id: number | null; subject_short: string; subject_hue: number; class_week: number | null; class_title: string | null }[]
+    : [];
+
+  const glossaryRows = db.prepare("SELECT id, term, category FROM glossary_terms ORDER BY term").all() as { id: number; term: string; category: string }[];
+
+  return {
+    subjects: subjectRows.map(s => ({
+      type: "subject" as const,
+      id: s.id,
+      label: s.name,
+      subtitle: s.short,
+      href: `/facultad/${s.id}`,
+      hue: s.hue,
+    })),
+    classes: classRows.map(c => ({
+      type: "class" as const,
+      id: c.id,
+      label: `Clase ${c.week} · ${c.title}`,
+      subtitle: c.subject_short,
+      href: `/facultad/${c.subject_id}`,
+      hue: c.subject_hue,
+    })),
+    tasks: taskRows.map(t => ({
+      type: "task" as const,
+      id: t.id,
+      label: t.title,
+      subtitle: t.subject_short ?? "Sin materia",
+      hue: t.subject_hue ?? 220,
+      priority: t.priority,
+      dueDate: t.due_date,
+    })),
+    materials: materialRows.map(m => ({
+      type: "material" as const,
+      id: m.id,
+      label: m.filename,
+      subtitle: m.class_title ? `${m.subject_short} · Clase ${m.class_week}` : `${m.subject_short} · Inbox`,
+      href: `/api/materials/${m.id}`,
+      hue: m.subject_hue,
+      kind: m.kind,
+    })),
+    glossary: glossaryRows.map(g => ({
+      type: "glossary" as const,
+      id: g.id,
+      label: g.term,
+      subtitle: g.category,
+      href: `/glossary`,
+    })),
+  };
+}
+
+/** Subjects in the active semester — used by the pomodoro picker, etc. */
+export async function getActiveSubjects(): Promise<{ id: number; name: string; short: string; hue: number }[]> {
+  const db = getDb();
+  const active = db.prepare("SELECT id FROM semesters WHERE status='active' ORDER BY id DESC LIMIT 1").get() as { id: number } | undefined;
+  if (!active) return [];
+  return db
+    .prepare("SELECT id, name, short, hue FROM subjects WHERE semester_id = ? ORDER BY name")
+    .all(active.id) as { id: number; name: string; short: string; hue: number }[];
+}
+
+/** Log a completed pomodoro / study session (called when a work cycle ends). */
+export async function logStudySession(subjectId: number, minutes: number, notes: string = "") {
+  if (!Number.isFinite(subjectId) || !Number.isFinite(minutes) || minutes <= 0) return null;
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const r = db
+    .prepare("INSERT INTO study_sessions (subject_id, date, minutes, notes) VALUES (?, ?, ?, ?)")
+    .run(subjectId, today, Math.round(minutes), notes);
+  revalidatePath("/", "layout");
+  return Number(r.lastInsertRowid);
+}
+
 /** Create a task linked to a specific class (material_id is the class id per the schema). */
 export async function createTaskForClass(classId: number, title: string, priority: Priority = "media", dueDate: string | null = null) {
   const db = getDb();

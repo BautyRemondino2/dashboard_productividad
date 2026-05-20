@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import TopNav from "@/components/TopNav";
 import PomodoroTimer from "@/components/PomodoroTimer";
+import CommandPalette from "@/components/CommandPalette";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <TopNav />
         <main className="flex-1 overflow-y-auto">{children}</main>
         <PomodoroTimer />
+        <CommandPalette />
       </body>
     </html>
   );

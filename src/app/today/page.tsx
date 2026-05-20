@@ -5,6 +5,7 @@ import type { Subject, ClassItem, Exam, Task, Semester } from "@/lib/types";
 import Link from "next/link";
 import FocusWeek from "@/components/FocusWeek";
 import SemesterControl from "@/components/SemesterControl";
+import NextActions, { type NextAction } from "@/components/NextActions";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -810,6 +811,120 @@ export default function TodayPage() {
         ) ?? null)
       : null;
 
+  // ── Next Actions: derive 4-6 smart suggestions ─────────────────────────────
+  const nextActions: NextAction[] = (() => {
+    const out: NextAction[] = [];
+
+    // 1. Tareas vencidas (top 2)
+    const overdueRows = subjectIds.length
+      ? db.prepare(
+          `SELECT t.id, t.title, t.priority, t.due_date, t.subject_id, s.short as subject_short, s.hue as subject_hue
+           FROM tasks t LEFT JOIN subjects s ON s.id = t.subject_id
+           WHERE t.status = 'pendiente' AND t.due_date IS NOT NULL AND t.due_date < ? AND ${taskFilter.replace(/subject_id/g, "t.subject_id")}
+           ORDER BY t.due_date ASC LIMIT 2`
+        ).all(today, ...taskParams) as { id: number; title: string; priority: "alta" | "media" | "baja"; due_date: string; subject_id: number | null; subject_short: string | null; subject_hue: number | null }[]
+      : [];
+
+    for (const t of overdueRows) {
+      const off = Math.round((new Date(today + "T12:00:00").getTime() - new Date(t.due_date + "T12:00:00").getTime()) / 86_400_000);
+      out.push({
+        kind: "overdue",
+        id: t.id,
+        label: t.title,
+        subtitle: t.subject_short ?? "Sin materia",
+        href: t.subject_id ? `/facultad/${t.subject_id}` : undefined,
+        hue: t.subject_hue ?? undefined,
+        daysOffset: -Math.abs(off),
+        priority: t.priority,
+      });
+    }
+
+    // 2. Próximo examen (1, si está dentro de 14 días)
+    const nextExamSoon = exams.find(e => e.date >= today && !e.grade && (new Date(e.date + "T12:00:00").getTime() - new Date(today + "T12:00:00").getTime()) / 86_400_000 <= 14);
+    if (nextExamSoon) {
+      const off = Math.round((new Date(nextExamSoon.date + "T12:00:00").getTime() - new Date(today + "T12:00:00").getTime()) / 86_400_000);
+      const subj = subjects.find(s => s.id === nextExamSoon.subject_id);
+      out.push({
+        kind: "exam",
+        id: nextExamSoon.id,
+        label: `${nextExamSoon.title} · ${subj?.name ?? "—"}`,
+        subtitle: `${nextExamSoon.type} · peso ${Math.round(nextExamSoon.weight * 100)}%`,
+        href: subj ? `/facultad/${subj.id}` : undefined,
+        hue: subj?.hue,
+        daysOffset: off,
+      });
+    }
+
+    // 3. Tareas de alta prioridad esta semana (top 2)
+    const highRows = subjectIds.length
+      ? db.prepare(
+          `SELECT t.id, t.title, t.priority, t.due_date, t.subject_id, s.short as subject_short, s.hue as subject_hue
+           FROM tasks t LEFT JOIN subjects s ON s.id = t.subject_id
+           WHERE t.status = 'pendiente' AND t.priority = 'alta' AND (t.due_date IS NULL OR t.due_date >= ?) AND ${taskFilter.replace(/subject_id/g, "t.subject_id")}
+           ORDER BY t.due_date ASC NULLS LAST LIMIT 2`
+        ).all(today, ...taskParams) as { id: number; title: string; priority: "alta" | "media" | "baja"; due_date: string | null; subject_id: number | null; subject_short: string | null; subject_hue: number | null }[]
+      : [];
+
+    for (const t of highRows) {
+      const off = t.due_date ? Math.round((new Date(t.due_date + "T12:00:00").getTime() - new Date(today + "T12:00:00").getTime()) / 86_400_000) : undefined;
+      out.push({
+        kind: "task",
+        id: t.id,
+        label: t.title,
+        subtitle: t.subject_short ?? "Sin materia",
+        href: t.subject_id ? `/facultad/${t.subject_id}` : undefined,
+        hue: t.subject_hue ?? undefined,
+        daysOffset: off,
+        priority: t.priority,
+      });
+    }
+
+    // 4. Clase sin resumir más urgente (con archivos cargados, sin summary)
+    const unsummarizedRows = subjectIds.length
+      ? db.prepare(
+          `SELECT c.id, c.week, c.title, c.subject_id, s.short as subject_short, s.name as subject_name, s.hue as subject_hue,
+                  (SELECT COUNT(*) FROM class_materials m WHERE m.class_id = c.id) as file_count
+           FROM classes c JOIN subjects s ON s.id = c.subject_id
+           WHERE c.subject_id IN (${inList}) AND (c.summary IS NULL OR c.summary = '') AND (
+             SELECT COUNT(*) FROM class_materials m WHERE m.class_id = c.id
+           ) > 0
+           ORDER BY c.week ASC LIMIT 2`
+        ).all(...subjectIds) as { id: number; week: number; title: string; subject_id: number; subject_short: string; subject_name: string; subject_hue: number; file_count: number }[]
+      : [];
+
+    for (const c of unsummarizedRows) {
+      out.push({
+        kind: "summarize",
+        id: c.id,
+        label: `Resumir clase ${c.week}: ${c.title}`,
+        subtitle: `${c.subject_name} · ${c.file_count} archivo${c.file_count !== 1 ? "s" : ""}`,
+        href: `/facultad/${c.subject_id}`,
+        hue: c.subject_hue,
+      });
+    }
+
+    return out.slice(0, 6);
+  })();
+
+  // ── Study sessions: minutes today + this week ──────────────────────────────
+  const studyMinutesToday = subjectIds.length
+    ? (db.prepare(`SELECT COALESCE(SUM(minutes), 0) as m FROM study_sessions WHERE date = ? AND subject_id IN (${inList})`)
+        .get(today, ...subjectIds) as { m: number }).m
+    : 0;
+
+  const weekStart = (() => {
+    const d = new Date(today + "T12:00:00");
+    d.setDate(d.getDate() - 6);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  const studyMinutesWeek = subjectIds.length
+    ? (db.prepare(`SELECT COALESCE(SUM(minutes), 0) as m FROM study_sessions WHERE date >= ? AND subject_id IN (${inList})`)
+        .get(weekStart, ...subjectIds) as { m: number }).m
+    : 0;
+
+  void studyMinutesToday; void studyMinutesWeek; // consumed later in JSX
+
   // Group classes by subject
   const classesBySubject = (subjectId: number) =>
     allClasses.filter((c) => c.subject_id === subjectId);
@@ -847,6 +962,24 @@ export default function TodayPage() {
           <p className="text-[13px] text-slate-500">
             No hay tareas pendientes esta semana. Agregá una tarea desde una materia para verla acá.
           </p>
+        </div>
+      )}
+
+      {/* Smart next-actions panel */}
+      <NextActions actions={nextActions} />
+
+      {/* Study summary */}
+      {studyMinutesWeek > 0 && (
+        <div className="mb-6 fade-up fade-up-3 flex items-center gap-4 px-4 py-3 rounded-xl border border-emerald-900/40 bg-emerald-950/15">
+          <span className="text-2xl">⏱</span>
+          <div className="flex-1">
+            <p className="text-[11px] uppercase tracking-widest text-emerald-400/80">Tiempo de estudio</p>
+            <p className="text-[13px] text-slate-200">
+              <span className="font-semibold text-emerald-300 tabular">{Math.round(studyMinutesToday)} min</span> hoy ·{" "}
+              <span className="text-slate-300 tabular">{Math.round(studyMinutesWeek)} min</span> esta semana
+            </p>
+          </div>
+          <p className="text-[10px] text-slate-500">desde el pomodoro</p>
         </div>
       )}
 
