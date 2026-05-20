@@ -47,47 +47,158 @@ ${fileList}
   switch (tpl) {
     case "resumen":
       return `${header}
-Hacé un **resumen unificado** de toda la clase tomando los archivos en conjunto. Estructura:
+Necesito un **resumen académico riguroso** de esta clase, estilo apunte de cátedra universitario (similar a un resumen LaTeX de UdeSA). No es un resumen ejecutivo — es un documento de estudio exhaustivo.
 
-**TL;DR** (1-2 oraciones que capturen la idea central)
-**Conceptos clave** (5-8 bullets — escribir los términos centrales en **negrita** para que pueda chiparlos)
-**Fórmulas / expresiones importantes** (en LaTeX inline)
-**Aplicaciones / ejemplos numéricos** (2-3 casos concretos)
-**Checklist para el examen** (5 ítems puntuales con lo que tengo que dominar)
+# Formato de salida (estricto)
 
-Sé conciso pero específico — citá modelos, fórmulas exactas, nombres concretos. No agregues intros ni cierres genéricos.`;
+Usá **Markdown extendido** con esta sintaxis exacta:
+
+- Headings jerárquicos: \`## Sección\` y \`### Subsección\`
+- Cajas semánticas (cada una en su propia línea, abre y cierra con \`:::\`):
+
+\`\`\`
+::: definicion
+Texto formal y preciso de la definición. Negrita en **el término definido**.
+:::
+
+::: nota
+Observación práctica, contexto, conexión con otra clase, intuición.
+:::
+
+::: warning
+Errores típicos, puntos donde es fácil confundirse en un parcial.
+:::
+
+::: ejemplo
+Caso concreto con números o derivación paso a paso.
+:::
+
+::: teorema
+Enunciado formal de un teorema o resultado importante.
+:::
+
+::: codigo Stata
+arima y, arima(1,0,1)
+:::
+\`\`\`
+
+- Fórmulas inline: \`$y = \\rho x + \\epsilon$\`
+- Fórmulas display (centradas, en su propia línea):
+\`\`\`
+$$
+y_t = c + \\sum_{i=1}^{p} \\rho_i \\, y_{t-i} + \\epsilon_t
+$$
+\`\`\`
+- Tablas markdown estándar (con pipes \`|\`)
+- Bloques de código con fence triple y lenguaje
+- Listas anidadas con bullets o números
+
+# Estructura obligatoria
+
+## Tabla de contenidos
+Lista numerada de las secciones que vas a desarrollar (yo después la auto-genero, pero ponela vos también).
+
+## Sección 1 — [Primer concepto principal]
+Desarrollá con definiciones formales en cajas \`::: definicion\`, fórmulas en display, ejemplos numéricos en \`::: ejemplo\`, advertencias en \`::: warning\`, y notas de conexión en \`::: nota\`. Profundizá.
+
+## Sección 2 — [Segundo concepto principal]
+Igual.
+
+(Cuantas secciones haga falta — no abrevies por brevedad. Mejor exhaustivo.)
+
+## Tabla resumen
+Tabla markdown final con dos columnas: \`Concepto\` y \`Definición / Propiedad clave\`. Una fila por término importante.
+
+## Checklist para el examen
+5-7 ítems puntuales con lo que tengo que dominar de esta clase.
+
+# Reglas estrictas
+
+- **Negrita en TODOS los términos clave** — van a chiparse automáticamente al final del documento.
+- **Fórmulas siempre en LaTeX** con \`\\dfrac\`, \`\\sum\`, \`\\int\`, subíndices, etc. No escribas "y_t = c + ..." en texto plano.
+- **Citá literatura** cuando aplique (autor + año entre paréntesis).
+- **Nada de preámbulos ni cierres genéricos** — entrá directo al contenido.
+- **Tono académico**, no conversacional.
+- Si hay derivaciones o demostraciones en los archivos, **reproducilas paso a paso** en cajas \`::: ejemplo\`.
+- Si hay comandos de Stata/Python/R/Excel, va en \`::: codigo <lenguaje>\` o en \`\`\`<lenguaje>.
+- **No abrevies por miedo a ser largo** — un buen resumen tiene 8-15 secciones cuando la clase es densa.`;
 
     case "comparar":
       return `${header}
 ${previousClassTitle ? `Clase anterior: ${previousClassTitle}\n` : ""}
-Compará este material con la clase anterior. Estructura:
+Compará este material con la clase anterior — formato académico riguroso, mismo estilo que un resumen de cátedra UdeSA.
 
-**Continuidad** (qué conceptos retoma y profundiza)
-**Diferencias / novedades** (qué se introduce nuevo)
-**Cómo se conectan** (puente conceptual entre ambas)
-**Riesgos de confusión** (3 puntos donde es fácil mezclar las dos clases en un parcial)
+# Formato
 
-Citá nombres y conceptos exactos, sin generalidades.`;
+Usá Markdown extendido con headings \`##\`, cajas semánticas \`::: tipo ... :::\` (definicion / nota / warning / ejemplo / teorema), fórmulas LaTeX en \`$...$\` y \`$$...$$\`, tablas markdown.
+
+# Estructura
+
+## Continuidad
+Qué conceptos de la clase anterior **se retoman y profundizan**. Una caja \`::: definicion\` por cada concepto importante; \`::: nota\` con la conexión específica.
+
+## Novedades
+Conceptos **nuevos** que se introducen. Mismo formato — definiciones formales y ejemplos.
+
+## Puente conceptual
+Cómo encaja la lógica de las dos clases en un mismo marco mayor. Si hay una fórmula que generaliza, mostrala en \`$$...$$\`.
+
+## Errores típicos
+Caja \`::: warning\` por cada confusión común entre los dos materiales.
+
+## Tabla comparativa
+Markdown table con tres columnas: \`Aspecto\`, \`Clase anterior\`, \`Esta clase\`.
+
+# Reglas
+
+Negrita en términos clave. Fórmulas siempre en LaTeX. Citá conceptos exactos, no generalidades. Tono académico, no conversacional.`;
 
     case "parcial":
       return `${header}
-Armame **10 preguntas tipo parcial** sobre el material de esta clase, con dificultad creciente:
+Armame **10 preguntas tipo parcial** sobre esta clase, con dificultad creciente. Formato académico estilo UdeSA.
 
-1-3: Conceptuales (definiciones, identificar conceptos)
-4-6: Aplicación (resolver caso simple, identificar el modelo correcto)
-7-9: Análisis (comparar dos enfoques, justificar elección, derivar fórmula)
-10: Integradora (problema con múltiples conceptos)
+# Formato
 
-Por cada pregunta:
-- Enunciado
-- Respuesta esperada (2-4 oraciones)
-- Dificultad estimada (★ a ★★★★★)
+Markdown extendido. Para cada pregunta usá esta estructura:
 
-Sé exigente — quiero prepararme bien.`;
+\`\`\`
+## Pregunta N · [Dificultad ★/★★/★★★/★★★★/★★★★★]
+
+**Enunciado:** texto del problema con fórmulas en LaTeX \`$...$\` si corresponde.
+
+::: definicion
+Respuesta esperada — 2-4 oraciones. Incluí fórmulas, derivaciones, valores numéricos.
+:::
+
+::: nota
+Pista para reconocer este tipo de problema en el parcial real (qué señales lo identifican).
+:::
+\`\`\`
+
+# Distribución de dificultad
+
+- Preguntas 1-3 (★): Conceptuales — definiciones, identificar conceptos
+- Preguntas 4-6 (★★): Aplicación — resolver caso simple, elegir el modelo correcto
+- Preguntas 7-9 (★★★): Análisis — comparar enfoques, justificar elección, derivar fórmula
+- Pregunta 10 (★★★★/★★★★★): Integradora — problema con múltiples conceptos
+
+# Reglas
+
+Sé **exigente** — quiero prepararme bien. Fórmulas siempre en LaTeX. Si la respuesta involucra una derivación, mostrala paso a paso. Citá los archivos cuando hagas referencia ("en la slide X de Y").`;
 
     case "custom":
       return `${header}
-[Escribí tu pregunta acá]`;
+[Escribí tu pregunta acá]
+
+---
+
+**Si querés que la respuesta tenga formato académico (compatible con el renderer del dashboard), pedile a Claude que use:**
+
+- Headings: \`## Sección\` / \`### Subsección\`
+- Cajas semánticas: \`::: definicion\` / \`::: nota\` / \`::: warning\` / \`::: ejemplo\` / \`::: teorema\` / \`::: codigo <lang>\`
+- Fórmulas LaTeX: \`$x^2$\` inline, \`$$y = x^2$$\` display
+- Tablas markdown
+- Negrita en términos clave (se chipean automáticamente)`;
   }
 }
 

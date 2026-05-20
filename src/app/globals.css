@@ -43,3 +43,132 @@ h1, h2, h3 { text-wrap: pretty; }
 
 /* Tabular nums helper */
 .tabular { font-variant-numeric: tabular-nums; }
+
+/* ─── Print: optimize the RichSummary for A4 export ────────────────────────
+   When the user hits Cmd+P or the "Imprimir / PDF" button, we hide every UI
+   chrome (nav, rail, hero, tabs) and show ONLY the RichSummary on a clean
+   white background, suitable for printing or save-as-PDF. */
+@media print {
+  /* Reset background to white for printing */
+  html, body {
+    background: white !important;
+    color: black !important;
+  }
+  body {
+    font-size: 11pt;
+  }
+
+  /* Hide everything except the rich summary article */
+  nav,
+  aside,
+  header > div:not(.print-keep),
+  .fixed,
+  button:not([data-print-keep]),
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* When printing, find the article and let it own the page */
+  [data-rich-summary] {
+    color: black !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  [data-rich-summary] h2,
+  [data-rich-summary] h3,
+  [data-rich-summary] h4,
+  [data-rich-summary] strong {
+    color: black !important;
+  }
+
+  [data-rich-summary] p,
+  [data-rich-summary] li,
+  [data-rich-summary] td,
+  [data-rich-summary] th {
+    color: #1f2937 !important;
+  }
+
+  /* Boxes — keep colors but with white background */
+  [data-rich-summary] .border-blue-800\/70,
+  [data-rich-summary] .border-emerald-800\/70,
+  [data-rich-summary] .border-red-900\/70,
+  [data-rich-summary] .border-amber-900\/70,
+  [data-rich-summary] .border-violet-800\/70,
+  [data-rich-summary] .border-fuchsia-900\/70 {
+    background: white !important;
+    border-width: 1px !important;
+  }
+  [data-rich-summary] .border-blue-800\/70    { border-color: #1d4ed8 !important; }
+  [data-rich-summary] .border-emerald-800\/70 { border-color: #047857 !important; }
+  [data-rich-summary] .border-red-900\/70     { border-color: #b91c1c !important; }
+  [data-rich-summary] .border-amber-900\/70   { border-color: #b45309 !important; }
+  [data-rich-summary] .border-violet-800\/70  { border-color: #6d28d9 !important; }
+  [data-rich-summary] .border-fuchsia-900\/70 { border-color: #a21caf !important; }
+
+  [data-rich-summary] .text-blue-400\/90,
+  [data-rich-summary] .text-emerald-400\/90,
+  [data-rich-summary] .text-red-400\/90,
+  [data-rich-summary] .text-amber-400\/90,
+  [data-rich-summary] .text-violet-300\/90,
+  [data-rich-summary] .text-fuchsia-400\/90 {
+    color: inherit !important;
+  }
+  [data-rich-summary] .text-blue-400\/90    { color: #1d4ed8 !important; }
+  [data-rich-summary] .text-emerald-400\/90 { color: #047857 !important; }
+  [data-rich-summary] .text-red-400\/90     { color: #b91c1c !important; }
+  [data-rich-summary] .text-amber-400\/90   { color: #b45309 !important; }
+  [data-rich-summary] .text-violet-300\/90  { color: #6d28d9 !important; }
+  [data-rich-summary] .text-fuchsia-400\/90 { color: #a21caf !important; }
+
+  /* Code blocks — white background, dark text */
+  [data-rich-summary] pre,
+  [data-rich-summary] code {
+    background: #f5f5f5 !important;
+    color: #111 !important;
+    border-color: #ccc !important;
+  }
+
+  /* Tables */
+  [data-rich-summary] table {
+    border-collapse: collapse;
+  }
+  [data-rich-summary] thead {
+    background: #f5f5f5 !important;
+  }
+  [data-rich-summary] th,
+  [data-rich-summary] td {
+    border-color: #d1d5db !important;
+  }
+
+  /* Math display boxes — white background */
+  [data-rich-summary] .bg-slate-950\/60 {
+    background: #fafafa !important;
+    border-color: #e5e7eb !important;
+  }
+
+  /* KaTeX math — black */
+  [data-rich-summary] .katex { color: black !important; }
+  [data-rich-summary] .katex .mathdefault,
+  [data-rich-summary] .katex .mord { color: inherit !important; }
+
+  /* Print page settings */
+  @page {
+    margin: 1.5cm 1.8cm;
+    size: A4;
+  }
+
+  /* Avoid breaking inside these */
+  [data-rich-summary] h2,
+  [data-rich-summary] h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  [data-rich-summary] pre,
+  [data-rich-summary] table,
+  [data-rich-summary] .rounded-lg {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

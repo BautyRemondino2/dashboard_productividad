@@ -15,6 +15,7 @@ import ClearAllMaterialsButton from "@/components/ClearAllMaterialsButton";
 import ClaudeProjectInput from "@/components/ClaudeProjectInput";
 import MaterialItem from "@/components/MaterialItem";
 import ClassClaudeButton from "@/components/ClassClaudeButton";
+import RichSummary from "@/components/RichSummary";
 
 // ── Status types ──────────────────────────────────────────────────────────────
 type SummaryStatus = "done" | "draft" | "pending" | "empty";
@@ -75,29 +76,7 @@ function ProgressRing({ pct, size = 36, stroke = 3, color = "rgb(52, 211, 153)" 
   );
 }
 
-function MdLite({ text }: { text: string }) {
-  // Renders **bold**, `code`, and preserves line breaks
-  const parts: { kind: "t" | "b" | "c"; value: string }[] = [];
-  const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
-  let cursor = 0;
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(text))) {
-    if (m.index > cursor) parts.push({ kind: "t", value: text.slice(cursor, m.index) });
-    if (m[0].startsWith("**"))     parts.push({ kind: "b", value: m[0].slice(2, -2) });
-    else if (m[0].startsWith("`")) parts.push({ kind: "c", value: m[0].slice(1, -1) });
-    cursor = m.index + m[0].length;
-  }
-  if (cursor < text.length) parts.push({ kind: "t", value: text.slice(cursor) });
-  return (
-    <>
-      {parts.map((p, i) => {
-        if (p.kind === "b") return <strong key={i} className="text-slate-100 font-semibold">{p.value}</strong>;
-        if (p.kind === "c") return <code key={i} className="px-1 py-0.5 rounded bg-slate-800 text-slate-300 text-[12px] font-mono">{p.value}</code>;
-        return <span key={i} style={{ whiteSpace: "pre-wrap" }}>{p.value}</span>;
-      })}
-    </>
-  );
-}
+// (MdLite removed — RichSummary now owns all summary rendering.)
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 type ClassWithStats = ClassItem & {
@@ -595,27 +574,15 @@ function SummaryView({ cls, materials, subjectName, claudeProjectUrl, previousCl
   claudeProjectUrl: string | null;
   previousClassTitle: string | null;
 }) {
-  // Extract **bold** terms from the summary text as concept chips
-  const concepts = useMemo(() => {
-    if (!cls.summary) return [];
-    const set = new Set<string>();
-    const re = /\*\*([^*]+)\*\*/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(cls.summary))) {
-      const c = m[1].trim();
-      if (c.length >= 2 && c.length <= 50) set.add(c);
-    }
-    return Array.from(set).slice(0, 24);
-  }, [cls.summary]);
-
   if (!cls.summary) {
     return (
       <div className="rounded-xl border-2 border-dashed border-amber-900/40 bg-amber-950/10 p-8 text-center">
         <div className="text-3xl mb-3">✨</div>
         <p className="text-[14px] text-slate-200 font-medium mb-1">Sin resumen todavía</p>
-        <p className="text-[12px] text-slate-500 max-w-md mx-auto leading-relaxed mb-5">
-          Generá un resumen unificado de los {materials.length} archivos con Claude. Elegís un template, te abro los archivos
-          y claude.ai en pestañas, pegás la respuesta y queda guardada acá.
+        <p className="text-[12px] text-slate-500 max-w-2xl mx-auto leading-relaxed mb-5">
+          Genero un <span className="text-slate-300 font-medium">resumen académico estilo UdeSA</span> con cajas de definición /
+          nota / ejemplo / advertencia, fórmulas LaTeX, tablas, código y un repaso final.
+          Click → abre los {materials.length} archivos en pestañas + claude.ai con el prompt cargado, pegás la respuesta y se renderea acá.
         </p>
         <ClassClaudeButton
           classItem={cls}
@@ -628,47 +595,21 @@ function SummaryView({ cls, materials, subjectName, claudeProjectUrl, previousCl
     );
   }
 
-  const parts = cls.summary.split(/\n\n+/);
-  const tldr = parts[0];
-  const rest = parts.slice(1).join("\n\n");
+  const printTitle = `${subjectName} · Clase ${cls.week}: ${cls.title}`;
+  const printMeta = cls.date ? `Resumen · ${cls.date}` : `Resumen`;
 
   return (
-    <div className="space-y-6">
-      <div
-        className="rounded-xl border border-slate-800 px-5 py-4"
-        style={{ background: "linear-gradient(135deg, oklch(28% 0.05 280 / 0.18) 0%, rgba(15, 23, 42, 0.3) 60%)" }}
-      >
-        <p className="text-[10px] uppercase tracking-widest text-violet-400/80 mb-1.5">Resumen</p>
-        <p className="text-[14px] text-slate-200 leading-relaxed text-pretty">
-          <MdLite text={tldr} />
-        </p>
-      </div>
+    <div>
+      <RichSummary
+        markdown={cls.summary}
+        title={printTitle}
+        meta={printMeta}
+        onPrint={() => window.print()}
+      />
 
-      {rest && (
-        <div className="text-[13px] text-slate-300 leading-relaxed text-pretty">
-          <MdLite text={rest} />
-        </div>
-      )}
-
-      {concepts.length > 0 && (
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Conceptos clave</p>
-          <div className="flex flex-wrap gap-1.5">
-            {concepts.map((c, i) => (
-              <span
-                key={i}
-                className="text-[11px] px-2 py-1 rounded-md bg-slate-900/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-300 transition-colors cursor-default whitespace-nowrap"
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="pt-4 border-t border-slate-900 flex items-center justify-between gap-3 text-[11px]">
+      <div className="mt-6 pt-4 border-t border-slate-900 flex items-center justify-between gap-3 text-[11px] print:hidden">
         <p className="text-slate-600">
-          {cls.summarized ? "Marcada como resumida" : "Borrador"} · {materials.length} archivos
+          {cls.summarized ? "Marcada como resumida" : "Borrador"} · {materials.length} archivo{materials.length !== 1 ? "s" : ""}
         </p>
         <div className="flex items-center gap-1.5">
           <ClassClaudeButton
