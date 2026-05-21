@@ -319,13 +319,24 @@ export default function ClassClaudeButton({
               {tab === "ask" ? (
                 <>
                   <div className="text-[12px] text-slate-400 mb-3 leading-relaxed">
-                    <p className="mb-2">Al hacer click en <span className="text-slate-200 font-medium">Abrir Claude + zip</span> pasan 3 cosas a la vez:</p>
+                    <p className="mb-2">Click en <span className="text-slate-200 font-medium">Abrir Claude + zip</span> y pasan 3 cosas:</p>
                     <ol className="list-decimal pl-5 space-y-0.5 text-[11.5px]">
                       <li>Te bajo <span className="text-slate-200">un solo zip</span> con los {materials.length} archivo{materials.length !== 1 ? "s" : ""} de la clase</li>
-                      <li>Abro {claudeProjectUrl ? <span className="text-violet-300">tu Proyecto de Claude</span> : <span className="text-violet-300">claude.ai/new</span>} con el prompt ya cargado en el input</li>
-                      <li>El prompt también queda en el clipboard (Cmd+V por si <code className="text-slate-300">?q=</code> no funciona en tu Proyecto)</li>
+                      <li>Abro {claudeProjectUrl ? <span className="text-violet-300">tu Proyecto de Claude</span> : <span className="text-violet-300">claude.ai/new</span>}</li>
+                      <li>El prompt queda en el clipboard <span className="text-slate-300">(Cmd+V)</span></li>
                     </ol>
-                    <p className="mt-2 text-slate-500 text-[11px]">Después arrastrás el zip al chat de Claude y pulsás Enter. <span className="text-slate-400">10 segundos.</span></p>
+                    {claudeProjectUrl ? (
+                      <div className="mt-2.5 px-2.5 py-1.5 rounded-md bg-amber-950/30 border border-amber-900/50 text-amber-300/90 text-[11px] leading-snug">
+                        ⚠ Los Proyectos de Claude <span className="font-semibold">no auto-rellenan</span> el input desde la URL. Cuando se abra, click en el input y <span className="font-mono bg-amber-950/60 px-1 rounded">Cmd+V</span> para pegar el prompt.
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-slate-500 text-[11px]">
+                        En <code className="text-slate-300">claude.ai/new</code> el prompt aparece solo. Después arrastrás el zip al chat y Enter.
+                      </p>
+                    )}
+                    <p className="mt-2 text-slate-500 text-[11px]">
+                      <span className="text-slate-400">Cuando Claude termine</span> → volvé acá, tab <span className="text-slate-300">&ldquo;Guardar resumen&rdquo;</span>, Cmd+V, guardar.
+                    </p>
                   </div>
 
                   {/* Template selector */}
