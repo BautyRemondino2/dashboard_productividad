@@ -254,10 +254,18 @@ export default function ClassClaudeButton({
       document.body.removeChild(a);
     }
 
-    // 3. Open Claude — project URL if connected, else /new with prompt pre-filled
-    const url = claudeProjectUrl
-      ? `${claudeProjectUrl}${claudeProjectUrl.includes("?") ? "&" : "?"}q=${encodeURIComponent(prompt)}`
-      : `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+    // 3. Open Claude — a NEW chat inside the project if connected, else /new
+    //    Project URL shape: https://claude.ai/project/<uuid>
+    //    New chat in project shape: https://claude.ai/project/<uuid>/new
+    //    (claude.ai/project/X/new doesn't honor ?q=, so we just rely on clipboard.)
+    let url: string;
+    if (claudeProjectUrl) {
+      const base = claudeProjectUrl.replace(/\/+$/, "");        // strip trailing slash
+      const baseNoQuery = base.split("?")[0].split("#")[0];      // strip ?q= and #frag
+      url = baseNoQuery.endsWith("/new") ? baseNoQuery : `${baseNoQuery}/new`;
+    } else {
+      url = `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+    }
     window.open(url, "_blank", "noopener");
   };
 
@@ -322,7 +330,7 @@ export default function ClassClaudeButton({
                     <p className="mb-2">Click en <span className="text-slate-200 font-medium">Abrir Claude + zip</span> y pasan 3 cosas:</p>
                     <ol className="list-decimal pl-5 space-y-0.5 text-[11.5px]">
                       <li>Te bajo <span className="text-slate-200">un solo zip</span> con los {materials.length} archivo{materials.length !== 1 ? "s" : ""} de la clase</li>
-                      <li>Abro {claudeProjectUrl ? <span className="text-violet-300">tu Proyecto de Claude</span> : <span className="text-violet-300">claude.ai/new</span>}</li>
+                      <li>Abro {claudeProjectUrl ? <span className="text-violet-300">un chat nuevo en tu Proyecto</span> : <span className="text-violet-300">claude.ai/new</span>}</li>
                       <li>El prompt queda en el clipboard <span className="text-slate-300">(Cmd+V)</span></li>
                     </ol>
                     {claudeProjectUrl ? (

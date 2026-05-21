@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import EfemerideWidget from "@/components/EfemerideWidget";
 
 export default function TopNav() {
   const pathname = usePathname();
@@ -32,6 +33,11 @@ export default function TopNav() {
       <NavLink href="/today"    label="Hoy"      active={isActive("/today")} />
       <NavLink href="/glossary" label="Glosario"  active={isActive("/glossary")} />
       <NavLink href="/archivo"  label="Archivo"   active={isActive("/archivo")} />
+
+      {/* Right side: Argentine ephemeris widget */}
+      <div className="ml-auto">
+        <EfemerideWidget />
+      </div>
     </nav>
   );
 }

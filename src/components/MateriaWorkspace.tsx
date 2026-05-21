@@ -15,6 +15,7 @@ import ClearAllMaterialsButton from "@/components/ClearAllMaterialsButton";
 import ClaudeProjectInput from "@/components/ClaudeProjectInput";
 import MaterialItem from "@/components/MaterialItem";
 import ClassClaudeButton from "@/components/ClassClaudeButton";
+import MaterialDropzone from "@/components/MaterialDropzone";
 
 // ── Status types ──────────────────────────────────────────────────────────────
 type SummaryStatus = "done" | "draft" | "pending" | "empty";
@@ -400,7 +401,7 @@ function ClassDetail({
               previousClassTitle={previousClassTitle}
             />
           )}
-          {tab === "files"   && <FilesView materials={materials} allClasses={allClasses} subjectName={subjectName} claudeProjectUrl={claudeProjectUrl} />}
+          {tab === "files"   && <FilesView classId={cls.id} subjectId={cls.subject_id} materials={materials} allClasses={allClasses} subjectName={subjectName} claudeProjectUrl={claudeProjectUrl} />}
           {tab === "tasks"   && <TasksView classId={cls.id} tasks={tasks} today={today} />}
         </>
       )}
@@ -693,7 +694,9 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 }
 
 // ── Files view ────────────────────────────────────────────────────────────────
-function FilesView({ materials, allClasses, subjectName, claudeProjectUrl }: {
+function FilesView({ classId, subjectId, materials, allClasses, subjectName, claudeProjectUrl }: {
+  classId: number;
+  subjectId: number;
   materials: ClassMaterial[];
   allClasses: ClassItem[];
   subjectName: string;
@@ -710,6 +713,9 @@ function FilesView({ materials, allClasses, subjectName, claudeProjectUrl }: {
           claudeProjectUrl={claudeProjectUrl}
         />
       ))}
+      <div className="mt-3">
+        <MaterialDropzone subjectId={subjectId} classId={classId} />
+      </div>
     </div>
   );
 }
