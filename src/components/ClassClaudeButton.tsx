@@ -236,18 +236,27 @@ export default function ClassClaudeButton({
   };
 
   const handleOpenClaude = async () => {
+    // 1. Copy prompt to clipboard (fallback in case ?q= doesn't fill the input)
     try {
       await navigator.clipboard.writeText(prompt);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setCopied(false), 3500);
     } catch { /* ignore */ }
 
-    // Open each material in a tab so the user can drag them all into the chat
-    for (const m of materials) {
-      window.open(`/api/materials/${m.id}`, "_blank", "noopener");
+    // 2. Trigger zip download — single zip with every file of the class
+    if (materials.length > 0) {
+      const a = document.createElement("a");
+      a.href = `/api/classes/${classItem.id}/bundle.zip`;
+      a.rel = "noopener";
+      // The Content-Disposition on the route sets the actual filename
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
+
+    // 3. Open Claude — project URL if connected, else /new with prompt pre-filled
     const url = claudeProjectUrl
-      ? claudeProjectUrl
+      ? `${claudeProjectUrl}${claudeProjectUrl.includes("?") ? "&" : "?"}q=${encodeURIComponent(prompt)}`
       : `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
     window.open(url, "_blank", "noopener");
   };
@@ -289,7 +298,7 @@ export default function ClassClaudeButton({
                 <p className="text-[10px] uppercase tracking-widest text-slate-500">Clase {classItem.week} · {subjectName}</p>
                 <h3 className="text-[15px] text-slate-100 truncate">{classItem.title}</h3>
                 <p className="text-[10px] text-slate-600 mt-0.5">
-                  {materials.length} archivo{materials.length !== 1 ? "s" : ""} se van a abrir en pestañas
+                  {materials.length} archivo{materials.length !== 1 ? "s" : ""} se empaquetan en un solo .zip
                 </p>
               </div>
               <button onClick={() => setOpen(false)} className="text-slate-500 hover:text-slate-200 text-lg leading-none">✕</button>
@@ -309,11 +318,15 @@ export default function ClassClaudeButton({
             <div className="flex-1 overflow-y-auto px-6 py-5">
               {tab === "ask" ? (
                 <>
-                  <p className="text-[12px] text-slate-400 mb-3">
-                    Al hacer click en <span className="text-slate-200 font-medium">Abrir Claude + archivos</span>:
-                    {" "}copio el prompt al clipboard, abro los {materials.length} archivos en pestañas y abro{" "}
-                    {claudeProjectUrl ? <span className="text-violet-300">tu proyecto Claude</span> : <span className="text-violet-300">claude.ai/new</span>}.
-                  </p>
+                  <div className="text-[12px] text-slate-400 mb-3 leading-relaxed">
+                    <p className="mb-2">Al hacer click en <span className="text-slate-200 font-medium">Abrir Claude + zip</span> pasan 3 cosas a la vez:</p>
+                    <ol className="list-decimal pl-5 space-y-0.5 text-[11.5px]">
+                      <li>Te bajo <span className="text-slate-200">un solo zip</span> con los {materials.length} archivo{materials.length !== 1 ? "s" : ""} de la clase</li>
+                      <li>Abro {claudeProjectUrl ? <span className="text-violet-300">tu Proyecto de Claude</span> : <span className="text-violet-300">claude.ai/new</span>} con el prompt ya cargado en el input</li>
+                      <li>El prompt también queda en el clipboard (Cmd+V por si <code className="text-slate-300">?q=</code> no funciona en tu Proyecto)</li>
+                    </ol>
+                    <p className="mt-2 text-slate-500 text-[11px]">Después arrastrás el zip al chat de Claude y pulsás Enter. <span className="text-slate-400">10 segundos.</span></p>
+                  </div>
 
                   {/* Template selector */}
                   <div className="mb-4">
@@ -375,7 +388,7 @@ export default function ClassClaudeButton({
                   onClick={handleOpenClaude}
                   className="px-4 py-2 rounded-lg text-[12px] font-medium text-slate-100 bg-violet-700/40 hover:bg-violet-700/60 border border-violet-700/60 transition-colors flex items-center gap-1.5"
                 >
-                  ◆ Abrir Claude + archivos
+                  ◆ Abrir Claude + zip
                 </button>
               ) : (
                 <div className="flex items-center gap-2">
