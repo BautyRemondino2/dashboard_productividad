@@ -30,9 +30,10 @@ export default function TopNav() {
         </span>
       </div>
 
-      <NavLink href="/today"    label="Hoy"      active={isActive("/today")} />
-      <NavLink href="/glossary" label="Glosario"  active={isActive("/glossary")} />
-      <NavLink href="/archivo"  label="Archivo"   active={isActive("/archivo")} />
+      <NavLink href="/today"      label="Hoy"         active={isActive("/today")} />
+      <NavLink href="/glossary"   label="Glosario"    active={isActive("/glossary")} />
+      <NavLink href="/efemerides" label="Efemérides"  active={isActive("/efemerides")} />
+      <NavLink href="/archivo"    label="Archivo"     active={isActive("/archivo")} />
 
       {/* Right side: Argentine ephemeris widget */}
       <div className="ml-auto">
