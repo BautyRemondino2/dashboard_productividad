@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { getActiveSubjects, logStudySession } from "@/app/actions";
 
 const WORK_MINUTES  = 25;
@@ -19,6 +20,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const STORAGE_KEY = "pomodoro-subject-id";
 
 export default function PomodoroTimer() {
+  const pathname = usePathname();
   const [mode,      setMode]      = useState<Mode>("work");
   const [running,   setRunning]   = useState(false);
   const [seconds,   setSeconds]   = useState(WORK_MINUTES * 60);
@@ -124,6 +126,9 @@ export default function PomodoroTimer() {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   const selectedSubject = subjects.find(s => s.id === subjectId);
+
+  // Hidden on print-only routes
+  if (pathname.startsWith("/print/")) return null;
 
   if (!open) {
     return (

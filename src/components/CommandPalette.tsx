@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useTransition, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { getCommandPaletteData, toggleTask, type CommandPaletteItem } from "@/app/actions";
 import { MATERIAL_KIND_LABEL } from "@/lib/materials";
 
@@ -32,6 +32,7 @@ function fuzzyScore(query: string, text: string): number {
 
 export default function CommandPalette() {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof getCommandPaletteData>> | null>(null);
@@ -170,6 +171,8 @@ export default function CommandPalette() {
     }
   };
 
+  // Hidden on print-only routes (and the keyboard listener self-disables there too via early return)
+  if (pathname.startsWith("/print/")) return null;
   if (!open) return null;
 
   let idxCursor = -1;

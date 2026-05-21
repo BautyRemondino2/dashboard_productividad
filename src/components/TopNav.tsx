@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation";
 export default function TopNav() {
   const pathname = usePathname();
 
+  // Hide on the print-only routes — those render their own clean shell
+  if (pathname.startsWith("/print/")) return null;
+
   function isActive(href: string) {
     if (href === "/today") return pathname === "/today" || pathname === "/";
     return pathname === href || pathname.startsWith(href + "/");
