@@ -27,6 +27,7 @@ const CATS: Record<string, { hue: number }> = {
   "Tasas & Curvas":  { hue: 230 },
   "Instrumentos AR": { hue: 0   },
   "Macro Argentina": { hue: 30  },
+  "General":         { hue: 220 },
 };
 const catHue   = (cat: string) => CATS[cat]?.hue ?? 220;
 const catColor = (cat: string, l = 65) => `oklch(${l}% 0.11 ${catHue(cat)})`;
@@ -95,6 +96,109 @@ function PlusIcon() {
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <path strokeLinecap="round" d="M12 5v14M5 12h14" />
     </svg>
+  );
+}
+function PencilIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" />
+    </svg>
+  );
+}
+
+// ─── CategorySelect ────────────────────────────────────────────────────────────
+function CategorySelect({ value, onChange }: { value: string; onChange: (c: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(prev => !prev)}
+        className="text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap flex items-center gap-1 hover:opacity-90 transition-opacity"
+        style={{ background: catSoft(value, 0.45), color: catColor(value, 82) }}
+        title="Cambiar categoría"
+      >
+        {value}
+        <svg className="w-2.5 h-2.5 opacity-60" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-[60] bg-slate-900 border border-slate-700 rounded-lg shadow-2xl py-1 min-w-[160px]">
+          {GLOSSARY_CATEGORIES.map(c => (
+            <button
+              key={c}
+              onClick={() => { onChange(c); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors ${
+                c === value ? "text-slate-100 bg-slate-800" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: catColor(c, 70) }} />
+              <span className="flex-1">{c}</span>
+              {c === value && <CheckIcon />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TypeSelect ────────────────────────────────────────────────────────────────
+function TypeSelect({ value, onChange }: { value: TermType; onChange: (t: TermType) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const TYPES: TermType[] = ["concepto", "instrumento", "metrica"];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(prev => !prev)}
+        className="text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-700/60 transition-colors flex items-center gap-1"
+        title="Cambiar tipo"
+      >
+        {TYPE_LABEL[value ?? "concepto"]}
+        <svg className="w-2.5 h-2.5 opacity-60" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-[60] bg-slate-900 border border-slate-700 rounded-lg shadow-2xl py-1 min-w-[130px]">
+          {TYPES.map(t => (
+            <button
+              key={t}
+              onClick={() => { onChange(t); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors ${
+                t === value ? "text-slate-100 bg-slate-800" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <span className="flex-1">{TYPE_LABEL[t]}</span>
+              {t === value && <CheckIcon />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -360,6 +464,9 @@ function TermCard({ term, onClick, onToggleFav, onToggleCompare, isSelected, isC
           </div>
           {!isCompared && (
             <div className="shrink-0 -mr-1 -mt-1 flex items-center gap-0.5">
+              <button onClick={e => { e.stopPropagation(); onClick(); }}
+                className="w-7 h-7 rounded-md flex items-center justify-center text-slate-700 opacity-0 group-hover:opacity-100 hover:bg-slate-800 hover:text-slate-300 transition-all"
+                title="Editar"><PencilIcon /></button>
               <button onClick={e => { e.stopPropagation(); onToggleCompare(term.id); }}
                 className="w-7 h-7 rounded-md flex items-center justify-center text-slate-700 opacity-0 group-hover:opacity-100 hover:bg-slate-800 hover:text-slate-300 transition-all"
                 title="Comparar"><CompareIcon /></button>
@@ -404,7 +511,7 @@ function ListView({ terms, onOpen, onToggleFav, onToggleCompare, selectedId, com
   return (
     <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/20">
       <div className="grid items-center gap-x-4 px-4 py-2 bg-slate-900/60 border-b border-slate-800 text-[10px] uppercase tracking-widest text-slate-500"
-        style={{ gridTemplateColumns: "20px 1.5fr 140px 2.2fr 40px" }}>
+        style={{ gridTemplateColumns: "20px 1.5fr 140px 2.2fr 56px" }}>
         <div /><div>Término</div><div>Categoría</div><div>Definición</div><div />
       </div>
       <div className="divide-y divide-slate-900">
@@ -416,7 +523,7 @@ function ListView({ terms, onOpen, onToggleFav, onToggleCompare, selectedId, com
               className={`group grid items-center gap-x-4 px-4 py-2.5 cursor-pointer transition-colors relative ${
                 selectedId === t.id ? "bg-slate-800/40" : inCompare ? "bg-slate-900/50" : "hover:bg-slate-900/40"
               }`}
-              style={{ gridTemplateColumns: "20px 1.5fr 140px 2.2fr 40px" }}>
+              style={{ gridTemplateColumns: "20px 1.5fr 140px 2.2fr 56px" }}>
               <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: accent }} />
               <button onClick={e => { e.stopPropagation(); onToggleFav(t.id); }}
                 className={`w-5 h-5 flex items-center justify-center rounded transition-colors ${
@@ -437,13 +544,20 @@ function ListView({ terms, onOpen, onToggleFav, onToggleCompare, selectedId, com
                 {t.category}
               </span>
               <p className="text-[12px] text-slate-500 leading-snug truncate">{t.short_def}</p>
-              <button onClick={e => { e.stopPropagation(); onToggleCompare(t.id); }}
-                className={`w-6 h-6 rounded flex items-center justify-center transition-all ${
-                  inCompare ? "text-slate-100" : "text-slate-700 opacity-0 group-hover:opacity-100 hover:bg-slate-800 hover:text-slate-300"
-                }`}
-                style={inCompare ? { background: accent } : undefined}>
-                {inCompare ? <CheckIcon /> : <CompareIcon />}
-              </button>
+              <div className="flex items-center gap-0.5">
+                <button onClick={e => { e.stopPropagation(); onOpen(t.id); }}
+                  className="w-6 h-6 rounded flex items-center justify-center text-slate-700 opacity-0 group-hover:opacity-100 hover:bg-slate-800 hover:text-slate-300 transition-all"
+                  title="Editar">
+                  <PencilIcon />
+                </button>
+                <button onClick={e => { e.stopPropagation(); onToggleCompare(t.id); }}
+                  className={`w-6 h-6 rounded flex items-center justify-center transition-all ${
+                    inCompare ? "text-slate-100" : "text-slate-700 opacity-0 group-hover:opacity-100 hover:bg-slate-800 hover:text-slate-300"
+                  }`}
+                  style={inCompare ? { background: accent } : undefined}>
+                  {inCompare ? <CheckIcon /> : <CompareIcon />}
+                </button>
+              </div>
             </div>
           );
         })}
@@ -612,6 +726,24 @@ function Drawer({ term, allTerms, onClose, onToggleFav, onDelete, onUpdate, onOp
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term?.id, onUpdate]);
 
+  const saveCategory = useCallback((cat: string) => {
+    if (!term) return;
+    onUpdate(term.id, { category: cat });
+    startTransition(async () => {
+      await updateGlossaryTerm(term.id, "category", cat);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [term?.id, onUpdate]);
+
+  const saveType = useCallback((t: TermType) => {
+    if (!term) return;
+    onUpdate(term.id, { term_type: t });
+    startTransition(async () => {
+      await updateGlossaryTerm(term.id, "term_type", t);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [term?.id, onUpdate]);
+
   if (!term) return null;
   const hue    = catHue(term.category);
   const accent = catColor(term.category, 70);
@@ -632,13 +764,8 @@ function Drawer({ term, allTerms, onClose, onToggleFav, onDelete, onUpdate, onOp
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap"
-                  style={{ background: catSoft(term.category, 0.45), color: catColor(term.category, 82) }}>
-                  {term.category}
-                </span>
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap bg-slate-800/60 text-slate-500">
-                  {TYPE_LABEL[term.term_type ?? "concepto"]}
-                </span>
+                <CategorySelect value={term.category} onChange={saveCategory} />
+                <TypeSelect value={term.term_type ?? "concepto"} onChange={saveType} />
                 <EditableField
                   value={term.ticker ?? ""}
                   onSave={save("ticker")}

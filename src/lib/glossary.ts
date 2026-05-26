@@ -21,6 +21,7 @@ export const GLOSSARY_CATEGORIES = [
   "Tasas & Curvas",
   "Instrumentos AR",
   "Macro Argentina",
+  "General",
 ] as const;
 
 export type GlossaryCategory = (typeof GLOSSARY_CATEGORIES)[number];
