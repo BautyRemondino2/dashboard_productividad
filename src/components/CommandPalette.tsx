@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useTransition, useCallback } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { getCommandPaletteData, toggleTask, type CommandPaletteItem } from "@/app/actions";
-import { MATERIAL_KIND_LABEL } from "@/lib/materials";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { getCommandPaletteData, type CommandPaletteItem } from "@/app/actions";
 
 type Group = { label: string; key: string; items: CommandPaletteItem[] };
 
@@ -30,15 +29,19 @@ function fuzzyScore(query: string, text: string): number {
   return 50;
 }
 
+const NAV_COMMANDS: CommandPaletteItem[] = [
+  { type: "nav", id: -1, label: "Ir a Mercado",    subtitle: "Panel del día", href: "/mercado" },
+  { type: "nav", id: -2, label: "Ir a Glosario",   subtitle: "Términos financieros", href: "/glossary" },
+  { type: "nav", id: -3, label: "Ir a Efemérides", subtitle: "Feriados y fechas", href: "/efemerides" },
+];
+
 export default function CommandPalette() {
   const router = useRouter();
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof getCommandPaletteData>> | null>(null);
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
-  const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -81,34 +84,20 @@ export default function CommandPalette() {
     }
   }, [open, loaded]);
 
-  // Quick commands — derived from data
-  const quickCommands: CommandPaletteItem[] = useMemo(() => {
-    const cmds: CommandPaletteItem[] = [
-      { type: "subject", id: -1, label: "Ir a Hoy", subtitle: "Dashboard semanal", href: "/today" },
-      { type: "subject", id: -2, label: "Ir a Glosario", subtitle: "Términos financieros", href: "/glossary" },
-      { type: "subject", id: -3, label: "Ir a Archivo", subtitle: "Semestres archivados", href: "/archivo" },
-    ];
-    return cmds;
-  }, []);
-
   // Filtered + grouped items
   const groups: Group[] = useMemo(() => {
-    if (!data) return [];
     const filter = (items: CommandPaletteItem[]) =>
       items
         .filter(i => fuzzyMatch(query, `${i.label} ${i.subtitle ?? ""}`))
         .sort((a, b) => fuzzyScore(query, b.label) - fuzzyScore(query, a.label));
 
     const out: Group[] = [
-      { label: "Comandos",     key: "cmd",      items: filter(quickCommands).slice(0, 8) },
-      { label: "Materias",     key: "subject",  items: filter(data.subjects).slice(0, 8) },
-      { label: "Clases",       key: "class",    items: filter(data.classes).slice(0, 15) },
-      { label: "Tareas",       key: "task",     items: filter(data.tasks).slice(0, 15) },
-      { label: "Materiales",   key: "material", items: filter(data.materials).slice(0, 15) },
-      { label: "Glosario",     key: "glossary", items: filter(data.glossary).slice(0, 15) },
+      { label: "Navegación",   key: "nav",         items: filter(NAV_COMMANDS).slice(0, 8) },
+      { label: "Instrumentos", key: "instrumento", items: filter(data?.instrumentos ?? []).slice(0, 12) },
+      { label: "Glosario",     key: "glossary",    items: filter(data?.glossary ?? []).slice(0, 15) },
     ];
     return out.filter(g => g.items.length > 0);
-  }, [data, query, quickCommands]);
+  }, [data, query]);
 
   // Flat list (used for arrow nav)
   const flat: CommandPaletteItem[] = useMemo(() => groups.flatMap(g => g.items), [groups]);
@@ -129,22 +118,9 @@ export default function CommandPalette() {
   const close = useCallback(() => setOpen(false), []);
 
   const activate = useCallback((item: CommandPaletteItem) => {
-    if (item.type === "task") {
-      // Toggle task as done
-      startTransition(async () => {
-        await toggleTask(item.id);
-      });
-      close();
-      return;
-    }
     if (item.type === "glossary") {
       // For glossary terms, scroll to the term on the glossary page using a hash
       router.push(`/glossary#term-${item.id}`);
-      close();
-      return;
-    }
-    if (item.type === "material" && item.href) {
-      window.open(item.href, "_blank", "noopener");
       close();
       return;
     }
@@ -171,8 +147,6 @@ export default function CommandPalette() {
     }
   };
 
-  // Hidden on print-only routes (and the keyboard listener self-disables there too via early return)
-  if (pathname.startsWith("/print/")) return null;
   if (!open) return null;
 
   let idxCursor = -1;
@@ -192,7 +166,7 @@ export default function CommandPalette() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Buscar materias, clases, tareas, materiales, glosario…"
+            placeholder="Buscar instrumentos, términos del glosario…"
             className="flex-1 bg-transparent text-[14px] text-slate-100 placeholder-slate-600 outline-none"
           />
           <kbd className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 font-mono">esc</kbd>
@@ -229,30 +203,14 @@ export default function CommandPalette() {
                   >
                     <ItemIcon item={item} />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className={`text-[13px] truncate ${isActive ? "text-slate-100" : "text-slate-200"}`}>
-                          {item.label}
-                        </p>
-                        {item.type === "task" && item.priority === "alta" && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-950/40 text-red-400 shrink-0">alta</span>
-                        )}
-                        {item.type === "task" && item.dueDate && (
-                          <span className="text-[9px] text-slate-500 shrink-0 tabular">{item.dueDate}</span>
-                        )}
-                        {item.type === "material" && item.kind && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 shrink-0 uppercase tracking-wider">
-                            {MATERIAL_KIND_LABEL[item.kind]}
-                          </span>
-                        )}
-                      </div>
+                      <p className={`text-[13px] truncate ${isActive ? "text-slate-100" : "text-slate-200"}`}>
+                        {item.label}
+                      </p>
                       {item.subtitle && (
                         <p className="text-[10px] text-slate-500 truncate">{item.subtitle}</p>
                       )}
                     </div>
-                    {item.type === "task" && (
-                      <span className="text-[9px] text-slate-600 shrink-0">↵ marcar hecha</span>
-                    )}
-                    {item.type !== "task" && item.href && (
+                    {item.href && (
                       <svg className="w-3 h-3 text-slate-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
@@ -277,7 +235,6 @@ export default function CommandPalette() {
               abrir
             </span>
           </div>
-          {isPending && <span className="text-emerald-400">guardando…</span>}
           <span>
             <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded font-mono">⌘K</kbd>
             {" "}para abrir
@@ -290,18 +247,14 @@ export default function CommandPalette() {
 
 function ItemIcon({ item }: { item: CommandPaletteItem }) {
   const ICONS: Record<CommandPaletteItem["type"], string> = {
-    subject:  "◆",
-    class:    "◔",
-    task:     "○",
-    material: "◰",
-    glossary: "◉",
+    nav:         "◆",
+    instrumento: "◈",
+    glossary:    "◉",
   };
   const colors: Record<CommandPaletteItem["type"], string> = {
-    subject:  "text-slate-300",
-    class:    "text-blue-400",
-    task:     "text-amber-400",
-    material: "text-violet-400",
-    glossary: "text-emerald-400",
+    nav:         "text-slate-300",
+    instrumento: "text-sky-400",
+    glossary:    "text-emerald-400",
   };
   return (
     <span

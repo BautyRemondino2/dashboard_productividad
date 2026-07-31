@@ -13,84 +13,7 @@ function initSchema(db: Database.Database) {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
 
-  // Core tables
   db.exec(`
-    CREATE TABLE IF NOT EXISTS semesters (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      name        TEXT    NOT NULL,
-      status      TEXT    NOT NULL DEFAULT 'active' CHECK(status IN ('active','archived')),
-      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-      archived_at TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS subjects (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      name        TEXT    NOT NULL,
-      short       TEXT    NOT NULL,
-      hue         INTEGER NOT NULL DEFAULT 220,
-      credits     INTEGER NOT NULL DEFAULT 4,
-      semester_id INTEGER REFERENCES semesters(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS classes (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      subject_id  INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
-      week        INTEGER NOT NULL DEFAULT 1,
-      title       TEXT    NOT NULL,
-      date        TEXT    NOT NULL,
-      summarized  INTEGER NOT NULL DEFAULT 0,
-      summary     TEXT,
-      tasks_total INTEGER NOT NULL DEFAULT 0,
-      tasks_done  INTEGER NOT NULL DEFAULT 0,
-      is_new      INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS exams (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      subject_id  INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
-      title       TEXT    NOT NULL,
-      type        TEXT    NOT NULL DEFAULT 'parcial' CHECK(type IN ('parcial', 'tp', 'final', 'quiz')),
-      date        TEXT    NOT NULL,
-      grade       REAL,
-      weight      REAL    NOT NULL DEFAULT 0.5
-    );
-
-    CREATE TABLE IF NOT EXISTS tasks (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      title        TEXT    NOT NULL,
-      context      TEXT    NOT NULL DEFAULT 'facultad',
-      priority     TEXT    NOT NULL DEFAULT 'media' CHECK(priority IN ('alta', 'media', 'baja')),
-      due_date     TEXT,
-      subject_id   INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
-      material_id  INTEGER REFERENCES classes(id) ON DELETE SET NULL,
-      status       TEXT    NOT NULL DEFAULT 'pendiente' CHECK(status IN ('pendiente', 'hecha')),
-      created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
-      completed_at TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS habits (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      name       TEXT    NOT NULL UNIQUE,
-      active     INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS habit_logs (
-      id        INTEGER PRIMARY KEY AUTOINCREMENT,
-      habit_id  INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
-      date      TEXT    NOT NULL,
-      UNIQUE(habit_id, date)
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_tasks_subject    ON tasks(subject_id);
-    CREATE INDEX IF NOT EXISTS idx_tasks_due_date   ON tasks(due_date);
-    CREATE INDEX IF NOT EXISTS idx_tasks_status     ON tasks(status);
-    CREATE INDEX IF NOT EXISTS idx_tasks_material   ON tasks(material_id);
-    CREATE INDEX IF NOT EXISTS idx_classes_subject  ON classes(subject_id);
-    CREATE INDEX IF NOT EXISTS idx_exams_subject    ON exams(subject_id);
-    CREATE INDEX IF NOT EXISTS idx_habit_logs_habit ON habit_logs(habit_id);
-    CREATE INDEX IF NOT EXISTS idx_habit_logs_date  ON habit_logs(date);
-
     CREATE TABLE IF NOT EXISTS glossary_terms (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       term        TEXT    NOT NULL UNIQUE,
@@ -103,78 +26,97 @@ function initSchema(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_glossary_category ON glossary_terms(category);
 
-    CREATE TABLE IF NOT EXISTS class_materials (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      subject_id  INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
-      class_id    INTEGER REFERENCES classes(id) ON DELETE SET NULL,
-      kind        TEXT NOT NULL DEFAULT 'otro'
-                  CHECK(kind IN ('slide','ejercicio','excel','lectura','notas','imagen','otro')),
-      filename    TEXT NOT NULL,
-      file_path   TEXT NOT NULL,
-      mime        TEXT,
-      size_bytes  INTEGER NOT NULL DEFAULT 0,
-      summary     TEXT,
-      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    -- ── Mercado ──────────────────────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS market_instruments (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker     TEXT    NOT NULL UNIQUE,
+      nombre     TEXT    NOT NULL,
+      tipo       TEXT    NOT NULL CHECK(tipo IN ('soberano_usd','lecap','cer','on','cedear','fx','tasa','macro')),
+      moneda     TEXT    NOT NULL DEFAULT 'ARS' CHECK(moneda IN ('ARS','USD')),
+      ley        TEXT    CHECK(ley IN ('AR','NY')),
+      unidad     TEXT    NOT NULL DEFAULT 'ARS' CHECK(unidad IN ('ARS','USD','%','pb','musd')),
+      activo     INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE INDEX IF NOT EXISTS idx_materials_subject ON class_materials(subject_id);
-    CREATE INDEX IF NOT EXISTS idx_materials_class   ON class_materials(class_id);
+
+    -- Serie temporal genérica: una tabla para todo indicador/métrica.
+    -- instrumento referencia market_instruments.ticker pero sin FK: permite
+    -- ingestar series de instrumentos aún no registrados y sumar métricas sin migrar.
+    CREATE TABLE IF NOT EXISTS market_series (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      fecha       TEXT    NOT NULL,
+      instrumento TEXT    NOT NULL,
+      metrica     TEXT    NOT NULL,
+      valor       REAL    NOT NULL,
+      fuente      TEXT    NOT NULL DEFAULT 'manual',
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(fecha, instrumento, metrica)
+    );
+    CREATE INDEX IF NOT EXISTS idx_market_series_lookup ON market_series(instrumento, metrica, fecha);
+
+    -- Cashflows por bono, carga manual única (cupón + amortización por 100 VN).
+    CREATE TABLE IF NOT EXISTS market_cashflows (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker       TEXT NOT NULL,
+      fecha_pago   TEXT NOT NULL,
+      cupon        REAL NOT NULL DEFAULT 0,
+      amortizacion REAL NOT NULL DEFAULT 0,
+      UNIQUE(ticker, fecha_pago)
+    );
+    CREATE INDEX IF NOT EXISTS idx_market_cashflows_ticker ON market_cashflows(ticker);
+
+    -- Bitácora diaria: lectura propia + snapshot de indicadores de esa fecha.
+    CREATE TABLE IF NOT EXISTS market_journal (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      fecha         TEXT NOT NULL UNIQUE,
+      texto         TEXT NOT NULL,
+      snapshot_json TEXT,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
-  // Migrations for existing installs
-  try { db.exec("ALTER TABLE tasks ADD COLUMN subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL"); } catch { /* exists */ }
-  try { db.exec("ALTER TABLE tasks ADD COLUMN material_id INTEGER REFERENCES classes(id) ON DELETE SET NULL"); } catch { /* exists */ }
-  try { db.exec("ALTER TABLE tasks DROP COLUMN context"); } catch { /* exists or unsupported */ }
+  // Migración jul-2026: el dashboard dejó de ser de facultad (pivot a asesor
+  // financiero). Backup previo en data/backup-pre-balanz-2026-07-31.db.
+  db.exec(`
+    DROP TABLE IF EXISTS habit_logs;
+    DROP TABLE IF EXISTS habits;
+    DROP TABLE IF EXISTS tasks;
+    DROP TABLE IF EXISTS study_sessions;
+    DROP TABLE IF EXISTS class_materials;
+    DROP TABLE IF EXISTS exams;
+    DROP TABLE IF EXISTS classes;
+    DROP TABLE IF EXISTS subjects;
+    DROP TABLE IF EXISTS semesters;
+    DROP TABLE IF EXISTS transactions;
+  `);
 
-  // Remove stale non-faculty data
-  try { db.exec("DELETE FROM tasks WHERE context IS NOT NULL AND context != 'facultad'"); } catch { /* no column */ }
-  try { db.exec("DELETE FROM tasks WHERE title LIKE '%arancel%'"); } catch { /* ok */ }
-
-  // Glossary migrations
+  // Glossary migrations (instalaciones previas)
   try { db.exec("ALTER TABLE glossary_terms ADD COLUMN term_type TEXT NOT NULL DEFAULT 'concepto'"); } catch { /* exists */ }
   try { db.exec("ALTER TABLE glossary_terms ADD COLUMN formula TEXT"); } catch { /* exists */ }
 
-  // Semester migration: drop UNIQUE constraint on subjects.name (so multiple semesters can share names)
-  // and add semester_id column
-  try { db.exec("ALTER TABLE subjects ADD COLUMN semester_id INTEGER REFERENCES semesters(id) ON DELETE CASCADE"); } catch { /* exists */ }
-
-  // Claude.ai Project link per subject
-  try { db.exec("ALTER TABLE subjects ADD COLUMN claude_project_url TEXT"); } catch { /* exists */ }
-
-  // Ensure at least one active semester exists; backfill subjects without a semester
-  const hasSemester = db.prepare("SELECT COUNT(*) as n FROM semesters").get() as { n: number };
-  if (hasSemester.n === 0) {
-    const now = new Date();
-    const year = now.getFullYear();
-    const half = now.getMonth() < 6 ? "1S" : "2S";
-    const name = `${year}-${half}`;
-    const r = db.prepare("INSERT INTO semesters (name, status) VALUES (?, 'active')").run(name);
-    db.prepare("UPDATE subjects SET semester_id = ? WHERE semester_id IS NULL").run(r.lastInsertRowid);
+  // Migración jul-2026: sumar 'musd' al CHECK de unidad (reservas BCRA).
+  // SQLite no permite alterar CHECKs: rebuild de la tabla si el DDL viejo no lo tiene.
+  const ddl = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='market_instruments'")
+    .get() as { sql: string } | undefined;
+  if (ddl && !ddl.sql.includes("'musd'")) {
+    db.exec(`
+      ALTER TABLE market_instruments RENAME TO market_instruments_old;
+      CREATE TABLE market_instruments (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker     TEXT    NOT NULL UNIQUE,
+        nombre     TEXT    NOT NULL,
+        tipo       TEXT    NOT NULL CHECK(tipo IN ('soberano_usd','lecap','cer','on','cedear','fx','tasa','macro')),
+        moneda     TEXT    NOT NULL DEFAULT 'ARS' CHECK(moneda IN ('ARS','USD')),
+        ley        TEXT    CHECK(ley IN ('AR','NY')),
+        unidad     TEXT    NOT NULL DEFAULT 'ARS' CHECK(unidad IN ('ARS','USD','%','pb','musd')),
+        activo     INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO market_instruments SELECT * FROM market_instruments_old;
+      DROP TABLE market_instruments_old;
+    `);
   }
-}
-
-function seedData(db: Database.Database) {
-  const subjectCount = (db.prepare("SELECT COUNT(*) as n FROM subjects").get() as { n: number }).n;
-  if (subjectCount > 0) return;
-
-  // Ensure active semester
-  const activeSem = db.prepare("SELECT id FROM semesters WHERE status='active' ORDER BY id DESC LIMIT 1").get() as { id: number } | undefined;
-  const semId = activeSem
-    ? activeSem.id
-    : (() => {
-        const now = new Date();
-        const name = `${now.getFullYear()}-${now.getMonth() < 6 ? "1S" : "2S"}`;
-        return Number(db.prepare("INSERT INTO semesters (name, status) VALUES (?, 'active')").run(name).lastInsertRowid);
-      })();
-
-  // Seed subjects (5 correct subjects)
-  const insSubject = db.prepare("INSERT INTO subjects (name, short, hue, credits, semester_id) VALUES (?, ?, ?, ?, ?)");
-  insSubject.run("Pronósticos Financieros",  "Pronósticos",  200, 6, semId);
-  insSubject.run("Instrumentos Financieros", "Instrumentos", 100, 6, semId);
-  insSubject.run("Ingeniería Financiera",    "Ing. Financiera", 280, 6, semId);
-  insSubject.run("Finanzas Corporativas",    "Fin. Corporativas", 340, 6, semId);
-  insSubject.run("Taller de Tesis",          "Tesis",         30, 4, semId);
-
-  // No demo classes/exams/tasks seeded — start with empty subjects so the user fills them in.
 }
 
 function seedGlossary(db: Database.Database) {
@@ -523,13 +465,65 @@ function seedGlossary(db: Database.Database) {
   insertMany(terms);
 }
 
+function seedMercado(db: Database.Database) {
+  const ins = db.prepare(
+    "INSERT OR IGNORE INTO market_instruments (ticker, nombre, tipo, moneda, ley, unidad) VALUES (?, ?, ?, ?, ?, ?)"
+  );
+
+  // INSERT OR IGNORE corre en cada boot: instalaciones existentes reciben
+  // instrumentos nuevos sin migración. Solo instrumentos permanentes —
+  // Lecaps/Boncaps y CER vigentes rotan por vencimiento: se agregan desde la UI.
+  const rows: [string, string, string, string, string | null, string][] = [
+    // Globales (ley NY)
+    ["GD29", "Global 2029", "soberano_usd", "USD", "NY", "USD"],
+    ["GD30", "Global 2030", "soberano_usd", "USD", "NY", "USD"],
+    ["GD35", "Global 2035", "soberano_usd", "USD", "NY", "USD"],
+    ["GD38", "Global 2038", "soberano_usd", "USD", "NY", "USD"],
+    ["GD41", "Global 2041", "soberano_usd", "USD", "NY", "USD"],
+    ["GD46", "Global 2046", "soberano_usd", "USD", "NY", "USD"],
+    // Bonares (ley AR)
+    ["AL29", "Bonar 2029", "soberano_usd", "USD", "AR", "USD"],
+    ["AL30", "Bonar 2030", "soberano_usd", "USD", "AR", "USD"],
+    ["AL35", "Bonar 2035", "soberano_usd", "USD", "AR", "USD"],
+    ["AE38", "Bonar 2038", "soberano_usd", "USD", "AR", "USD"],
+    ["AL41", "Bonar 2041", "soberano_usd", "USD", "AR", "USD"],
+    // Dólares
+    ["MEP",     "Dólar MEP",     "fx", "ARS", null, "ARS"],
+    ["CCL",     "Dólar CCL",     "fx", "ARS", null, "ARS"],
+    ["OFICIAL", "Dólar oficial", "fx", "ARS", null, "ARS"],
+    ["BLUE",    "Dólar blue",    "fx", "ARS", null, "ARS"],
+    // Tasas — la TPM dejó de publicarse (jul-2025); TAMAR es la referencia actual
+    ["TAMAR",    "TAMAR bancos privados", "tasa", "ARS", null, "%"],
+    ["CAUCION1", "Caución 1 día",         "tasa", "ARS", null, "%"],
+    // Macro
+    ["RIESGO_PAIS", "Riesgo país (EMBI)", "macro", "USD", null, "pb"],
+    ["IPC",         "IPC mensual",        "macro", "ARS", null, "%"],
+    ["RESERVAS",    "Reservas BCRA",      "macro", "USD", null, "musd"],
+    // Contexto global (yahoo)
+    ["UST10Y", "UST 10 años", "macro", "USD", null, "%"],
+    ["SPX",    "S&P 500",     "macro", "USD", null, "USD"],
+  ];
+
+  const insertMany = db.transaction((items: typeof rows) => {
+    for (const row of items) ins.run(...row);
+  });
+  insertMany(rows);
+
+  // La TPM ya no existe como serie del BCRA: ocultarla si nunca juntó datos.
+  db.exec(`
+    UPDATE market_instruments SET activo = 0
+    WHERE ticker = 'TPM'
+      AND NOT EXISTS (SELECT 1 FROM market_series WHERE instrumento = 'TPM')
+  `);
+}
+
 export function getDb(): Database.Database {
   if (!global.__db) {
     if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
     global.__db = new Database(DB_PATH);
     initSchema(global.__db);
-    seedData(global.__db);
     seedGlossary(global.__db);
+    seedMercado(global.__db);
   }
   return global.__db;
 }

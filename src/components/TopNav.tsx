@@ -7,11 +7,8 @@ import EfemerideWidget from "@/components/EfemerideWidget";
 export default function TopNav() {
   const pathname = usePathname();
 
-  // Hide on the print-only routes — those render their own clean shell
-  if (pathname.startsWith("/print/")) return null;
-
   function isActive(href: string) {
-    if (href === "/today") return pathname === "/today" || pathname === "/";
+    if (href === "/mercado") return pathname === "/" || pathname === "/mercado" || pathname.startsWith("/mercado/");
     return pathname === href || pathname.startsWith(href + "/");
   }
 
@@ -21,19 +18,18 @@ export default function TopNav() {
       <div className="flex items-center gap-2 mr-2">
         <div
           className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-slate-100"
-          style={{ background: "oklch(35% 0.04 250)" }}
+          style={{ background: "oklch(45% 0.15 255)" }}
         >
-          f
+          b
         </div>
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
-          Facultad
+          Asesor
         </span>
       </div>
 
-      <NavLink href="/today"      label="Hoy"         active={isActive("/today")} />
+      <NavLink href="/mercado"    label="Mercado"     active={isActive("/mercado")} />
       <NavLink href="/glossary"   label="Glosario"    active={isActive("/glossary")} />
       <NavLink href="/efemerides" label="Efemérides"  active={isActive("/efemerides")} />
-      <NavLink href="/archivo"    label="Archivo"     active={isActive("/archivo")} />
 
       {/* Right side: Argentine ephemeris widget */}
       <div className="ml-auto">
