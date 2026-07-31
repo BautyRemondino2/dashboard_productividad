@@ -34,7 +34,8 @@ function initSchema(db: Database.Database) {
       tipo       TEXT    NOT NULL CHECK(tipo IN ('soberano_usd','lecap','cer','on','cedear','fx','tasa','macro')),
       moneda     TEXT    NOT NULL DEFAULT 'ARS' CHECK(moneda IN ('ARS','USD')),
       ley        TEXT    CHECK(ley IN ('AR','NY')),
-      unidad     TEXT    NOT NULL DEFAULT 'ARS' CHECK(unidad IN ('ARS','USD','%','pb','musd')),
+      unidad     TEXT    NOT NULL DEFAULT 'ARS' CHECK(unidad IN ('ARS','USD','%','pb','musd','mars','idx')),
+      grupo      TEXT    NOT NULL DEFAULT 'riesgo',
       activo     INTEGER NOT NULL DEFAULT 1,
       created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -94,12 +95,13 @@ function initSchema(db: Database.Database) {
   try { db.exec("ALTER TABLE glossary_terms ADD COLUMN term_type TEXT NOT NULL DEFAULT 'concepto'"); } catch { /* exists */ }
   try { db.exec("ALTER TABLE glossary_terms ADD COLUMN formula TEXT"); } catch { /* exists */ }
 
-  // Migración jul-2026: sumar 'musd' al CHECK de unidad (reservas BCRA).
-  // SQLite no permite alterar CHECKs: rebuild de la tabla si el DDL viejo no lo tiene.
+  // Migración jul-2026: unidades nuevas (musd/mars/idx) en el CHECK + columna grupo.
+  // SQLite no permite alterar CHECKs: rebuild de la tabla si el DDL viejo no las tiene.
   const ddl = db
     .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='market_instruments'")
     .get() as { sql: string } | undefined;
-  if (ddl && !ddl.sql.includes("'musd'")) {
+  if (ddl && !ddl.sql.includes("'idx'")) {
+    const tieneGrupo = ddl.sql.includes("grupo");
     db.exec(`
       ALTER TABLE market_instruments RENAME TO market_instruments_old;
       CREATE TABLE market_instruments (
@@ -109,11 +111,15 @@ function initSchema(db: Database.Database) {
         tipo       TEXT    NOT NULL CHECK(tipo IN ('soberano_usd','lecap','cer','on','cedear','fx','tasa','macro')),
         moneda     TEXT    NOT NULL DEFAULT 'ARS' CHECK(moneda IN ('ARS','USD')),
         ley        TEXT    CHECK(ley IN ('AR','NY')),
-        unidad     TEXT    NOT NULL DEFAULT 'ARS' CHECK(unidad IN ('ARS','USD','%','pb','musd')),
+        unidad     TEXT    NOT NULL DEFAULT 'ARS' CHECK(unidad IN ('ARS','USD','%','pb','musd','mars','idx')),
+        grupo      TEXT    NOT NULL DEFAULT 'riesgo',
         activo     INTEGER NOT NULL DEFAULT 1,
         created_at TEXT    NOT NULL DEFAULT (datetime('now'))
       );
-      INSERT INTO market_instruments SELECT * FROM market_instruments_old;
+      INSERT INTO market_instruments (id, ticker, nombre, tipo, moneda, ley, unidad, grupo, activo, created_at)
+        SELECT id, ticker, nombre, tipo, moneda, ley, unidad,
+               ${tieneGrupo ? "grupo" : "'riesgo'"}, activo, created_at
+        FROM market_instruments_old;
       DROP TABLE market_instruments_old;
     `);
   }
@@ -466,48 +472,88 @@ function seedGlossary(db: Database.Database) {
 }
 
 function seedMercado(db: Database.Database) {
-  const ins = db.prepare(
-    "INSERT OR IGNORE INTO market_instruments (ticker, nombre, tipo, moneda, ley, unidad) VALUES (?, ?, ?, ?, ?, ?)"
-  );
-
-  // INSERT OR IGNORE corre en cada boot: instalaciones existentes reciben
-  // instrumentos nuevos sin migración. Solo instrumentos permanentes —
+  // El seed es la fuente de verdad de los metadatos de presentación de los
+  // instrumentos permanentes: corre en cada boot y actualiza nombre/unidad/grupo
+  // de los que ya existen (sin tocar `activo`, que el usuario controla).
   // Lecaps/Boncaps y CER vigentes rotan por vencimiento: se agregan desde la UI.
-  const rows: [string, string, string, string, string | null, string][] = [
-    // Globales (ley NY)
-    ["GD29", "Global 2029", "soberano_usd", "USD", "NY", "USD"],
-    ["GD30", "Global 2030", "soberano_usd", "USD", "NY", "USD"],
-    ["GD35", "Global 2035", "soberano_usd", "USD", "NY", "USD"],
-    ["GD38", "Global 2038", "soberano_usd", "USD", "NY", "USD"],
-    ["GD41", "Global 2041", "soberano_usd", "USD", "NY", "USD"],
-    ["GD46", "Global 2046", "soberano_usd", "USD", "NY", "USD"],
-    // Bonares (ley AR)
-    ["AL29", "Bonar 2029", "soberano_usd", "USD", "AR", "USD"],
-    ["AL30", "Bonar 2030", "soberano_usd", "USD", "AR", "USD"],
-    ["AL35", "Bonar 2035", "soberano_usd", "USD", "AR", "USD"],
-    ["AE38", "Bonar 2038", "soberano_usd", "USD", "AR", "USD"],
-    ["AL41", "Bonar 2041", "soberano_usd", "USD", "AR", "USD"],
-    // Dólares
-    ["MEP",     "Dólar MEP",     "fx", "ARS", null, "ARS"],
-    ["CCL",     "Dólar CCL",     "fx", "ARS", null, "ARS"],
-    ["OFICIAL", "Dólar oficial", "fx", "ARS", null, "ARS"],
-    ["BLUE",    "Dólar blue",    "fx", "ARS", null, "ARS"],
-    // Tasas — la TPM dejó de publicarse (jul-2025); TAMAR es la referencia actual
-    ["TAMAR",    "TAMAR bancos privados", "tasa", "ARS", null, "%"],
-    ["CAUCION1", "Caución 1 día",         "tasa", "ARS", null, "%"],
-    // Macro
-    ["RIESGO_PAIS", "Riesgo país (EMBI)", "macro", "USD", null, "pb"],
-    ["IPC",         "IPC mensual",        "macro", "ARS", null, "%"],
-    ["RESERVAS",    "Reservas BCRA",      "macro", "USD", null, "musd"],
-    // Contexto global (yahoo)
-    ["UST10Y", "UST 10 años", "macro", "USD", null, "%"],
-    ["SPX",    "S&P 500",     "macro", "USD", null, "USD"],
+  const ins = db.prepare(
+    `INSERT INTO market_instruments (ticker, nombre, tipo, moneda, ley, unidad, grupo)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(ticker) DO UPDATE SET
+       nombre = excluded.nombre,
+       unidad = excluded.unidad,
+       grupo  = excluded.grupo`
+  );
+  const rows: [string, string, string, string, string | null, string, string][] = [
+    // ── Soberanos hard-dollar ──────────────────────────────────────────────
+    ["GD29", "Global 2029", "soberano_usd", "USD", "NY", "USD", "soberanos"],
+    ["GD30", "Global 2030", "soberano_usd", "USD", "NY", "USD", "soberanos"],
+    ["GD35", "Global 2035", "soberano_usd", "USD", "NY", "USD", "soberanos"],
+    ["GD38", "Global 2038", "soberano_usd", "USD", "NY", "USD", "soberanos"],
+    ["GD41", "Global 2041", "soberano_usd", "USD", "NY", "USD", "soberanos"],
+    ["GD46", "Global 2046", "soberano_usd", "USD", "NY", "USD", "soberanos"],
+    ["AL29", "Bonar 2029", "soberano_usd", "USD", "AR", "USD", "soberanos"],
+    ["AL30", "Bonar 2030", "soberano_usd", "USD", "AR", "USD", "soberanos"],
+    ["AL35", "Bonar 2035", "soberano_usd", "USD", "AR", "USD", "soberanos"],
+    ["AE38", "Bonar 2038", "soberano_usd", "USD", "AR", "USD", "soberanos"],
+    ["AL41", "Bonar 2041", "soberano_usd", "USD", "AR", "USD", "soberanos"],
+
+    // ── Dólar (todo en ARS) ────────────────────────────────────────────────
+    ["OFICIAL",   "Dólar oficial",    "fx", "ARS", null, "ARS", "fx"],
+    ["MAYORISTA", "Dólar mayorista",  "fx", "ARS", null, "ARS", "fx"],
+    ["MEP",       "Dólar MEP",        "fx", "ARS", null, "ARS", "fx"],
+    ["CCL",       "Dólar CCL",        "fx", "ARS", null, "ARS", "fx"],
+    ["BLUE",      "Dólar blue",       "fx", "ARS", null, "ARS", "fx"],
+
+    // ── Tasas en pesos (TNA) ───────────────────────────────────────────────
+    // La TPM dejó de publicarse (jul-2025); TAMAR y BADLAR son la referencia.
+    ["TAMAR",     "TAMAR bancos privados", "tasa", "ARS", null, "%", "tasas_ars"],
+    ["BADLAR",    "BADLAR bancos privados", "tasa", "ARS", null, "%", "tasas_ars"],
+    ["PLAZOFIJO", "Plazo fijo minorista",   "tasa", "ARS", null, "%", "tasas_ars"],
+    ["CAUCION1",  "Caución 1 día",          "tasa", "ARS", null, "%", "tasas_ars"],
+
+    // ── Inflación (pesos) ──────────────────────────────────────────────────
+    ["IPC",     "IPC mensual",     "macro", "ARS", null, "%",   "inflacion"],
+    ["IPC_IA",  "IPC interanual",  "macro", "ARS", null, "%",   "inflacion"],
+    ["UVA",     "UVA",             "macro", "ARS", null, "idx", "inflacion"],
+
+    // ── Riesgo & reservas ──────────────────────────────────────────────────
+    ["RIESGO_PAIS", "Riesgo país (EMBI)", "macro", "USD", null, "pb",   "riesgo"],
+    ["RESERVAS",    "Reservas BCRA",      "macro", "USD", null, "musd", "riesgo"],
+    ["BASE_MON",    "Base monetaria",     "macro", "ARS", null, "mars", "riesgo"],
+
+    // ── Global (todo en USD) ───────────────────────────────────────────────
+    ["UST10Y", "UST 10 años",       "macro", "USD", null, "%",   "global"],
+    ["SPX",    "S&P 500",           "macro", "USD", null, "idx", "global"],
+    ["DXY",    "Índice dólar DXY",  "macro", "USD", null, "idx", "global"],
+    ["BRL",    "Real brasileño",    "macro", "USD", null, "idx", "global"],
+
+    // ── Commodities (USD) — el agro y la energía definen la oferta de dólares
+    ["SOJA",     "Soja (bushel)",     "macro", "USD", null, "USD", "commodities"],
+    ["PETROLEO", "Petróleo Brent",    "macro", "USD", null, "USD", "commodities"],
+    ["ORO",      "Oro (onza)",        "macro", "USD", null, "USD", "commodities"],
+
+    // ── Acciones Argentina ─────────────────────────────────────────────────
+    // Merval en USD no se seedea: se deriva de MERVAL/CCL al leer (ver page.tsx)
+    ["MERVAL", "Merval", "macro", "ARS", null, "idx", "acciones"],
   ];
 
   const insertMany = db.transaction((items: typeof rows) => {
     for (const row of items) ins.run(...row);
   });
   insertMany(rows);
+
+  // Backfill de grupo para filas creadas antes de que existiera la columna
+  db.exec(`
+    UPDATE market_instruments SET grupo = CASE
+      WHEN tipo = 'soberano_usd' THEN 'soberanos'
+      WHEN tipo IN ('lecap','cer') THEN 'pesos'
+      WHEN tipo IN ('on','cedear') THEN 'corp'
+      WHEN tipo = 'fx' THEN 'fx'
+      WHEN tipo = 'tasa' THEN 'tasas_ars'
+      ELSE 'riesgo' END
+    WHERE grupo IS NULL OR grupo = '';
+  `);
 
   // La TPM ya no existe como serie del BCRA: ocultarla si nunca juntó datos.
   db.exec(`

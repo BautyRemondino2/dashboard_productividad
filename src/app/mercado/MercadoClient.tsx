@@ -2,24 +2,26 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Sparkline from "@/components/Sparkline";
+import SeriesModal from "./SeriesModal";
 import { localDateStr } from "@/lib/utils";
 import {
   computePanelIndicator, defaultMetric, formatDelta, formatValor,
-  INSTRUMENTO_TIPOS, LOWER_IS_BETTER, TIPO_HUE, TIPO_LABEL, UNIDADES,
+  GRUPO_HUE, GRUPO_LABEL, GRUPO_NOTA, GRUPOS,
+  INSTRUMENTO_TIPOS, LOWER_IS_BETTER, TIPO_LABEL, UNIDADES,
 } from "@/lib/mercado";
 import type {
-  DeltaInfo, InstrumentoTipo, Ley, MarketInstrument, MarketSeriesPoint,
+  DeltaInfo, Grupo, InstrumentoTipo, Ley, MarketInstrument, MarketSeriesPoint,
   Moneda, PanelIndicator, Unidad,
 } from "@/lib/mercado";
 import { addMarketInstrument, saveMarketValues } from "@/app/actions";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-const tipoColor = (tipo: InstrumentoTipo, l = 65) => `oklch(${l}% 0.11 ${TIPO_HUE[tipo]})`;
-const tipoSoft  = (tipo: InstrumentoTipo, a = 0.4) => `oklch(28% 0.05 ${TIPO_HUE[tipo]} / ${a})`;
+const grupoColor = (g: Grupo, l = 65) => `oklch(${l}% 0.11 ${GRUPO_HUE[g]})`;
+const grupoSoft  = (g: Grupo, a = 0.4) => `oklch(28% 0.05 ${GRUPO_HUE[g]} / ${a})`;
 
-const CLAVES: InstrumentoTipo[] = ["fx", "tasa", "macro"];
-const PESOS:  InstrumentoTipo[] = ["lecap", "cer"];
-const OTROS:  InstrumentoTipo[] = ["on", "cedear"];
+/** Secciones que se muestran como tiles (indicadores) y como tabla (instrumentos). */
+const GRUPOS_TILE: Grupo[] = ["fx", "tasas_ars", "inflacion", "riesgo", "global", "commodities", "acciones"];
+const GRUPOS_TABLA: Grupo[] = ["soberanos", "pesos", "corp"];
 
 /** "1.234,5" o "64.30" → number (acepta coma o punto decimal). */
 function parseDecimal(s: string): number {
@@ -32,6 +34,12 @@ function parseDecimal(s: string): number {
 function formatFechaCorta(fecha: string): string {
   const [, m, d] = fecha.split("-");
   return `${d}/${m}`;
+}
+
+interface Row {
+  inst: MarketInstrument;
+  ind: PanelIndicator;
+  spark: number[];
 }
 
 // ─── Delta chip ────────────────────────────────────────────────────────────────
@@ -71,14 +79,19 @@ function DeltaRow({ ind, unidad, lowerIsBetter }: {
 }
 
 // ─── Section ───────────────────────────────────────────────────────────────────
-function Section({ label, count, children }: {
-  label: string; count?: number; children: React.ReactNode;
+function Section({ grupo, count, children }: {
+  grupo: Grupo; count: number; children: React.ReactNode;
 }) {
+  const nota = GRUPO_NOTA[grupo];
   return (
     <div>
-      <div className="flex items-baseline gap-3 mb-3">
-        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">{label}</h3>
-        {count !== undefined && <span className="text-[10px] text-slate-700 tabular-nums">{count}</span>}
+      <div className="flex items-baseline gap-2.5 mb-3">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: grupoColor(grupo, 70) }} />
+        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+          {GRUPO_LABEL[grupo]}
+        </h3>
+        {nota && <span className="text-[10px] text-slate-600">· {nota}</span>}
+        <span className="text-[10px] text-slate-700 tabular-nums">{count}</span>
         <div className="flex-1 h-px bg-slate-900" />
       </div>
       {children}
@@ -86,21 +99,33 @@ function Section({ label, count, children }: {
   );
 }
 
-// ─── IndicatorTile (claves) ────────────────────────────────────────────────────
-function IndicatorTile({ inst, ind, spark }: {
-  inst: MarketInstrument; ind: PanelIndicator; spark: number[];
-}) {
+// ─── IndicatorTile ─────────────────────────────────────────────────────────────
+function IndicatorTile({ inst, ind, spark, onOpen }: Row & { onOpen: () => void }) {
   const lower = LOWER_IS_BETTER.has(inst.ticker);
   const trendUp = spark.length >= 2 ? spark[spark.length - 1] >= spark[0] : true;
   const trendGood = lower ? !trendUp : trendUp;
+  const grupo = inst.grupo;
+  const clickable = spark.length >= 2;
+
   return (
-    <div className="relative rounded-xl border border-slate-800/80 bg-slate-900/40 overflow-hidden">
-      <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: tipoColor(inst.tipo, 70) }} />
+    <div
+      onClick={clickable ? onOpen : undefined}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } } : undefined}
+      title={clickable ? "Ver gráfico" : undefined}
+      className={`group relative rounded-xl border bg-slate-900/40 overflow-hidden transition-all ${
+        clickable
+          ? "cursor-pointer border-slate-800/80 hover:bg-slate-900/70 hover:border-slate-700"
+          : "border-slate-800/80"
+      }`}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: grupoColor(grupo, 70) }} />
       <div className="pl-4 pr-3.5 py-3">
         <div className="flex items-baseline justify-between gap-2 mb-1.5">
           <span className="text-[12px] font-medium text-slate-300 truncate">{inst.nombre}</span>
           <span className="text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap shrink-0"
-            style={{ background: tipoSoft(inst.tipo, 0.35), color: tipoColor(inst.tipo, 80) }}>
+            style={{ background: grupoSoft(grupo, 0.35), color: grupoColor(grupo, 80) }}>
             {inst.ticker}
           </span>
         </div>
@@ -126,20 +151,23 @@ function IndicatorTile({ inst, ind, spark }: {
           <div className="text-[12px] text-slate-600 italic py-1.5">sin datos — cargalo en el panel →</div>
         )}
       </div>
+      {clickable && (
+        <span className="absolute bottom-2 right-2.5 text-[9px] text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
+          ver gráfico
+        </span>
+      )}
     </div>
   );
 }
 
-// ─── Tabla de instrumentos (bonos y pesos) ─────────────────────────────────────
+// ─── Tabla de instrumentos ─────────────────────────────────────────────────────
 const LEY_LABEL: Record<Ley, string> = { AR: "Ley AR", NY: "Ley NY" };
 const LEY_COLOR: Record<Ley, string> = {
   AR: "oklch(65% 0.13 25)",
   NY: "oklch(65% 0.11 210)",
 };
 
-function InstrumentTable({ rows }: {
-  rows: { inst: MarketInstrument; ind: PanelIndicator; spark: number[] }[];
-}) {
+function InstrumentTable({ rows, onOpen }: { rows: Row[]; onOpen: (ticker: string) => void }) {
   const grid = { gridTemplateColumns: "minmax(120px,1.4fr) 1fr 1fr 1fr 1fr 88px" };
   return (
     <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/20">
@@ -153,6 +181,7 @@ function InstrumentTable({ rows }: {
         {rows.map(({ inst, ind, spark }) => {
           const lower = LOWER_IS_BETTER.has(inst.ticker);
           const trendUp = spark.length >= 2 ? spark[spark.length - 1] >= spark[0] : true;
+          const clickable = spark.length >= 2;
           const cell = (delta: DeltaInfo | null) => {
             if (!delta) return <span className="text-[11px] text-slate-700 tabular-nums">—</span>;
             const flat = delta.abs === 0;
@@ -167,10 +196,19 @@ function InstrumentTable({ rows }: {
             );
           };
           return (
-            <div key={inst.ticker} className="grid items-center gap-x-4 px-4 py-2.5 relative"
+            <div
+              key={inst.ticker}
+              onClick={clickable ? () => onOpen(inst.ticker) : undefined}
+              role={clickable ? "button" : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onKeyDown={clickable ? (e) => { if (e.key === "Enter") onOpen(inst.ticker); } : undefined}
+              title={clickable ? "Ver gráfico" : undefined}
+              className={`grid items-center gap-x-4 px-4 py-2.5 relative transition-colors ${
+                clickable ? "cursor-pointer hover:bg-slate-900/50" : ""
+              }`}
               style={grid}>
               <div className="absolute left-0 top-0 bottom-0 w-[3px]"
-                style={{ background: inst.ley ? LEY_COLOR[inst.ley] : tipoColor(inst.tipo, 70) }} />
+                style={{ background: inst.ley ? LEY_COLOR[inst.ley] : grupoColor(inst.grupo, 70) }} />
               <div className="flex items-baseline gap-2 min-w-0">
                 <span className="text-[13px] font-medium text-slate-100">{inst.ticker}</span>
                 {inst.ley && (
@@ -249,8 +287,8 @@ function CargaPanel({ instruments, lastByTicker }: {
     <div className="rounded-xl border border-slate-800 bg-slate-900/30 overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-800/80 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-[13px] font-semibold text-slate-100">Carga del día</h3>
-          <p className="text-[10px] text-slate-600 mt-0.5">completá los que tengas · el resto queda igual</p>
+          <h3 className="text-[13px] font-semibold text-slate-100">Carga manual</h3>
+          <p className="text-[10px] text-slate-600 mt-0.5">para lo que no trae ninguna fuente</p>
         </div>
         <input
           type="date"
@@ -260,7 +298,7 @@ function CargaPanel({ instruments, lastByTicker }: {
         />
       </div>
 
-      <div className="px-4 py-3 space-y-1.5 max-h-[52vh] overflow-y-auto">
+      <div className="px-4 py-3 space-y-1.5 max-h-[42vh] overflow-y-auto">
         {instruments.filter((i) => i.id > 0).map((inst) => {
           const last = lastByTicker[inst.ticker];
           return (
@@ -393,6 +431,8 @@ export default function MercadoClient({ instruments, series }: {
   instruments: MarketInstrument[];
   series: Record<string, MarketSeriesPoint[]>;
 }) {
+  const [openTicker, setOpenTicker] = useState<string | null>(null);
+
   const computed = useMemo(() => {
     const map: Record<string, { ind: PanelIndicator; spark: number[] }> = {};
     for (const inst of instruments) {
@@ -405,15 +445,15 @@ export default function MercadoClient({ instruments, series }: {
     return map;
   }, [instruments, series]);
 
-  const byTipos = (tipos: InstrumentoTipo[]) =>
-    instruments
-      .filter((i) => tipos.includes(i.tipo))
-      .map((inst) => ({ inst, ...computed[inst.ticker] }));
-
-  const claves = byTipos(CLAVES);
-  const soberanos = byTipos(["soberano_usd"]);
-  const pesos = byTipos(PESOS);
-  const otros = byTipos(OTROS);
+  const byGrupo = useMemo(() => {
+    const map = {} as Record<Grupo, Row[]>;
+    for (const g of GRUPOS) map[g] = [];
+    for (const inst of instruments) {
+      const g = GRUPOS.includes(inst.grupo) ? inst.grupo : "riesgo";
+      map[g].push({ inst, ...computed[inst.ticker] });
+    }
+    return map;
+  }, [instruments, computed]);
 
   const lastByTicker = useMemo(() => {
     const map: Record<string, MarketSeriesPoint | null> = {};
@@ -421,56 +461,66 @@ export default function MercadoClient({ instruments, series }: {
     return map;
   }, [instruments, computed]);
 
-  // Orden de carga: claves primero (rutina diaria), después bonos y el resto
-  const ordenCarga = [...claves, ...soberanos, ...pesos, ...otros].map((r) => r.inst);
+  // Solo lo que ninguna fuente automática cubre necesita carga a mano
+  const sinFuente = instruments.filter((i) => (series[i.ticker] ?? []).length === 0);
 
   const sinDatos = instruments.length > 0 && instruments.every((i) => !computed[i.ticker].ind.last);
 
+  const openInst = openTicker ? instruments.find((i) => i.ticker === openTicker) : null;
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_360px] items-start">
-      <div className="space-y-7 fade-up fade-up-2 min-w-0">
-        {sinDatos && (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-4">
-            <p className="text-[13px] text-slate-300 font-medium">Todavía no hay datos.</p>
-            <p className="text-[12px] text-slate-500 mt-0.5">
-              Arrancá cargando los valores de hoy en el panel de la derecha — con dos días de datos ya aparecen los deltas.
-            </p>
-          </div>
-        )}
-
-        {claves.length > 0 && (
-          <Section label="Indicadores del día" count={claves.length}>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {claves.map(({ inst, ind, spark }) => (
-                <IndicatorTile key={inst.ticker} inst={inst} ind={ind} spark={spark} />
-              ))}
+    <>
+      <div className="grid gap-6 xl:grid-cols-[1fr_340px] items-start">
+        <div className="space-y-7 fade-up fade-up-2 min-w-0">
+          {sinDatos && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-4">
+              <p className="text-[13px] text-slate-300 font-medium">Todavía no hay datos.</p>
+              <p className="text-[12px] text-slate-500 mt-0.5">
+                Usá ↻ Actualizar arriba para traer todo de las fuentes automáticas.
+              </p>
             </div>
-          </Section>
-        )}
+          )}
 
-        {soberanos.length > 0 && (
-          <Section label="Soberanos hard-dollar" count={soberanos.length}>
-            <InstrumentTable rows={soberanos} />
-          </Section>
-        )}
+          {GRUPOS_TILE.map((g) => {
+            const rows = byGrupo[g];
+            if (rows.length === 0) return null;
+            return (
+              <Section key={g} grupo={g} count={rows.length}>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {rows.map((r) => (
+                    <IndicatorTile key={r.inst.ticker} {...r} onOpen={() => setOpenTicker(r.inst.ticker)} />
+                  ))}
+                </div>
+              </Section>
+            );
+          })}
 
-        {pesos.length > 0 && (
-          <Section label="Pesos" count={pesos.length}>
-            <InstrumentTable rows={pesos} />
-          </Section>
-        )}
+          {GRUPOS_TABLA.map((g) => {
+            const rows = byGrupo[g];
+            if (rows.length === 0) return null;
+            return (
+              <Section key={g} grupo={g} count={rows.length}>
+                <InstrumentTable rows={rows} onOpen={setOpenTicker} />
+              </Section>
+            );
+          })}
+        </div>
 
-        {otros.length > 0 && (
-          <Section label="ONs & CEDEARs" count={otros.length}>
-            <InstrumentTable rows={otros} />
-          </Section>
-        )}
+        <div className="space-y-3 fade-up fade-up-3 xl:sticky xl:top-6">
+          {sinFuente.length > 0 && (
+            <CargaPanel instruments={sinFuente} lastByTicker={lastByTicker} />
+          )}
+          <AddInstrument />
+        </div>
       </div>
 
-      <div className="space-y-3 fade-up fade-up-3 xl:sticky xl:top-6">
-        <CargaPanel instruments={ordenCarga} lastByTicker={lastByTicker} />
-        <AddInstrument />
-      </div>
-    </div>
+      {openInst && (
+        <SeriesModal
+          inst={openInst}
+          serie={series[openInst.ticker] ?? []}
+          onClose={() => setOpenTicker(null)}
+        />
+      )}
+    </>
   );
 }

@@ -17,9 +17,78 @@ export type Ley = "AR" | "NY";
 
 /** Unidad de display del valor. Define también cómo se expresa el delta:
  *  ARS/USD → variación porcentual · "%" → puntos porcentuales · "pb" → puntos básicos
- *  · "musd" → millones de USD (delta absoluto, para reservas). */
-export const UNIDADES = ["ARS", "USD", "%", "pb", "musd"] as const;
+ *  · "musd"/"mars" → millones de USD/ARS (delta absoluto: reservas, base monetaria)
+ *  · "idx" → número índice sin moneda (Merval, UVA, DXY). */
+export const UNIDADES = ["ARS", "USD", "%", "pb", "musd", "mars", "idx"] as const;
 export type Unidad = (typeof UNIDADES)[number];
+
+/**
+ * Sección del panel. Separa explícitamente lo que se mide en pesos de lo que se
+ * mide en dólares: una TNA en pesos (22%) al lado de un yield en USD (4,7%) se
+ * lee como comparable cuando no lo es.
+ */
+export const GRUPOS = [
+  "fx",
+  "tasas_ars",
+  "inflacion",
+  "riesgo",
+  "global",
+  "commodities",
+  "acciones",
+  "soberanos",
+  "pesos",
+  "corp",
+] as const;
+export type Grupo = (typeof GRUPOS)[number];
+
+export const GRUPO_LABEL: Record<Grupo, string> = {
+  fx:          "Dólar",
+  tasas_ars:   "Tasas en pesos",
+  inflacion:   "Inflación",
+  riesgo:      "Riesgo & reservas",
+  global:      "Global",
+  commodities: "Commodities",
+  acciones:    "Acciones Argentina",
+  soberanos:   "Soberanos hard-dollar",
+  pesos:       "Curva en pesos",
+  corp:        "ONs & CEDEARs",
+};
+
+/** Aclaración de moneda por sección — evita comparar tasas ARS con USD. */
+export const GRUPO_NOTA: Partial<Record<Grupo, string>> = {
+  tasas_ars:   "TNA en pesos",
+  inflacion:   "en pesos",
+  global:      "en dólares",
+  commodities: "en dólares",
+  soberanos:   "precio en USD",
+};
+
+export const GRUPO_HUE: Record<Grupo, number> = {
+  fx:          150,
+  tasas_ars:   230,
+  inflacion:   300,
+  riesgo:      30,
+  global:      210,
+  commodities: 90,
+  acciones:    60,
+  soberanos:   200,
+  pesos:       260,
+  corp:        320,
+};
+
+/** Grupo por defecto cuando el instrumento no lo declara (altas desde la UI). */
+export function grupoFromTipo(tipo: InstrumentoTipo): Grupo {
+  switch (tipo) {
+    case "soberano_usd": return "soberanos";
+    case "lecap":
+    case "cer":          return "pesos";
+    case "on":
+    case "cedear":       return "corp";
+    case "fx":           return "fx";
+    case "tasa":         return "tasas_ars";
+    case "macro":        return "riesgo";
+  }
+}
 
 export interface MarketInstrument {
   id: number;
@@ -29,6 +98,7 @@ export interface MarketInstrument {
   moneda: Moneda;
   ley: Ley | null;
   unidad: Unidad;
+  grupo: Grupo;
   activo: number;
   created_at: string;
 }
@@ -143,6 +213,13 @@ export function formatValor(v: number, unidad: Unidad): string {
       return `${v.toLocaleString("es-AR", { maximumFractionDigits: 2 })}%`;
     case "musd":
       return `US$${v.toLocaleString("es-AR", { maximumFractionDigits: 0 })} M`;
+    case "mars":
+      // El BCRA publica en millones; arriba del billón se lee mejor abreviado
+      return v >= 1_000_000
+        ? `$${(v / 1_000_000).toLocaleString("es-AR", { maximumFractionDigits: 1 })} bill.`
+        : `$${v.toLocaleString("es-AR", { maximumFractionDigits: 0 })} M`;
+    case "idx":
+      return v.toLocaleString("es-AR", { maximumFractionDigits: v >= 1000 ? 0 : 2 });
   }
 }
 
@@ -158,5 +235,6 @@ export function formatDelta(delta: DeltaInfo, unidad: Unidad): string {
     return `US$${Math.abs(delta.abs).toLocaleString("es-AR", { maximumFractionDigits: 0 })} M`;
   }
   if (delta.pct === null) return "—";
+  // mars e idx crecen mucho en nivel: el % dice más que el absoluto
   return `${Math.abs(delta.pct).toLocaleString("es-AR", { maximumFractionDigits: 2 })}%`;
 }

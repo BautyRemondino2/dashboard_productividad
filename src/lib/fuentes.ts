@@ -161,8 +161,11 @@ interface BcraSerie {
 }
 
 const BCRA_VARS: { idVariable: number; ticker: string; metrica: string }[] = [
-  { idVariable: 44, ticker: "TAMAR", metrica: "tna" },
-  { idVariable: 1, ticker: "RESERVAS", metrica: "valor" },
+  { idVariable: 44, ticker: "TAMAR",     metrica: "tna" },
+  { idVariable: 7,  ticker: "BADLAR",    metrica: "tna" },
+  { idVariable: 1,  ticker: "RESERVAS",  metrica: "valor" },
+  { idVariable: 15, ticker: "BASE_MON",  metrica: "valor" },
+  { idVariable: 5,  ticker: "MAYORISTA", metrica: "precio" },
 ];
 
 const bcraFuente: Fuente = {
@@ -191,29 +194,39 @@ const bcraFuente: Fuente = {
 
 // ─── argentinadatos ────────────────────────────────────────────────────────────
 
+/** Último punto de una serie [{fecha, valor}] de argentinadatos. */
+async function ultimoDeSerie(url: string, ticker: string): Promise<FetchedValue | null> {
+  const rows = await getJson<{ fecha: string; valor: number }[]>(url);
+  if (!rows.length) return null;
+  const ultimo = rows[rows.length - 1];
+  if (!Number.isFinite(ultimo.valor)) return null;
+  return { instrumento: ticker, metrica: "valor", valor: ultimo.valor, fecha: ultimo.fecha };
+}
+
+const AD_SERIES: { url: string; ticker: string }[] = [
+  { url: "https://api.argentinadatos.com/v1/finanzas/indices/inflacion",           ticker: "IPC" },
+  { url: "https://api.argentinadatos.com/v1/finanzas/indices/inflacionInteranual", ticker: "IPC_IA" },
+  { url: "https://api.argentinadatos.com/v1/finanzas/indices/uva",                 ticker: "UVA" },
+];
+
 const argentinaDatosFuente: Fuente = {
   id: "argentinadatos",
-  label: "Riesgo país + IPC",
+  label: "Riesgo país, IPC, UVA",
   async fetchValues() {
     const out: FetchedValue[] = [];
 
-    const [rp, inflacion] = await Promise.allSettled([
+    const [rp, ...series] = await Promise.allSettled([
       getJson<{ valor: number; fecha: string }>(
         "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo"
       ),
-      getJson<{ fecha: string; valor: number }[]>(
-        "https://api.argentinadatos.com/v1/finanzas/indices/inflacion"
-      ),
+      ...AD_SERIES.map((s) => ultimoDeSerie(s.url, s.ticker)),
     ]);
 
     if (rp.status === "fulfilled" && Number.isFinite(rp.value.valor)) {
       out.push({ instrumento: "RIESGO_PAIS", metrica: "valor", valor: rp.value.valor, fecha: rp.value.fecha });
     }
-    if (inflacion.status === "fulfilled" && inflacion.value.length > 0) {
-      const ultimo = inflacion.value[inflacion.value.length - 1];
-      if (Number.isFinite(ultimo.valor)) {
-        out.push({ instrumento: "IPC", metrica: "valor", valor: ultimo.valor, fecha: ultimo.fecha });
-      }
+    for (const r of series) {
+      if (r.status === "fulfilled" && r.value) out.push(r.value);
     }
 
     if (out.length === 0) throw new Error("sin datos");
@@ -221,30 +234,91 @@ const argentinaDatosFuente: Fuente = {
   },
 };
 
-// ─── Yahoo (contexto global) ───────────────────────────────────────────────────
+/**
+ * Plazo fijo minorista: el endpoint devuelve la TNA de cada banco, no una serie.
+ * Se guarda la mediana (más representativa que el promedio, que se distorsiona
+ * con los bancos que publican 0) como referencia de lo que consigue un cliente.
+ */
+const plazoFijoFuente: Fuente = {
+  id: "plazofijo",
+  label: "Plazo fijo",
+  async fetchValues() {
+    const rows = await getJson<{ tnaClientes: number | null }[]>(
+      "https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo"
+    );
+    const tnas = rows
+      .map((r) => r.tnaClientes)
+      .filter((t): t is number => typeof t === "number" && t > 0)
+      .sort((a, b) => a - b);
+    if (tnas.length === 0) throw new Error("sin tasas publicadas");
 
+    const mid = Math.floor(tnas.length / 2);
+    const mediana = tnas.length % 2 === 0 ? (tnas[mid - 1] + tnas[mid]) / 2 : tnas[mid];
+
+    return [{
+      instrumento: "PLAZOFIJO",
+      metrica: "tna",
+      valor: mediana * 100, // viene como fracción (0,19 = 19% TNA)
+      fecha: localDateStr(),
+    }];
+  },
+};
+
+// ─── Yahoo (global, commodities, Merval) ───────────────────────────────────────
+
+/**
+ * Se usa chart() y no quote(): varios símbolos (futuros de commodities) fallan la
+ * validación de schema de quote(), y chart() además devuelve la serie histórica,
+ * así que sirve para el panel y para el backfill con la misma llamada.
+ *
+ * factor ajusta unidades de cotización: ^TNX ya viene en % (no ×10, verificado
+ * jul-2026) y ZS=F cotiza en centavos de dólar por bushel.
+ */
+const YAHOO_SYMS: { symbol: string; ticker: string; factor?: number }[] = [
+  { symbol: "^GSPC",      ticker: "SPX" },
+  { symbol: "^TNX",       ticker: "UST10Y" },
+  { symbol: "DX-Y.NYB",   ticker: "DXY" },
+  { symbol: "BRL=X",      ticker: "BRL" },
+  { symbol: "BZ=F",       ticker: "PETROLEO" },
+  { symbol: "ZS=F",       ticker: "SOJA", factor: 0.01 },
+  { symbol: "GC=F",       ticker: "ORO" },
+  { symbol: "^MERV",      ticker: "MERVAL" },
+];
+
+async function yahooSerie(
+  symbol: string,
+  ticker: string,
+  factor: number,
+  dias: number
+): Promise<FetchedValue[]> {
+  const yf = new YahooFinance({ validation: { logErrors: false } });
+  const res = await yf.chart(symbol, {
+    period1: new Date(Date.now() - dias * 86_400_000),
+    interval: "1d",
+  });
+  return (res.quotes ?? [])
+    .filter((q) => q.close != null && q.date != null)
+    .map((q) => ({
+      instrumento: ticker,
+      metrica: "valor",
+      valor: (q.close as number) * factor,
+      fecha: new Date(q.date).toISOString().slice(0, 10),
+    }));
+}
+
+/** Solo el último punto de cada símbolo (refresh diario). */
 const yahooFuente: Fuente = {
   id: "yahoo",
-  label: "Global (S&P, UST)",
+  label: "Global & commodities",
   async fetchValues() {
-    const yf = new YahooFinance();
-    const hoy = localDateStr();
+    const settled = await Promise.allSettled(
+      YAHOO_SYMS.map((s) => yahooSerie(s.symbol, s.ticker, s.factor ?? 1, 7))
+    );
     const out: FetchedValue[] = [];
-
-    const [gspc, tnx] = await Promise.allSettled([
-      yf.quote("^GSPC", { fields: ["regularMarketPrice"] }),
-      yf.quote("^TNX", { fields: ["regularMarketPrice"] }),
-    ]);
-
-    if (gspc.status === "fulfilled" && gspc.value.regularMarketPrice) {
-      out.push({ instrumento: "SPX", metrica: "valor", valor: gspc.value.regularMarketPrice, fecha: hoy });
+    for (const r of settled) {
+      if (r.status === "fulfilled" && r.value.length > 0) out.push(r.value[r.value.length - 1]);
     }
-    if (tnx.status === "fulfilled" && tnx.value.regularMarketPrice) {
-      // ^TNX ya viene en porcentaje (4,745 = 4,745%), no escalado ×10 — verificado jul-2026
-      out.push({ instrumento: "UST10Y", metrica: "valor", valor: tnx.value.regularMarketPrice, fecha: hoy });
-    }
-
-    if (out.length === 0) throw new Error("sin datos");
+    if (out.length === 0) throw new Error("sin datos de ningún símbolo");
     return out;
   },
 };
@@ -259,6 +333,7 @@ const FUENTES: Fuente[] = [
   dolarapiFuente,
   bcraFuente,
   argentinaDatosFuente,
+  plazoFijoFuente,
   yahooFuente,
 ];
 
@@ -309,21 +384,40 @@ export async function fetchBackfill(): Promise<FuenteResult[]> {
     });
   }
 
-  // Inflación (serie mensual)
-  try {
-    const rows = await getJson<{ fecha: string; valor: number }[]>(
-      "https://api.argentinadatos.com/v1/finanzas/indices/inflacion"
-    );
-    const valores = rows
-      .filter((r) => Number.isFinite(r.valor) && r.fecha >= desde)
-      .map((r) => ({ instrumento: "IPC", metrica: "valor", valor: r.valor, fecha: r.fecha }));
-    results.push({ fuente: "backfill_ipc", label: "Histórico IPC", ok: true, valores });
-  } catch (e) {
-    results.push({
-      fuente: "backfill_ipc", label: "Histórico IPC", ok: false, valores: [],
-      error: e instanceof Error ? e.message : String(e),
-    });
+  // Inflación mensual, interanual y UVA (series de argentinadatos)
+  for (const s of AD_SERIES) {
+    try {
+      const rows = await getJson<{ fecha: string; valor: number }[]>(s.url);
+      const valores = rows
+        .filter((r) => Number.isFinite(r.valor) && r.fecha >= desde)
+        .map((r) => ({ instrumento: s.ticker, metrica: "valor", valor: r.valor, fecha: r.fecha }));
+      results.push({ fuente: `backfill_${s.ticker}`, label: `Histórico ${s.ticker}`, ok: true, valores });
+    } catch (e) {
+      results.push({
+        fuente: `backfill_${s.ticker}`, label: `Histórico ${s.ticker}`, ok: false, valores: [],
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
+
+  // Global, commodities y Merval (chart() de Yahoo ya devuelve la serie)
+  const yahooSettled = await Promise.allSettled(
+    YAHOO_SYMS.map((s) => yahooSerie(s.symbol, s.ticker, s.factor ?? 1, 400))
+  );
+  yahooSettled.forEach((r, i) => {
+    const { ticker } = YAHOO_SYMS[i];
+    if (r.status === "fulfilled") {
+      results.push({
+        fuente: `backfill_yahoo_${ticker}`, label: `Histórico ${ticker}`, ok: true,
+        valores: r.value.filter((v) => v.fecha >= desde),
+      });
+    } else {
+      results.push({
+        fuente: `backfill_yahoo_${ticker}`, label: `Histórico ${ticker}`, ok: false, valores: [],
+        error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+      });
+    }
+  });
 
   // BCRA: TAMAR y reservas (una serie por variable, aisladas entre sí)
   for (const v of BCRA_VARS) {

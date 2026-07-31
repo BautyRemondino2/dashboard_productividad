@@ -6,17 +6,21 @@ import RefreshButton from "./RefreshButton";
 
 export const metadata = { title: "Mercado · Dashboard" };
 
-/** Brecha CCL/oficial calculada sobre las fechas donde existen ambas series. */
-function brechaSeries(
-  ccl: MarketSeriesPoint[] | undefined,
-  oficial: MarketSeriesPoint[] | undefined
+/**
+ * Combina dos series por fecha. Se usa para indicadores derivados que no se
+ * guardan en la DB porque se recalculan solos cuando llegan datos nuevos.
+ */
+function derivarSeries(
+  a: MarketSeriesPoint[] | undefined,
+  b: MarketSeriesPoint[] | undefined,
+  fn: (a: number, b: number) => number
 ): MarketSeriesPoint[] {
-  if (!ccl?.length || !oficial?.length) return [];
-  const oficialByFecha = new Map(oficial.map((p) => [p.fecha, p.valor]));
+  if (!a?.length || !b?.length) return [];
+  const bByFecha = new Map(b.map((p) => [p.fecha, p.valor]));
   const out: MarketSeriesPoint[] = [];
-  for (const p of ccl) {
-    const of = oficialByFecha.get(p.fecha);
-    if (of && of > 0) out.push({ fecha: p.fecha, valor: (p.valor / of - 1) * 100 });
+  for (const p of a) {
+    const vb = bByFecha.get(p.fecha);
+    if (vb && vb > 0) out.push({ fecha: p.fecha, valor: fn(p.valor, vb) });
   }
   return out;
 }
@@ -37,21 +41,25 @@ export default function MercadoPage() {
     series[inst.ticker] = seriesStmt.all(inst.ticker, defaultMetric(inst.tipo)) as MarketSeriesPoint[];
   }
 
-  // Indicador virtual: brecha CCL/oficial (no vive en la DB, se deriva al leer)
-  const brecha = brechaSeries(series["CCL"], series["OFICIAL"]);
+  // Indicadores derivados: no viven en la DB, se recalculan al leer.
   const allInstruments = [...instruments];
+
+  const brecha = derivarSeries(series["CCL"], series["OFICIAL"], (ccl, of) => (ccl / of - 1) * 100);
   if (brecha.length > 0) {
     series["BRECHA"] = brecha;
     allInstruments.push({
-      id: -1,
-      ticker: "BRECHA",
-      nombre: "Brecha CCL/oficial",
-      tipo: "macro",
-      moneda: "ARS",
-      ley: null,
-      unidad: "%",
-      activo: 1,
-      created_at: "",
+      id: -1, ticker: "BRECHA", nombre: "Brecha CCL/oficial", tipo: "macro",
+      moneda: "ARS", ley: null, unidad: "%", grupo: "fx", activo: 1, created_at: "",
+    });
+  }
+
+  // El Merval en pesos sube con la inflación; en dólares es la comparación real
+  const mervalUsd = derivarSeries(series["MERVAL"], series["CCL"], (m, ccl) => m / ccl);
+  if (mervalUsd.length > 0) {
+    series["MERVAL_USD"] = mervalUsd;
+    allInstruments.push({
+      id: -2, ticker: "MERVAL_USD", nombre: "Merval en USD", tipo: "macro",
+      moneda: "USD", ley: null, unidad: "idx", grupo: "acciones", activo: 1, created_at: "",
     });
   }
 
