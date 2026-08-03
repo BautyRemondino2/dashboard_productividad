@@ -3,6 +3,7 @@
 import {
   useState, useMemo, useEffect, useRef, useTransition, useCallback,
 } from "react";
+import { useSearchParams } from "next/navigation";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import Sparkline from "@/components/Sparkline";
@@ -1210,6 +1211,17 @@ export default function GlossaryClient({ terms: initialTerms }: Props) {
       return [...prev, id];
     });
   }, []);
+
+  // ?term=… abre ese término directo: es el link que usa el panel de Mercado
+  const terminoBuscado = useSearchParams().get("term");
+  useEffect(() => {
+    if (!terminoBuscado) return;
+    const t = localTerms.find(x => x.term.toLowerCase() === terminoBuscado.toLowerCase());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (t) setSelectedId(t.id);
+    // localTerms cambia con cada edición: sólo importa la primera resolución
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [terminoBuscado]);
 
   // Keyboard shortcuts
   useEffect(() => {

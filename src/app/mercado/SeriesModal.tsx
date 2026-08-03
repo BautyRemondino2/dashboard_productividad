@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import Link from "next/link";
 import { computePanelIndicator, formatDelta, formatValor, LOWER_IS_BETTER } from "@/lib/mercado";
 import type { MarketInstrument, MarketSeriesPoint } from "@/lib/mercado";
+import { hrefGlosario, type InstrumentoDef } from "@/lib/glosario-instrumentos";
 
 const RANGOS = [
   { key: "30",  label: "30d",  dias: 30 },
@@ -25,9 +27,10 @@ function formatFechaLarga(fecha: string): string {
   return `${d} ${meses[Number(m) - 1]} ${y}`;
 }
 
-export default function SeriesModal({ inst, serie, onClose }: {
+export default function SeriesModal({ inst, serie, def, onClose }: {
   inst: MarketInstrument;
   serie: MarketSeriesPoint[];
+  def?: InstrumentoDef;
   onClose: () => void;
 }) {
   const [rango, setRango] = useState<string>("90");
@@ -95,6 +98,14 @@ export default function SeriesModal({ inst, serie, onClose }: {
                 <span className="text-[11px] text-slate-600">al {formatFechaLarga(ind.last.fecha)}</span>
               )}
             </div>
+            {def && (
+              <p className="text-[12px] text-slate-400 leading-relaxed mt-2.5 text-pretty">
+                {def.short}{" "}
+                <Link href={hrefGlosario(def.term)} className="text-slate-300 hover:text-slate-100 whitespace-nowrap transition-colors">
+                  Ver en glosario →
+                </Link>
+              </p>
+            )}
           </div>
 
           <button

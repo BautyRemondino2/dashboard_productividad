@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getDb } from "@/lib/db";
 import { GLOSSARY_CATEGORIES } from "@/lib/glossary";
 import type { GlossaryTerm } from "@/lib/glossary";
@@ -26,7 +27,10 @@ export default function GlossaryPage() {
         </p>
       </div>
 
-      <GlossaryClient terms={terms} categories={[...GLOSSARY_CATEGORIES]} />
+      {/* GlossaryClient lee ?term= para abrir un término desde el panel de Mercado */}
+      <Suspense fallback={null}>
+        <GlossaryClient terms={terms} categories={[...GLOSSARY_CATEGORIES]} />
+      </Suspense>
     </div>
   );
 }

@@ -3,6 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import Sparkline from "@/components/Sparkline";
 import SeriesModal from "./SeriesModal";
+import DefinicionPopover from "./DefinicionPopover";
+import type { InstrumentoDef } from "@/lib/glosario-instrumentos";
 import { localDateStr } from "@/lib/utils";
 import {
   computePanelIndicator, defaultMetric, formatDelta, formatValor,
@@ -100,7 +102,7 @@ function Section({ grupo, count, children }: {
 }
 
 // ─── IndicatorTile ─────────────────────────────────────────────────────────────
-function IndicatorTile({ inst, ind, spark, onOpen }: Row & { onOpen: () => void }) {
+function IndicatorTile({ inst, ind, spark, def, onOpen }: Row & { def?: InstrumentoDef; onOpen: () => void }) {
   const lower = LOWER_IS_BETTER.has(inst.ticker);
   const trendUp = spark.length >= 2 ? spark[spark.length - 1] >= spark[0] : true;
   const trendGood = lower ? !trendUp : trendUp;
@@ -122,12 +124,15 @@ function IndicatorTile({ inst, ind, spark, onOpen }: Row & { onOpen: () => void 
     >
       <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: grupoColor(grupo, 70) }} />
       <div className="pl-4 pr-3.5 py-3">
-        <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
           <span className="text-[12px] font-medium text-slate-300 truncate">{inst.nombre}</span>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap shrink-0"
-            style={{ background: grupoSoft(grupo, 0.35), color: grupoColor(grupo, 80) }}>
-            {inst.ticker}
-          </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {def && <DefinicionPopover def={def} nombre={inst.nombre} />}
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap"
+              style={{ background: grupoSoft(grupo, 0.35), color: grupoColor(grupo, 80) }}>
+              {inst.ticker}
+            </span>
+          </div>
         </div>
         {ind.last ? (
           <>
@@ -167,7 +172,9 @@ const LEY_COLOR: Record<Ley, string> = {
   NY: "oklch(65% 0.11 210)",
 };
 
-function InstrumentTable({ rows, onOpen }: { rows: Row[]; onOpen: (ticker: string) => void }) {
+function InstrumentTable({ rows, definiciones, onOpen }: {
+  rows: Row[]; definiciones: Record<string, InstrumentoDef>; onOpen: (ticker: string) => void;
+}) {
   const grid = { gridTemplateColumns: "minmax(120px,1.4fr) 1fr 1fr 1fr 1fr 88px" };
   return (
     <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/20">
@@ -209,8 +216,11 @@ function InstrumentTable({ rows, onOpen }: { rows: Row[]; onOpen: (ticker: strin
               style={grid}>
               <div className="absolute left-0 top-0 bottom-0 w-[3px]"
                 style={{ background: inst.ley ? LEY_COLOR[inst.ley] : grupoColor(inst.grupo, 70) }} />
-              <div className="flex items-baseline gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <span className="text-[13px] font-medium text-slate-100">{inst.ticker}</span>
+                {definiciones[inst.ticker] && (
+                  <DefinicionPopover def={definiciones[inst.ticker]} nombre={inst.nombre} />
+                )}
                 {inst.ley && (
                   <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap"
                     style={{ background: `oklch(28% 0.05 ${inst.ley === "AR" ? 25 : 210} / 0.4)`, color: LEY_COLOR[inst.ley] }}>
@@ -427,9 +437,10 @@ function AddInstrument() {
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
-export default function MercadoClient({ instruments, series }: {
+export default function MercadoClient({ instruments, series, definiciones }: {
   instruments: MarketInstrument[];
   series: Record<string, MarketSeriesPoint[]>;
+  definiciones: Record<string, InstrumentoDef>;
 }) {
   const [openTicker, setOpenTicker] = useState<string | null>(null);
 
@@ -488,7 +499,8 @@ export default function MercadoClient({ instruments, series }: {
               <Section key={g} grupo={g} count={rows.length}>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {rows.map((r) => (
-                    <IndicatorTile key={r.inst.ticker} {...r} onOpen={() => setOpenTicker(r.inst.ticker)} />
+                    <IndicatorTile key={r.inst.ticker} {...r} def={definiciones[r.inst.ticker]}
+                      onOpen={() => setOpenTicker(r.inst.ticker)} />
                   ))}
                 </div>
               </Section>
@@ -500,7 +512,7 @@ export default function MercadoClient({ instruments, series }: {
             if (rows.length === 0) return null;
             return (
               <Section key={g} grupo={g} count={rows.length}>
-                <InstrumentTable rows={rows} onOpen={setOpenTicker} />
+                <InstrumentTable rows={rows} definiciones={definiciones} onOpen={setOpenTicker} />
               </Section>
             );
           })}
@@ -518,6 +530,7 @@ export default function MercadoClient({ instruments, series }: {
         <SeriesModal
           inst={openInst}
           serie={series[openInst.ticker] ?? []}
+          def={definiciones[openInst.ticker]}
           onClose={() => setOpenTicker(null)}
         />
       )}

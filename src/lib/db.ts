@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
+import { DEFINICIONES_INSTRUMENTOS } from "@/lib/glosario-instrumentos";
 
 // El bundle de una función serverless es read-only: abrir la DB del repo ahí
 // hace fallar cualquier escritura con SQLITE_READONLY (incluido el schema init).
@@ -586,6 +587,30 @@ function seedMercado(db: Database.Database) {
   `);
 }
 
+/**
+ * Suma al glosario los instrumentos del panel de Mercado que todavía no tengan
+ * término. Sólo inserta los que faltan: la edición manual desde la UI manda.
+ */
+function seedGlosarioInstrumentos(db: Database.Database) {
+  const existentes = new Set(
+    (db.prepare("SELECT term FROM glossary_terms").all() as { term: string }[]).map((r) => r.term)
+  );
+  const faltantes = DEFINICIONES_INSTRUMENTOS.filter((d) => d.seed && !existentes.has(d.term));
+  if (faltantes.length === 0) return;
+
+  const ins = db.prepare(
+    `INSERT INTO glossary_terms (term, category, short_def, detail, example, ticker, term_type)
+     VALUES (?, ?, ?, ?, ?, NULL, ?)`
+  );
+  const insertMany = db.transaction((items: typeof faltantes) => {
+    for (const d of items) {
+      const s = d.seed!;
+      ins.run(d.term, s.category, s.short_def, s.detail, s.example, s.term_type);
+    }
+  });
+  insertMany(faltantes);
+}
+
 export function getDb(): Database.Database {
   if (!global.__db) {
     if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
@@ -594,6 +619,7 @@ export function getDb(): Database.Database {
     initSchema(global.__db);
     seedGlossary(global.__db);
     seedMercado(global.__db);
+    seedGlosarioInstrumentos(global.__db);
   }
   return global.__db;
 }

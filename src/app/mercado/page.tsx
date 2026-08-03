@@ -3,6 +3,7 @@ import { defaultMetric } from "@/lib/mercado";
 import type { MarketInstrument, MarketSeriesPoint } from "@/lib/mercado";
 import MercadoClient from "./MercadoClient";
 import RefreshButton from "./RefreshButton";
+import { TERMINO_POR_TICKER, type InstrumentoDef } from "@/lib/glosario-instrumentos";
 
 export const metadata = { title: "Mercado · Dashboard" };
 
@@ -76,6 +77,19 @@ export default function MercadoPage() {
 
   const conDatos = instruments.filter((i) => series[i.ticker].length > 0).length;
 
+  // La definición de cada instrumento sale del glosario: acá sólo se resuelve
+  // el término y se manda la versión corta para el popover del panel.
+  const terminos = new Map(
+    (db.prepare("SELECT term, short_def, category FROM glossary_terms").all() as {
+      term: string; short_def: string; category: string;
+    }[]).map((t) => [t.term, t])
+  );
+  const definiciones: Record<string, InstrumentoDef> = {};
+  for (const [ticker, term] of Object.entries(TERMINO_POR_TICKER)) {
+    const t = terminos.get(term);
+    if (t) definiciones[ticker] = { term: t.term, short: t.short_def, categoria: t.category };
+  }
+
   return (
     <div className="px-8 py-7 max-w-[1400px]">
       <div className="mb-6 fade-up fade-up-1 flex items-end justify-between gap-4 flex-wrap">
@@ -93,7 +107,7 @@ export default function MercadoPage() {
         <RefreshButton lastUpdate={lastUpdate} needsBackfill={backfilled.n === 0} />
       </div>
 
-      <MercadoClient instruments={allInstruments} series={series} />
+      <MercadoClient instruments={allInstruments} series={series} definiciones={definiciones} />
     </div>
   );
 }
