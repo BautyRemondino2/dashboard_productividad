@@ -2,8 +2,31 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 
-const DB_DIR = path.join(process.cwd(), "data");
+// El bundle de una función serverless es read-only: abrir la DB del repo ahí
+// hace fallar cualquier escritura con SQLITE_READONLY (incluido el schema init).
+// En Vercel copiamos el snapshot versionado a /tmp — el único directorio
+// escribible — y trabajamos sobre esa copia.
+export const DB_IS_EPHEMERAL = !!process.env.VERCEL;
+
+const SNAPSHOT_PATH = path.join(process.cwd(), "data", "dashboard.db");
+const DB_DIR = DB_IS_EPHEMERAL ? "/tmp/dashboard-db" : path.join(process.cwd(), "data");
 const DB_PATH = path.join(DB_DIR, "dashboard.db");
+
+/**
+ * Deja una copia escribible de la DB en /tmp. La copia vive lo que vive la
+ * instancia: en producción los datos nuevos se pierden en el próximo arranque
+ * en frío (el mercado se vuelve a bajar de las fuentes, el glosario no).
+ */
+function ensureWritableDb() {
+  if (!DB_IS_EPHEMERAL || fs.existsSync(DB_PATH)) return;
+  if (!fs.existsSync(SNAPSHOT_PATH)) return; // sin snapshot: se crea vacía y se seedea
+
+  // El -shm se reconstruye solo a partir del -wal; copiarlo desactualizado rompe.
+  fs.copyFileSync(SNAPSHOT_PATH, DB_PATH);
+  if (fs.existsSync(SNAPSHOT_PATH + "-wal")) {
+    fs.copyFileSync(SNAPSHOT_PATH + "-wal", DB_PATH + "-wal");
+  }
+}
 
 declare global {
   var __db: Database.Database | undefined;
@@ -566,6 +589,7 @@ function seedMercado(db: Database.Database) {
 export function getDb(): Database.Database {
   if (!global.__db) {
     if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+    ensureWritableDb();
     global.__db = new Database(DB_PATH);
     initSchema(global.__db);
     seedGlossary(global.__db);

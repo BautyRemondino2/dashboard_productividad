@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import EfemerideWidget from "@/components/EfemerideWidget";
 
-export default function TopNav() {
+export default function TopNav({ ephemeral = false }: { ephemeral?: boolean }) {
   const pathname = usePathname();
 
   function isActive(href: string) {
@@ -32,7 +32,15 @@ export default function TopNav() {
       <NavLink href="/efemerides" label="Efemérides"  active={isActive("/efemerides")} />
 
       {/* Right side: Argentine ephemeris widget */}
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-3">
+        {ephemeral && (
+          <span
+            title="El deploy corre sobre una copia temporal de la base: lo que cargues acá se pierde en el próximo arranque en frío. Para datos permanentes, usá el dashboard local."
+            className="text-[10px] px-1.5 py-0.5 rounded border border-amber-900/60 text-amber-500/90 whitespace-nowrap"
+          >
+            datos temporales
+          </span>
+        )}
         <EfemerideWidget />
       </div>
     </nav>

@@ -213,8 +213,19 @@ function persistFuentes(results: FuenteResult[]): RefreshSummary[] {
     const tx = db.transaction((rows: typeof valid) => {
       for (const v of rows) upsert.run(v.fecha, v.instrumento, v.metrica, v.valor, r.fuente);
     });
-    tx(valid);
-    summary.push({ fuente: r.fuente, label: r.label, ok: r.ok, guardados: valid.length, error: r.error });
+    // Una escritura caída degrada esa fuente, no tira abajo la página entera
+    try {
+      tx(valid);
+      summary.push({ fuente: r.fuente, label: r.label, ok: r.ok, guardados: valid.length, error: r.error });
+    } catch (e) {
+      summary.push({
+        fuente: r.fuente,
+        label: r.label,
+        ok: false,
+        guardados: 0,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
   revalidatePath("/mercado");
