@@ -1,11 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import EfemerideWidget from "@/components/EfemerideWidget";
 
-export default function TopNav({ ephemeral = false }: { ephemeral?: boolean }) {
+export default function TopNav({ ephemeral = false, conLogin = false }: {
+  ephemeral?: boolean;
+  conLogin?: boolean;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  // El login tiene su propia pantalla, sin navegación
+  if (pathname === "/login") return null;
+
+  async function salir() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
 
   function isActive(href: string) {
     if (href === "/mercado") return pathname === "/" || pathname === "/mercado" || pathname.startsWith("/mercado/");
@@ -45,6 +58,15 @@ export default function TopNav({ ephemeral = false }: { ephemeral?: boolean }) {
           </span>
         )}
         <EfemerideWidget />
+        {conLogin && (
+          <button
+            onClick={salir}
+            title="Cerrar sesión"
+            className="text-[11px] text-slate-600 hover:text-slate-300 transition-colors whitespace-nowrap"
+          >
+            salir
+          </button>
+        )}
       </div>
     </nav>
   );

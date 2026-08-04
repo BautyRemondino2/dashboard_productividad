@@ -8,6 +8,10 @@ import AccionesHoy from "@/components/AccionesHoy";
 
 export const metadata = { title: "Mercado · Dashboard" };
 
+// El widget de acciones del CRM lee datos que cambian todo el día: la página no
+// puede quedar congelada en el build.
+export const dynamic = "force-dynamic";
+
 /**
  * Combina dos series por fecha. Se usa para indicadores derivados que no se
  * guardan en la DB porque se recalculan solos cuando llegan datos nuevos.

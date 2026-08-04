@@ -2,7 +2,6 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import { DEFINICIONES_INSTRUMENTOS } from "@/lib/glosario-instrumentos";
-import { migrarClientes, seedClientes } from "@/lib/crm-schema.mjs";
 
 // El bundle de una función serverless es read-only: abrir la DB del repo ahí
 // hace fallar cualquier escritura con SQLITE_READONLY (incluido el schema init).
@@ -621,10 +620,9 @@ export function getDb(): Database.Database {
     seedGlossary(global.__db);
     seedMercado(global.__db);
     seedGlosarioInstrumentos(global.__db);
-    // CRM: el schema vive en crm-schema.mjs para compartirlo con el script de
-    // migración manual (npm run db:migrate). Ambos caminos son idempotentes.
-    migrarClientes(global.__db);
-    seedClientes(global.__db);
+    // El CRM no pasa por acá: vive en Turso (ver crm-db.ts) porque es el único
+    // módulo cuyos datos tienen que sobrevivir al deploy. Se migra aparte con
+    // `npm run db:migrate`.
   }
   return global.__db;
 }

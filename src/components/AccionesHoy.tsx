@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getDb } from "@/lib/db";
+import { clientesPendientes } from "@/lib/crm-db";
 import {
-  diasRelativos, formatUSD, hoyISO, nombreCompleto, urgenciaDe, type Cliente,
+  diasRelativos, formatUSD, hoyISO, nombreCompleto, urgenciaDe,
 } from "@/lib/crm";
 import { BADGE_BASE, ETAPA_CLASS, URGENCIA_DOT } from "@/lib/crm-ui";
 
@@ -11,18 +11,9 @@ import { BADGE_BASE, ETAPA_CLASS, URGENCIA_DOT } from "@/lib/crm-ui";
  * Component sin props obligatorias, así que se pega en cualquier página con
  * `<AccionesHoy />`.
  */
-export default function AccionesHoy({ limite = 6 }: { limite?: number }) {
+export default async function AccionesHoy({ limite = 6 }: { limite?: number }) {
   const hoy = hoyISO();
-
-  const pendientes = getDb()
-    .prepare(
-      `SELECT * FROM clientes
-       WHERE fecha_proxima_accion IS NOT NULL
-         AND fecha_proxima_accion <= ?
-         AND etapa != 'Descartado'
-       ORDER BY ticket_estimado DESC`
-    )
-    .all(hoy) as Cliente[];
+  const pendientes = await clientesPendientes(hoy);
 
   const visibles = pendientes.slice(0, limite);
   const vencidas = pendientes.filter((c) => c.fecha_proxima_accion! < hoy).length;

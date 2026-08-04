@@ -4,6 +4,7 @@ import "./globals.css";
 import TopNav from "@/components/TopNav";
 import CommandPalette from "@/components/CommandPalette";
 import { DB_IS_EPHEMERAL } from "@/lib/db";
+import { authConfigurada } from "@/lib/auth";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
@@ -16,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${geist.variable} dark h-full`}>
       <body className="flex flex-col h-full bg-slate-950 text-slate-100 antialiased">
-        <TopNav ephemeral={DB_IS_EPHEMERAL} />
+        <TopNav ephemeral={DB_IS_EPHEMERAL} conLogin={authConfigurada()} />
         <main className="flex-1 overflow-y-auto">{children}</main>
         <CommandPalette />
       </body>

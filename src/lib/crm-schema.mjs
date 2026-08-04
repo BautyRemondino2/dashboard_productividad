@@ -1,8 +1,7 @@
 /**
- * Schema y seed del CRM en JS plano: lo importan `src/lib/db.ts` (migración
- * automática al abrir la DB, como el resto de las tablas) y
- * `scripts/migrate-clientes.mjs` (corrida manual). Una sola fuente para los dos
- * caminos, así no se desincronizan.
+ * Schema y seed del CRM. Lo usa el script de migración (`npm run db:migrate`),
+ * que corre contra el mismo destino que la app: Turso si hay TURSO_DATABASE_URL,
+ * el archivo local si no.
  *
  * Todo es idempotente: CREATE TABLE IF NOT EXISTS, índices IF NOT EXISTS y alta
  * de columnas sólo si faltan. Se puede correr las veces que haga falta.
@@ -24,31 +23,31 @@ export const PERFILES_RIESGO = ["Conservador", "Moderado", "Agresivo"];
 const enumCheck = (columna, valores) =>
   `CHECK(${columna} IN (${valores.map((v) => `'${v}'`).join(",")}))`;
 
-export const CLIENTES_SCHEMA_SQL = `
-  CREATE TABLE IF NOT EXISTS clientes (
-    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre               TEXT    NOT NULL,
-    apellido             TEXT    NOT NULL DEFAULT '',
-    email                TEXT,
-    telefono             TEXT,
-    fuente               TEXT    NOT NULL DEFAULT 'Otro' ${enumCheck("fuente", FUENTES)},
-    referido_por         TEXT,
-    etapa                TEXT    NOT NULL DEFAULT 'Prospecto' ${enumCheck("etapa", ETAPAS)},
-    ticket_estimado      REAL    NOT NULL DEFAULT 0,
-    perfil_riesgo        TEXT    ${enumCheck("perfil_riesgo", PERFILES_RIESGO)},
-    productos_interes    TEXT,
-    proxima_accion       TEXT,
-    fecha_proxima_accion TEXT,
-    ultima_interaccion   TEXT,
-    notas                TEXT,
-    created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
-    updated_at           TEXT    NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_clientes_etapa   ON clientes(etapa);
-  CREATE INDEX IF NOT EXISTS idx_clientes_proxima ON clientes(fecha_proxima_accion);
-  CREATE INDEX IF NOT EXISTS idx_clientes_fuente  ON clientes(fuente);
-`;
+/** Sentencias sueltas: libSQL ejecuta de a una, no acepta scripts multi-statement. */
+export const CLIENTES_SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS clientes (
+     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+     nombre               TEXT    NOT NULL,
+     apellido             TEXT    NOT NULL DEFAULT '',
+     email                TEXT,
+     telefono             TEXT,
+     fuente               TEXT    NOT NULL DEFAULT 'Otro' ${enumCheck("fuente", FUENTES)},
+     referido_por         TEXT,
+     etapa                TEXT    NOT NULL DEFAULT 'Prospecto' ${enumCheck("etapa", ETAPAS)},
+     ticket_estimado      REAL    NOT NULL DEFAULT 0,
+     perfil_riesgo        TEXT    ${enumCheck("perfil_riesgo", PERFILES_RIESGO)},
+     productos_interes    TEXT,
+     proxima_accion       TEXT,
+     fecha_proxima_accion TEXT,
+     ultima_interaccion   TEXT,
+     notas                TEXT,
+     created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+     updated_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_clientes_etapa   ON clientes(etapa)`,
+  `CREATE INDEX IF NOT EXISTS idx_clientes_proxima ON clientes(fecha_proxima_accion)`,
+  `CREATE INDEX IF NOT EXISTS idx_clientes_fuente  ON clientes(fuente)`,
+];
 
 /** Columnas que se agregan a una tabla clientes anterior a este schema. */
 const COLUMNAS_TARDIAS = [
@@ -65,27 +64,25 @@ const COLUMNAS_TARDIAS = [
 /**
  * Crea la tabla si falta y suma las columnas que falten en una instalación
  * vieja. No borra ni reescribe nada existente.
- * @param {import('better-sqlite3').Database} db
- * @returns {{ creada: boolean, columnasAgregadas: string[] }}
+ * @param {import('@libsql/client').Client} db
  */
-export function migrarClientes(db) {
-  const existiaAntes = db
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'clientes'")
-    .get() !== undefined;
-
-  db.exec(CLIENTES_SCHEMA_SQL);
-
-  const columnas = new Set(
-    db.prepare("PRAGMA table_info(clientes)").all().map((c) => c.name)
+export async function migrarCrm(db) {
+  const existia = await db.execute(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'clientes'"
   );
+
+  for (const sql of CLIENTES_SCHEMA) await db.execute(sql);
+
+  const info = await db.execute("PRAGMA table_info(clientes)");
+  const columnas = new Set(info.rows.map((c) => String(c.name)));
   const columnasAgregadas = [];
   for (const [nombre, tipo] of COLUMNAS_TARDIAS) {
     if (columnas.has(nombre)) continue;
-    db.exec(`ALTER TABLE clientes ADD COLUMN ${nombre} ${tipo}`);
+    await db.execute(`ALTER TABLE clientes ADD COLUMN ${nombre} ${tipo}`);
     columnasAgregadas.push(nombre);
   }
 
-  return { creada: !existiaAntes, columnasAgregadas };
+  return { creada: existia.rows.length === 0, columnasAgregadas };
 }
 
 // ── Seed ──────────────────────────────────────────────────────────────────────
@@ -103,7 +100,6 @@ function enDias(dias) {
 /**
  * 9 registros ficticios para poder probar la pantalla: hay acciones vencidas,
  * de hoy y de esta semana, y las seis etapas están representadas.
- * @returns {Array<Object>}
  */
 export function clientesDeEjemplo() {
   return [
@@ -175,26 +171,28 @@ export function clientesDeEjemplo() {
 
 /**
  * Inserta los registros de ejemplo sólo si la tabla está vacía.
- * @param {import('better-sqlite3').Database} db
- * @returns {number} cantidad insertada
+ * @param {import('@libsql/client').Client} db
+ * @returns {Promise<number>} cantidad insertada
  */
-export function seedClientes(db) {
-  const { n } = db.prepare("SELECT COUNT(*) AS n FROM clientes").get();
-  if (n > 0) return 0;
-
-  const ins = db.prepare(
-    `INSERT INTO clientes (
-       nombre, apellido, email, telefono, fuente, referido_por, etapa, ticket_estimado,
-       perfil_riesgo, productos_interes, proxima_accion, fecha_proxima_accion,
-       ultima_interaccion, notas
-     ) VALUES (
-       @nombre, @apellido, @email, @telefono, @fuente, @referido_por, @etapa, @ticket_estimado,
-       @perfil_riesgo, @productos_interes, @proxima_accion, @fecha_proxima_accion,
-       @ultima_interaccion, @notas
-     )`
-  );
+export async function seedCrm(db) {
+  const { rows } = await db.execute("SELECT COUNT(*) AS n FROM clientes");
+  if (Number(rows[0].n) > 0) return 0;
 
   const filas = clientesDeEjemplo();
-  db.transaction((items) => { for (const c of items) ins.run(c); })(filas);
+  await db.batch(
+    filas.map((c) => ({
+      sql: `INSERT INTO clientes (
+              nombre, apellido, email, telefono, fuente, referido_por, etapa, ticket_estimado,
+              perfil_riesgo, productos_interes, proxima_accion, fecha_proxima_accion,
+              ultima_interaccion, notas
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        c.nombre, c.apellido, c.email, c.telefono, c.fuente, c.referido_por, c.etapa,
+        c.ticket_estimado, c.perfil_riesgo, c.productos_interes, c.proxima_accion,
+        c.fecha_proxima_accion, c.ultima_interaccion, c.notas,
+      ],
+    })),
+    "write"
+  );
   return filas.length;
 }
