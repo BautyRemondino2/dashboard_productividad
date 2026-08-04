@@ -11,7 +11,18 @@ import { COOKIE_SESION, authConfigurada, leerSesion } from "@/lib/auth";
  * sigue trabajando sin login.
  */
 export async function proxy(req: NextRequest) {
-  if (!authConfigurada()) return NextResponse.next();
+  if (!authConfigurada()) {
+    // En producción sin login configurado no se sirve nada: que se note el
+    // error de configuración es mejor que publicar datos de clientes por
+    // omisión. En desarrollo se sigue trabajando sin login.
+    if (process.env.NODE_ENV === "production") {
+      return new NextResponse(
+        "Falta configurar el login: AUTH_EMAIL, AUTH_PASSWORD_HASH y AUTH_SECRET.",
+        { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } }
+      );
+    }
+    return NextResponse.next();
+  }
 
   const sesion = await leerSesion(
     req.cookies.get(COOKIE_SESION)?.value,
