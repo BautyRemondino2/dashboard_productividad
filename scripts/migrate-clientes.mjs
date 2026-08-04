@@ -5,7 +5,9 @@
  * el archivo local si no. Es idempotente — crea la tabla si falta, agrega
  * columnas que falten y siembra los ejemplos sólo si está vacía.
  *
- * Con --reseed borra los registros existentes y vuelve a sembrar los ejemplos.
+ * Flags:
+ *   --reseed   borra todo y vuelve a sembrar los ejemplos
+ *   --vaciar   borra todo y no siembra nada: para arrancar con datos reales
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -30,6 +32,7 @@ cargarEnvLocal();
 const remoto = process.env.TURSO_DATABASE_URL?.trim();
 const destino = remoto ?? `file:${path.join(process.cwd(), "data", "dashboard.db")}`;
 const reseed = process.argv.includes("--reseed");
+const vaciar = process.argv.includes("--vaciar");
 
 const db = createClient(
   remoto ? { url: remoto, authToken: process.env.TURSO_AUTH_TOKEN } : { url: destino }
@@ -37,12 +40,12 @@ const db = createClient(
 
 const { creada, columnasAgregadas } = await migrarCrm(db);
 
-if (reseed) {
+if (reseed || vaciar) {
   const { rowsAffected } = await db.execute("DELETE FROM clientes");
-  console.log(`· --reseed: ${rowsAffected} registros borrados`);
+  console.log(`· ${vaciar ? "--vaciar" : "--reseed"}: ${rowsAffected} registros borrados`);
 }
 
-const sembrados = await seedCrm(db);
+const sembrados = vaciar ? 0 : await seedCrm(db);
 const { rows } = await db.execute("SELECT COUNT(*) AS n FROM clientes");
 
 console.log(`Destino: ${remoto ? "Turso · " + remoto.replace(/^libsql:\/\//, "") : destino}`);
