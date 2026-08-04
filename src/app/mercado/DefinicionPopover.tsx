@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { hrefGlosario, type InstrumentoDef } from "@/lib/glosario-instrumentos";
 
@@ -63,7 +64,9 @@ export default function DefinicionPopover({ def, nombre }: { def: InstrumentoDef
         ?
       </button>
 
-      {open && pos && (
+      {/* Portal al body: las secciones .fade-up dejan un transform aplicado y un
+          ancestro con transform vuelve el fixed relativo a él, no al viewport. */}
+      {open && pos && createPortal(
         <div
           ref={popRef}
           onClick={(e) => e.stopPropagation()}
@@ -83,7 +86,8 @@ export default function DefinicionPopover({ def, nombre }: { def: InstrumentoDef
           >
             Ver en glosario →
           </Link>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -437,10 +437,12 @@ function AddInstrument() {
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
-export default function MercadoClient({ instruments, series, definiciones }: {
+export default function MercadoClient({ instruments, series, definiciones, widgetHoy }: {
   instruments: MarketInstrument[];
   series: Record<string, MarketSeriesPoint[]>;
   definiciones: Record<string, InstrumentoDef>;
+  /** Slot para Server Components de otros módulos (hoy: acciones del CRM). */
+  widgetHoy?: React.ReactNode;
 }) {
   const [openTicker, setOpenTicker] = useState<string | null>(null);
 
@@ -519,6 +521,7 @@ export default function MercadoClient({ instruments, series, definiciones }: {
         </div>
 
         <div className="space-y-3 fade-up fade-up-3 xl:sticky xl:top-6">
+          {widgetHoy}
           {sinFuente.length > 0 && (
             <CargaPanel instruments={sinFuente} lastByTicker={lastByTicker} />
           )}

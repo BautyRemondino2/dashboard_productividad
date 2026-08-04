@@ -4,6 +4,7 @@ import type { MarketInstrument, MarketSeriesPoint } from "@/lib/mercado";
 import MercadoClient from "./MercadoClient";
 import RefreshButton from "./RefreshButton";
 import { TERMINO_POR_TICKER, type InstrumentoDef } from "@/lib/glosario-instrumentos";
+import AccionesHoy from "@/components/AccionesHoy";
 
 export const metadata = { title: "Mercado · Dashboard" };
 
@@ -107,7 +108,12 @@ export default function MercadoPage() {
         <RefreshButton lastUpdate={lastUpdate} needsBackfill={backfilled.n === 0} />
       </div>
 
-      <MercadoClient instruments={allInstruments} series={series} definiciones={definiciones} />
+      <MercadoClient
+        instruments={allInstruments}
+        series={series}
+        definiciones={definiciones}
+        widgetHoy={<AccionesHoy />}
+      />
     </div>
   );
 }
