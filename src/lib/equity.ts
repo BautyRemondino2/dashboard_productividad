@@ -16,6 +16,7 @@
  */
 import YahooFinance from "yahoo-finance2";
 import { UNIVERSO, POR_TICKER } from "@/lib/equity-universo";
+import { TENENCIA_A_TICKER } from "@/lib/equity-tenencias";
 import type { Sector } from "@/lib/equity-sectores";
 import type {
   FilaTablero, FilaConRetornos, Retornos, MetricaComparada, FamiliaETF,
@@ -931,12 +932,17 @@ export function getIndicesReferencia(): Promise<Record<string, IndiceReferencia>
 export const ETFS_DESTACADOS = ["SPY", "QQQ", "DIA", "IWM"] as const;
 
 export interface Tenencia {
+  /** El símbolo tal como lo reporta el fondo. */
   ticker: string;
   nombre: string;
   /** Peso dentro del fondo, en %. */
   peso: number;
-  /** Si está en el universo, la fila lleva a su ficha. */
-  enUniverso: boolean;
+  /** Ticker equivalente en el dashboard, si existe. Null = no hay ficha. */
+  destino: string | null;
+  /** Dónde cotiza, cuando el símbolo no es de NYSE ni Nasdaq. */
+  mercado: string | null;
+  /** Los ETF guardan liquidez en fondos money market: no son empresas. */
+  esLiquidez: boolean;
 }
 
 export interface Composicion {
@@ -958,6 +964,37 @@ export interface Composicion {
   descripcion: string;
   /** Quién lo gestiona, según Yahoo. */
   gestora: string | null;
+}
+
+/**
+ * De qué bolsa es un símbolo que no es de NYSE ni Nasdaq.
+ *
+ * Un ETF de país compra en la bolsa local: EWZ tiene VALE3.SA de B3, no VALE
+ * de NYSE. Decir en qué mercado cotiza es más útil que un genérico "no está".
+ */
+const SUFIJO_MERCADO: Record<string, string> = {
+  SA: "B3, Brasil", MX: "BMV, México", TO: "Toronto", V: "Toronto Venture",
+  L: "Londres", DE: "Fráncfort", PA: "París", AS: "Ámsterdam", BR: "Bruselas",
+  MC: "Madrid", MI: "Milán", SW: "Suiza", VI: "Viena", LS: "Lisboa",
+  ST: "Estocolmo", OL: "Oslo", CO: "Copenhague", HE: "Helsinki", IR: "Dublín",
+  T: "Tokio", HK: "Hong Kong", KS: "Corea (KOSPI)", KQ: "Corea (KOSDAQ)",
+  TW: "Taiwán", TWO: "Taiwán OTC", NS: "India (NSE)", BO: "India (BSE)",
+  AX: "Australia", NZ: "Nueva Zelanda", SI: "Singapur", JO: "Johannesburgo",
+  TA: "Tel Aviv", IS: "Estambul", WA: "Varsovia", SN: "Santiago", BA: "Buenos Aires",
+};
+
+function mercadoDe(simbolo: string): string | null {
+  const sufijo = simbolo.includes(".") ? simbolo.split(".").pop()!.toUpperCase() : null;
+  if (sufijo) return SUFIJO_MERCADO[sufijo] ?? `bolsa .${sufijo.toLowerCase()}`;
+  // Códigos puramente numéricos: Hong Kong, Corea, India según el largo
+  if (/^\d{4,6}$/.test(simbolo)) {
+    if (simbolo.length === 5) return "Hong Kong";
+    if (simbolo.length === 6) return "Corea o India";
+    return "bolsa local";
+  }
+  // Sufijo numérico sin punto: la línea local brasileña (ITUB4, PETR4)
+  if (/^[A-Z]{4}\d{1,2}$/.test(simbolo)) return "B3, Brasil";
+  return null;
 }
 
 /** Yahoo nombra los sectores en camelCase; acá se traducen a los del dashboard. */
@@ -1014,12 +1051,18 @@ export function getComposicion(ticker: string): Promise<Composicion | null> {
     const crudas = resumen.topHoldings?.holdings ?? [];
     const tenencias: Tenencia[] = crudas
       .filter((h) => h.symbol && h.holdingPercent != null)
-      .map((h) => ({
-        ticker: h.symbol!,
-        nombre: h.holdingName ?? h.symbol!,
-        peso: h.holdingPercent! * 100,
-        enUniverso: POR_TICKER.has(h.symbol!),
-      }));
+      .map((h) => {
+        const simbolo = h.symbol!;
+        const nombre = h.holdingName ?? simbolo;
+        return {
+          ticker: simbolo,
+          nombre,
+          peso: h.holdingPercent! * 100,
+          destino: POR_TICKER.has(simbolo) ? simbolo : TENENCIA_A_TICKER[simbolo] ?? null,
+          mercado: mercadoDe(simbolo),
+          esLiquidez: /Cash Fund|Money Market|Treasury SL|SL Agency|Liquidity/i.test(nombre),
+        };
+      });
 
     // Yahoo manda cada sector como un objeto de una sola clave: [{technology: 0.31}, …]
     const sectores = (resumen.topHoldings?.sectorWeightings ?? [])

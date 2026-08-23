@@ -9,8 +9,8 @@
  *
  *   1. El listado de NYSE y Nasdaq viene del screener de Nasdaq, que da
  *      símbolo, nombre, capitalización, precio, país, industria y sector.
- *   2. Se filtra por calidad. NYSE + Nasdaq en crudo son ~6.900 papeles e
- *      incluyen SPACs, cáscaras y biotecs de dos dólares: un ranking de "lo
+ *   2. Se filtra por capitalización. NYSE + Nasdaq en crudo son ~6.900 papeles
+ *      e incluyen SPACs, cáscaras y biotecs de dos dólares: un ranking de "lo
  *      que más se movió" sobre eso devuelve ruido, no oportunidades.
  *   3. Los ADR argentinos entran siempre, tengan el tamaño que tengan. Este
  *      dashboard lo usa un asesor en Argentina: son los papeles por los que
@@ -27,6 +27,7 @@ import YahooFinance from "yahoo-finance2";
 
 const DESTINO = "src/lib/equity-universo.ts";
 const DESTINO_SECTORES = "src/lib/equity-sectores.ts";
+const DESTINO_TENENCIAS = "src/lib/equity-tenencias.ts";
 
 const NASDAQ_API = (ex) =>
   `https://api.nasdaq.com/api/screener/stocks?download=true&exchange=${ex}`;
@@ -34,7 +35,6 @@ const SP500_CSV =
   "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv";
 
 const CAP_MINIMA = 2e9;
-const PRECIO_MINIMO = 5;
 const LOTE = 200;
 
 /** ADR argentinos: entran sí o sí, sin importar la capitalización. */
@@ -83,23 +83,43 @@ const yf = new YahooFinance({
   validation: { logErrors: false },
 });
 
+const hoy = new Date().toISOString().slice(0, 10);
+
 const aNumero = (s) => Number(String(s ?? "").replace(/[$,]/g, "")) || 0;
 
 /** Yahoo usa guion para las clases de acción: BRK/B → BRK-B */
 const aSimboloYahoo = (s) => s.trim().replace(/[./]/g, "-");
 
 /**
- * Renta fija disfrazada de acción: preferidas, notas y warrants tienen ticker
- * propio y Nasdaq les asigna la capitalización de la empresa madre, así que
- * pasan el filtro de tamaño y se cuelan en el ranking. Un preferido de AGNC a
- * US$25 con cupón del 7% no es comparable con una acción.
+ * Renta fija disfrazada de acción: preferidas con cupón, notas y warrants
+ * tienen ticker propio y Nasdaq les asigna la capitalización de la empresa
+ * madre, así que pasan el filtro de tamaño y se cuelan en el ranking. Un
+ * preferido de AGNC a US$25 con cupón del 7% no es comparable con una acción.
  *
- * Ojo con el criterio: "Depositary Shares" NO alcanza para descartar — los ADR
- * comunes (Aeroméxico, y todos los argentinos) también se describen así. Lo
- * que discrimina es la mención al instrumento de renta fija.
+ * Dos trampas que costó afinar:
+ *
+ *   1. "Depositary Shares" no alcanza para descartar: los ADR comunes
+ *      —Aeroméxico y todos los argentinos— también se describen así.
+ *   2. La palabra "Preferred" tampoco alcanza. En Brasil y Colombia la clase
+ *      preferida es la más líquida, y su ADR se compra como cualquier acción:
+ *      Itaú (US$82.500M), Bancolombia y Grupo Aval quedaban afuera por esto.
+ *
+ * Lo que sí marca renta fija es el **cupón o la serie** al lado de "Preferred":
+ * "6,875% Series D Fixed-to-Floating" es un bono; "Each representing 500
+ * Preferred shares" es un ADR sobre acciones.
  */
-const NO_ES_ACCION =
-  /Preferred|Notes? Due|Senior Notes|Subordinated|Debenture|Fixed-to-Floating|Fixed-Rate Reset|Non-Cumulative|Warrants?\b|\bRights\b/i;
+/** Lo que delata a un instrumento de renta fija: cupón, serie o perpetuidad. */
+const CUPON = String.raw`\d+(?:\.\d+)?%|Series [A-Z]\b|Fixed[- ]?(?:to[- ]?Floating|Rate)|Cumulative|Redeemable|Perpetual`;
+
+const NO_ES_ACCION = new RegExp(
+  String.raw`Notes? Due|Senior Notes|Subordinated|Debenture|First Mortgage Bonds|` +
+  String.raw`Trust Preferred|Capital Securities|Corporate Units?|(?:Tangible )?Equity Units?|` +
+  String.raw`Warrants?\b|\bRights\b|` +
+  String.raw`\d+(?:\.\d+)?%\s*(?:Notes|Bonds|Junior|Debentures)|` +
+  String.raw`(?:${CUPON})[^,]*Preferr?ed|Preferr?ed[^,]*(?:${CUPON})|` +
+  String.raw`(?:${CUPON})[^,]*Preference Shares?|Preference Shares?[^,]*(?:${CUPON})`,
+  "i"
+);
 
 /**
  * El screener arrastra el tipo de instrumento en el nombre, a veces con
@@ -193,14 +213,17 @@ for (const x of crudos) {
   if (NO_ES_ACCION.test(String(x.name ?? ""))) continue;
 
   const cap = aNumero(x.marketCap);
-  const precio = aNumero(x.lastsale);
   const capVacia = !String(x.marketCap ?? "").trim();
 
   const privilegiado = esArgentino.has(ticker) || gicsPorTicker.has(ticker);
-  const pasa = cap >= CAP_MINIMA && precio >= PRECIO_MINIMO;
+  // Sin piso de precio: el precio nominal de un ADR es arbitrario, depende de
+  // cuántas acciones locales representa cada uno. Ambev cotiza a US$2,88 y vale
+  // US$45.000M; Bradesco a US$3,11 y vale US$33.000M. La capitalización ya
+  // filtra la basura, el precio sólo castigaba a los ADR extranjeros.
+  const pasa = cap >= CAP_MINIMA;
 
   if (!pasa && !privilegiado) {
-    if (capVacia && precio >= PRECIO_MINIMO) sinCap.push({ x, ticker });
+    if (capVacia) sinCap.push({ x, ticker });
     continue;
   }
 
@@ -263,8 +286,6 @@ for (const ticker of ausentes) {
 }
 if (ausentes.length) console.log(`Del S&P 500 que no figuran en NYSE/Nasdaq: ${ausentes.join(", ")}`);
 
-candidatos.sort((a, b) => a.ticker.localeCompare(b.ticker));
-
 const faltantes = ADR_ARGENTINOS.filter((t) => !vistos.has(t));
 if (faltantes.length) console.log(`Ojo — ADR argentinos que no aparecieron: ${faltantes.join(", ")}`);
 
@@ -304,13 +325,165 @@ if (descartados.length) {
 const argentinosVivos = universo.filter((u) => u.argentino);
 console.log(`ADR argentinos incluidos (${argentinosVivos.length}): ${argentinosVivos.map((a) => a.ticker).join(", ")}`);
 
-// ─── 5. Escritura ───────────────────────────────────────────────────────────
+// ─── 5. Las tenencias de los ETF ────────────────────────────────────────────
+
+/**
+ * Los ETF reportan sus tenencias con el símbolo de la bolsa donde compran, que
+ * no siempre es el que usa este dashboard. De ahí salen dos cosas:
+ *
+ *   a. Papeles que el screener de Nasdaq se perdió. Electronic Arts
+ *      (US$52.900M) y Moog (US$12.300M) cotizan en Nasdaq y NYSE pero no
+ *      figuran en ese listado ni en el S&P. Aparecen dentro de un ETF, así
+ *      que las tenencias sirven de tercera fuente.
+ *   b. El puente de la línea local al ADR: un ETF de Brasil compra VALE3.SA en
+ *      B3, y la misma empresa cotiza en NYSE como VALE. Sin el mapeo, la
+ *      tenencia no enlaza a ninguna ficha.
+ *
+ * El mapeo sólo acepta un destino que ya esté en el universo: así no se puede
+ * generar un link a un ticker inventado.
+ */
+const tickersEtf = [...new Set(
+  [...fs.readFileSync("src/lib/equity.ts", "utf8").matchAll(/\{ ticker: "([A-Z]+)", nombre: "[^"]*", detalle:/g)]
+    .map((m) => m[1])
+)];
+
+console.log(`Leyendo las tenencias de ${tickersEtf.length} ETF…`);
+const tenencias = new Map(); // símbolo reportado → nombre
+for (const t of tickersEtf) {
+  try {
+    const r = await yf.quoteSummary(t, { modules: ["topHoldings"] }, { validateResult: false });
+    for (const h of r.topHoldings?.holdings ?? []) {
+      if (h.symbol) tenencias.set(h.symbol, String(h.holdingName ?? h.symbol));
+    }
+  } catch { /* un ETF sin tenencias no frena al resto */ }
+}
+
+const enUniverso = new Set(universo.map((u) => u.ticker));
+const huerfanas = [...tenencias].filter(([s]) => !enUniverso.has(s));
+console.log(`  ${tenencias.size} tenencias distintas · ${huerfanas.length} fuera del universo`);
+
+// (a) Las que son acciones estadounidenses que el screener no listó
+const candidatasUsa = huerfanas.filter(([s]) => /^[A-Z]{1,5}(-[A-Z])?$/.test(s));
+const sumadas = [];
+if (candidatasUsa.length) {
+  for (let i = 0; i < candidatasUsa.length; i += LOTE) {
+    const tanda = candidatasUsa.slice(i, i + LOTE);
+    try {
+      const qs = await yf.quote(
+        tanda.map(([s]) => s),
+        { fields: ["symbol", "longName", "shortName", "marketCap", "quoteType", "fullExchangeName", "regularMarketPrice"] },
+        { validateResult: false }
+      );
+      for (const q of qs) {
+        if (!q?.symbol || q.quoteType !== "EQUITY") continue;
+        if ((q.marketCap ?? 0) < CAP_MINIMA || q.regularMarketPrice == null) continue;
+        if (!/NYSE|Nasdaq|NasdaqGS|NasdaqGM|NasdaqCM|NYSEArca|BATS/i.test(String(q.fullExchangeName))) continue;
+        if (enUniverso.has(q.symbol)) continue;
+        enUniverso.add(q.symbol);
+        universo.push({
+          ticker: q.symbol,
+          nombre: limpiarNombre(q.longName ?? q.shortName ?? q.symbol),
+          sector: gicsPorTicker.get(q.symbol) ?? "Otros",
+          bolsa: /Nasdaq/i.test(String(q.fullExchangeName)) ? "NASDAQ" : "NYSE",
+          pais: null,
+          sp500: gicsPorTicker.has(q.symbol),
+          argentino: false,
+        });
+        sumadas.push(q.symbol);
+      }
+    } catch { /* la tanda queda afuera */ }
+  }
+}
+if (sumadas.length) console.log(`  Sumadas desde tenencias de ETF: ${sumadas.join(", ")}`);
+
+// (b) El puente de la línea local al ADR
+//
+// Se resuelve contra el universo local, sin buscador externo: es
+// determinístico y no depende de cómo ordene Yahoo sus resultados.
+//
+// El criterio es estricto a propósito — se exige que **todas** las palabras
+// del nombre más corto estén en el otro. Con criterios más laxos aparecían
+// enlaces peligrosos: "China Construction Bank" caía en "Construction
+// Partners", y "Samsung Electronics" en "Arrow Electronics". En un dashboard
+// financiero un link equivocado es mucho peor que uno ausente, así que se
+// pierde alguno (Bradesco) antes que inventar uno.
+const RUIDO_NOMBRE =
+  /\b(s ?a|inc|corp|ltd|plc|nv|ag|co|participating|preferred|class [a-z]|adr|ads|the|de|del)\b/g;
+
+const palabras = (s) => [...new Set(
+  String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(RUIDO_NOMBRE, " ").replace(/[^a-z0-9]+/g, " ").trim()
+    .split(" ").filter((w) => w.length > 2)
+)];
+
+const porNombre = universo.map((u) => [u.ticker, palabras(u.nombre)]);
+
+/** Cuán común es cada palabra: "holdings" no identifica, "ambev" sí. */
+const frecuencia = new Map();
+for (const [, pb] of porNombre) for (const w of pb) frecuencia.set(w, (frecuencia.get(w) ?? 0) + 1);
+
+function resolverTenencia(simbolo, nombre) {
+  // Primero la vía barata: sacar sufijo de bolsa y dígitos finales.
+  // ABEV3.SA → ABEV · ITUB4 → ITUB
+  const pn = palabras(nombre);
+  if (!pn.length) return null;
+
+  const aceptable = (pb) => {
+    if (!pb.length) return false;
+    const comunes = pn.filter((w) => pb.includes(w));
+    if (!comunes.length || comunes.length !== Math.min(pn.length, pb.length)) return false;
+    // Con una sola palabra en común hacen falta las dos condiciones: que sea
+    // toda la identidad de ambos lados y que no sea genérica. Si no, "SK
+    // Square" cae en "Madison Square Garden" y "Reliance Industries" (India)
+    // en "Reliance Inc." (acero estadounidense).
+    if (comunes.length === 1 && !(pn.length === 1 && pb.length === 1)) return false;
+    return comunes.some((w) => (frecuencia.get(w) ?? 99) <= 3);
+  };
+
+  // Primero la vía barata: sacar sufijo de bolsa y dígitos finales.
+  const base = simbolo.replace(/\.\w+$/, "").replace(/\d+$/, "");
+  if (base && enUniverso.has(base)) {
+    const pb = porNombre.find(([t]) => t === base)?.[1] ?? [];
+    if (aceptable(pb)) return base;
+  }
+  for (const [t, pb] of porNombre) if (aceptable(pb)) return t;
+  return null;
+}
+
+const puente = {};
+for (const [simbolo, nombre] of tenencias) {
+  if (enUniverso.has(simbolo)) continue;
+  // Los ETF guardan liquidez en fondos money market: no son empresas
+  if (/Cash Fund|Money Market|Treasury SL|Index Fund|Liquidity|SL Agency/i.test(nombre)) continue;
+  const destino = resolverTenencia(simbolo, nombre);
+  if (destino) puente[simbolo] = destino;
+}
+console.log(`  Puente línea local → ticker del universo: ${Object.keys(puente).length}`);
+
+universo.sort((a, b) => a.ticker.localeCompare(b.ticker));
+
+fs.writeFileSync(DESTINO_TENENCIAS, `/**
+ * Puente entre el símbolo con que un ETF reporta una tenencia y el ticker
+ * equivalente en este dashboard.
+ *
+ * Generado por \`node scripts/generar-universo.mjs\` el ${hoy}.
+ *
+ * Un ETF de Brasil compra VALE3.SA en B3; la misma empresa cotiza en NYSE como
+ * VALE. Sin este mapeo la tenencia no enlaza a ninguna ficha. Cada destino está
+ * verificado contra el universo: no puede haber un link a un ticker que no
+ * exista.
+ */
+
+export const TENENCIA_A_TICKER: Record<string, string> = {
+${Object.entries(puente).sort().map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)},`).join("\n")}
+};
+`);
+
+// ─── 6. Escritura ───────────────────────────────────────────────────────────
 
 // "Otros" siempre al final: es el cajón de los que no encajan
 const sectores = [...new Set(universo.map((u) => u.sector))]
   .sort((a, b) => (a === "Otros" ? 1 : b === "Otros" ? -1 : a.localeCompare(b)));
-
-const hoy = new Date().toISOString().slice(0, 10);
 
 fs.writeFileSync(DESTINO_SECTORES, `/**
  * Sectores del universo de equity, en taxonomía GICS.
@@ -337,7 +510,7 @@ fs.writeFileSync(DESTINO, `/**
  * Generado por \`node scripts/generar-universo.mjs\` el ${hoy}.
  * No editar a mano: correr el script cuando haga falta actualizarlo.
  *
- * Filtro: capitalización ≥ US$${(CAP_MINIMA / 1e9).toFixed(0)}.000M y precio ≥ US$${PRECIO_MINIMO}.
+ * Filtro: capitalización ≥ US$${(CAP_MINIMA / 1e9).toFixed(0)}.000M.
  * Los ADR argentinos entran siempre, sin importar el tamaño.
  *
  * El sector es GICS. Para las empresas del S&P 500 sale del índice; para el

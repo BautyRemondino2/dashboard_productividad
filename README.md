@@ -138,6 +138,31 @@ Lo que hace el filtro, y por qué:
 | Se descartan preferidas, notas y warrants | Tienen ticker propio y Nasdaq les asigna la capitalización de la empresa madre, así que pasan el filtro de tamaño. Un preferido a US$25 con cupón del 7% no es comparable con una acción |
 | Los ADR argentinos entran siempre | El dashboard lo usa un asesor en Argentina; varios (SUPV, CRESY, EDN, LOMA, IRS, GLOB) quedan abajo del filtro de tamaño |
 | Las del S&P 500 entran siempre | Nasdaq deja `marketCap` vacío en varias clases duales (BF/B), y CBOE ni figura porque cotiza en la bolsa propia de Cboe |
+| Las tenencias de los ETF son una tercera fuente | El listado de Nasdaq tiene huecos: Electronic Arts (US$52.900M) y Moog (US$12.300M) cotizan pero no figuran ahí ni en el S&P. Aparecen dentro de un ETF, así que de ahí se rescatan |
+
+> **No hay piso de precio.** El precio nominal de un ADR es arbitrario: depende
+> de cuántas acciones locales representa cada uno. Ambev cotiza a US$2,88 y vale
+> US$45.000M. La capitalización ya filtra la basura; un piso de precio sólo
+> castigaba a los ADR extranjeros.
+
+### El puente de tenencias
+
+`src/lib/equity-tenencias.ts` mapea el símbolo con que un ETF reporta una
+tenencia al ticker equivalente del dashboard: un fondo de Brasil compra
+`VALE3.SA` en B3 y la misma empresa cotiza en NYSE como `VALE`. Sin el mapeo la
+tenencia no enlaza a ninguna ficha.
+
+Se resuelve contra el universo local, sin buscador externo, y el criterio es
+deliberadamente estricto: se exige que **todas** las palabras del nombre más
+corto estén en el otro, que alguna sea distintiva (no "holdings" ni "financial
+group") y, si sólo coincide una palabra, que sea toda la identidad de ambos
+lados. Con criterios más laxos aparecían enlaces peligrosos — "China
+Construction Bank" caía en "Construction Partners", "Samsung Electronics" en
+"Arrow Electronics" y "SK Square" en "Madison Square Garden". En un dashboard
+financiero un link equivocado es peor que uno ausente, así que se pierde alguno
+(Bradesco) antes que inventar uno.
+
+Lo que no resuelve se muestra igual, diciendo en qué bolsa cotiza.
 
 > El criterio para descartar preferidas es la mención al instrumento de renta
 > fija, **no** la frase "Depositary Shares": los ADR comunes —Aeroméxico y todos

@@ -211,20 +211,31 @@ export default function EtfClient({
                 <>
                   <div className="space-y-1">
                     {activo.tenencias.map((t) => {
+                      // El símbolo que muestra el fondo puede no ser el del
+                      // dashboard: EWZ reporta VALE3.SA de B3, acá es VALE.
+                      const via = t.destino && t.destino !== t.ticker ? t.destino : null;
+
                       const fila = (
                         <>
                           <span className="text-[12px] font-medium text-slate-200 w-16 shrink-0">
-                            {t.ticker}
+                            {t.destino ?? t.ticker}
                           </span>
                           <span className="text-[11px] text-slate-500 truncate flex-1">
                             {t.nombre}
+                            {via && (
+                              <span className="text-slate-700"> · vía {t.ticker}</span>
+                            )}
+                            {!t.destino && t.mercado && (
+                              <span className="text-slate-700"> · {t.mercado}</span>
+                            )}
+                            {!t.destino && t.esLiquidez && (
+                              <span className="text-slate-700"> · liquidez del fondo</span>
+                            )}
                           </span>
                           <div className="h-[3px] w-24 bg-slate-800 rounded-full shrink-0 overflow-hidden">
                             <div
                               className="h-full bg-sky-500/70 rounded-full"
-                              style={{
-                                width: `${(t.peso / activo.tenencias[0].peso) * 100}%`,
-                              }}
+                              style={{ width: `${(t.peso / activo.tenencias[0].peso) * 100}%` }}
                             />
                           </div>
                           <span className="text-[11px] text-slate-300 tabular-nums w-12 text-right shrink-0">
@@ -233,10 +244,11 @@ export default function EtfClient({
                         </>
                       );
 
-                      return t.enUniverso ? (
+                      return t.destino ? (
                         <Link
                           key={t.ticker}
-                          href={`/equity/${t.ticker}`}
+                          href={`/equity/${t.destino}`}
+                          title={via ? `${t.nombre} — el fondo la compra en su bolsa local como ${t.ticker}` : t.nombre}
                           className="flex items-center gap-2.5 py-1 px-1 -mx-1 rounded hover:bg-slate-900/60 transition-colors"
                         >
                           {fila}
@@ -245,7 +257,13 @@ export default function EtfClient({
                         <div
                           key={t.ticker}
                           className="flex items-center gap-2.5 py-1"
-                          title="No está en el universo del monitor"
+                          title={
+                            t.esLiquidez
+                              ? "Fondo de money market donde el ETF guarda su efectivo"
+                              : t.mercado
+                                ? `Cotiza en ${t.mercado} y no tiene equivalente en NYSE ni Nasdaq`
+                                : "Sin ficha en el monitor"
+                          }
                         >
                           {fila}
                         </div>
