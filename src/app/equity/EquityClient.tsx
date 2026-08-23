@@ -22,9 +22,12 @@ const SECTOR_HUE: Record<Sector, number> = {
   Materials: 120,
   "Real Estate": 350,
   Utilities: 280,
+  // Cajón de los que no encajan en ningún GICS: gris, sin color propio
+  Otros: 0,
 };
 
-const sectorColor = (s: Sector, l = 65) => `oklch(${l}% 0.11 ${SECTOR_HUE[s]})`;
+const sectorColor = (s: Sector, l = 65) =>
+  s === "Otros" ? `oklch(${l}% 0 0)` : `oklch(${l}% 0.11 ${SECTOR_HUE[s]})`;
 
 /** Valor del período en una fila: "dia" vive arriba, el resto en `retornos`. */
 function valorPeriodo(f: FilaConRetornos, p: Periodo): number | null {

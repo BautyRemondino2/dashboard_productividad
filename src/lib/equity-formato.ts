@@ -29,6 +29,11 @@ export interface FilaTablero {
   per: number | null;
   proximoEarnings: string | null;
   earningsEstimado: boolean;
+  bolsa: "NYSE" | "NASDAQ" | "OTRA";
+  /** Integra el S&P 500. */
+  sp500: boolean;
+  /** ADR argentino — lo que le preguntan los clientes. */
+  argentino: boolean;
 }
 
 /** Retornos exactos calculados sobre la serie diaria. Todos en %. */

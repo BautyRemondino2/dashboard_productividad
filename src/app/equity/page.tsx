@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getBenchmarks, getRanking, getRetornosIndice } from "@/lib/equity";
-import { UNIVERSO_SP500 } from "@/lib/equity-universo";
+import { getBenchmarks, getComposiciones, getRanking, getRetornosIndice } from "@/lib/equity";
+import { UNIVERSO } from "@/lib/equity-universo";
 import EquityClient from "./EquityClient";
 import Referencias from "./Referencias";
+import PanelComposicion from "./Composicion";
 import RefrescarEquity from "./RefrescarEquity";
 
 export const metadata = { title: "Equity · Dashboard" };
@@ -35,6 +36,12 @@ async function Ranking() {
   );
 }
 
+/** Los cuatro ETF de referencia: cuatro requests, en su propio Suspense. */
+async function Indices() {
+  const composiciones = await getComposiciones();
+  return <PanelComposicion composiciones={composiciones} />;
+}
+
 function Esqueleto() {
   return (
     <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/20">
@@ -61,7 +68,7 @@ export default function EquityPage() {
           <p className="text-[11px] uppercase tracking-widest text-slate-600 mb-1">Dashboard</p>
           <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">Equity</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            S&amp;P 500 · {UNIVERSO_SP500.length} empresas · lo que más se movió
+            NYSE + Nasdaq · {UNIVERSO.length} empresas · lo que más se movió
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -80,6 +87,12 @@ export default function EquityPage() {
           fallback={<div className="h-[62px] rounded-xl border border-slate-800 bg-slate-900/20 animate-pulse" />}
         >
           <Referencias />
+        </Suspense>
+
+        <Suspense
+          fallback={<div className="h-[62px] rounded-xl border border-slate-800 bg-slate-900/20 animate-pulse" />}
+        >
+          <Indices />
         </Suspense>
 
         <Suspense fallback={<Esqueleto />}>

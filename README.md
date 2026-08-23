@@ -37,13 +37,14 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ---
 
-## Equity — monitor del S&P 500
+## Equity — monitor de NYSE + Nasdaq
 
 Tres pantallas:
 
-- **`/equity`** — rankea las 503 empresas del índice por cuánto se movieron.
-  Franja con el S&P y los once sectores del día, retornos contra el índice
-  (alpha), filtros guardados y agrupado por sector.
+- **`/equity`** — rankea ~2.100 empresas de NYSE y Nasdaq por cuánto se
+  movieron. Franja con el S&P y los once sectores del día, composición de SPY,
+  QQQ, DIA e IWM, retornos contra el índice (alpha), filtros guardados y
+  agrupado por sector.
 - **`/equity/<TICKER>`** — la ficha: gráfico de TradingView, fundamentals contra
   la mediana de sus pares, ventas y márgenes por año, resultados contra el
   consenso, analistas, noticias e investigación con fuentes.
@@ -56,12 +57,17 @@ Todo sale de Yahoo Finance (`yahoo-finance2`) en dos etapas, separadas por costo
 
 | Etapa | Qué trae | Costo |
 |---|---|---|
-| `getTablero()` | Las 503 con precio, variación del día, 12 meses, distancia a medias, PER, capitalización y fecha de earnings | 3 requests |
+| `getTablero()` | Todo el universo con precio, variación del día, 12 meses, distancia a medias, PER, capitalización y fecha de earnings | ~11 requests |
 | `conRetornos()` | Retornos exactos (1s/1m/3m/6m/YTD/12m) y sparkline | 1 request **por ticker** |
 
-Por eso el ranking no calcula retornos exactos para las 503: preselecciona 120
-candidatos con las métricas baratas y sobre esos hace el cálculo fino. El sesgo
-que introduce está documentado en `src/lib/equity.ts`.
+Por eso el ranking no calcula retornos exactos para las ~2.100: preselecciona
+150 candidatos con las métricas baratas y sobre esos hace el cálculo fino. El
+sesgo que introduce está documentado en `src/lib/equity.ts`.
+
+La composición de los índices sale de `topHoldings` de Yahoo, que da las **diez
+mayores tenencias** de cada fondo, no la cartera completa. Bajarla entera
+implicaría raspar a cada emisor —State Street publica un Excel, Invesco
+directamente bloquea la descarga— con un formato distinto por casa.
 
 > **Ojo con las unidades de Yahoo:** algunos campos vienen en porcentaje
 > (`regularMarketChangePercent`) y otros en fracción (`fiftyDayAverageChangePercent`,
@@ -94,15 +100,33 @@ Modelo: `claude-opus-5` (igual que `/api/glossary/explain`).
 
 ### Actualizar el universo
 
-La lista de constituyentes vive en `src/lib/equity-universo.ts` y está generada.
-El índice cambia unas pocas veces al año; cuando pase:
+El universo vive en `src/lib/equity-universo.ts` y está generado:
 
 ```bash
-node scripts/generar-universo-sp500.mjs
+node scripts/generar-universo.mjs
 ```
 
-Baja la lista, **valida cada ticker contra Yahoo** y descarta los que no cotizan.
-Escribe también `src/lib/equity-sectores.ts`. Ninguno de los dos se edita a mano.
+Baja el listado de NYSE y Nasdaq del screener de Nasdaq, **valida cada ticker
+contra Yahoo** y escribe también `src/lib/equity-sectores.ts`. Ninguno de los
+dos se edita a mano.
+
+Lo que hace el filtro, y por qué:
+
+| Regla | Motivo |
+|---|---|
+| Capitalización ≥ US$2.000M y precio ≥ US$5 | En crudo son ~6.900 papeles con SPACs, cáscaras y biotecs de dos dólares: el ranking de "lo que más se movió" devolvería ruido |
+| Se descartan preferidas, notas y warrants | Tienen ticker propio y Nasdaq les asigna la capitalización de la empresa madre, así que pasan el filtro de tamaño. Un preferido a US$25 con cupón del 7% no es comparable con una acción |
+| Los ADR argentinos entran siempre | El dashboard lo usa un asesor en Argentina; varios (SUPV, CRESY, EDN, LOMA, IRS, GLOB) quedan abajo del filtro de tamaño |
+| Las del S&P 500 entran siempre | Nasdaq deja `marketCap` vacío en varias clases duales (BF/B), y CBOE ni figura porque cotiza en la bolsa propia de Cboe |
+
+> El criterio para descartar preferidas es la mención al instrumento de renta
+> fija, **no** la frase "Depositary Shares": los ADR comunes —Aeroméxico y todos
+> los argentinos— también se describen así.
+
+El sector es GICS. Para las empresas del S&P 500 sale del índice; para el resto
+se traduce la taxonomía de Nasdaq, que es más gruesa y tiene errores (clasifica
+a Agilent como *Industrials* cuando es *Health Care*). Los que no encajan en
+ningún rubro caen en "Otros".
 
 > Los sectores están en su propio archivo porque los usa la UI: si la lista de
 > 500 empresas viviera ahí, se iría entera al bundle del navegador (son 44 KB).

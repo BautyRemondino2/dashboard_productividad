@@ -3,7 +3,8 @@
  *
  * El módulo tiene dos etapas deliberadamente separadas por costo:
  *
- *   1. `getTablero()` — un `quote` en lote trae los 503 tickers en 3 requests.
+ *   1. `getTablero()` — un `quote` en lote trae los ~2.200 tickers de NYSE y
+ *      Nasdaq en unos 11 requests.
  *      De acá salen el ranking y las métricas baratas.
  *   2. `getRetornos()` — un `chart` por ticker (1 request cada uno) para los
  *      retornos exactos y el sparkline. Sólo se pide para los candidatos que
@@ -14,7 +15,7 @@
  * sigue caliente reusa, la que arranca en frío vuelve a pedir.
  */
 import YahooFinance from "yahoo-finance2";
-import { UNIVERSO_SP500, POR_TICKER } from "@/lib/equity-universo";
+import { UNIVERSO, POR_TICKER } from "@/lib/equity-universo";
 import type { Sector } from "@/lib/equity-sectores";
 import type { FilaTablero, FilaConRetornos, Retornos, MetricaComparada } from "@/lib/equity-formato";
 
@@ -126,12 +127,12 @@ const CAMPOS_QUOTE = [
 ];
 
 /**
- * Los 503 del S&P 500 con sus métricas del día. ~3 requests a Yahoo.
+ * Todo el universo con sus métricas del día, en lotes de 200.
  * Se cachea 10 minutos: es un panel de la mañana, no un ticker en vivo.
  */
 export function getTablero(): Promise<FilaTablero[]> {
   return memo("tablero", 600, async () => {
-    const tickers = UNIVERSO_SP500.map((e) => e.ticker);
+    const tickers = UNIVERSO.map((e) => e.ticker);
     const lotes: string[][] = [];
     for (let i = 0; i < tickers.length; i += LOTE_QUOTE) {
       lotes.push(tickers.slice(i, i + LOTE_QUOTE));
@@ -160,6 +161,9 @@ export function getTablero(): Promise<FilaTablero[]> {
           per: numero(q.trailingPE),
           proximoEarnings: aFechaISO(q.earningsTimestampStart),
           earningsEstimado: Boolean(q.isEarningsDateEstimate),
+          bolsa: empresa.bolsa,
+          sp500: empresa.sp500,
+          argentino: empresa.argentino,
         });
       }
     }
@@ -263,7 +267,7 @@ export async function getRetornosDe(ticker: string): Promise<{ retornos: Retorno
  * pero sigue por debajo de sus medias podría no entrar. En la práctica es raro;
  * si sube fuerte, cruza la media de 50.
  */
-export async function getRanking(candidatos = 120): Promise<FilaConRetornos[]> {
+export async function getRanking(candidatos = 150): Promise<FilaConRetornos[]> {
   const tablero = await getTablero();
 
   const puntaje = (f: FilaTablero) => Math.max(f.vsMedia50 ?? -999, (f.año ?? -999) / 4);
@@ -416,8 +420,11 @@ export const BENCHMARKS = {
   XLC: "Comunicaciones",
 } as const;
 
-/** El ETF que representa a cada sector GICS, para comparar contra su rubro. */
-export const ETF_POR_SECTOR: Record<Sector, keyof typeof BENCHMARKS> = {
+/**
+ * El ETF que representa a cada sector GICS. Parcial a propósito: "Otros" es el
+ * cajón de los que no encajan en ningún rubro y no tiene ETF que lo replique.
+ */
+export const ETF_POR_SECTOR: Partial<Record<Sector, keyof typeof BENCHMARKS>> = {
   "Information Technology": "XLK",
   Financials: "XLF",
   "Health Care": "XLV",
@@ -726,4 +733,124 @@ export function getNoticias(ticker: string, cantidad = 8): Promise<Noticia[]> {
       }))
       .filter((n) => n.titulo && n.url);
   });
+}
+
+// ─── Composición de índices ─────────────────────────────────────────────────
+
+/** Los ETF cuya composición se puede mirar desde el monitor. */
+export const ETFS_PRINCIPALES = [
+  { ticker: "SPY", nombre: "S&P 500", detalle: "las 500 grandes de EE.UU." },
+  { ticker: "QQQ", nombre: "Nasdaq 100", detalle: "las 100 mayores del Nasdaq" },
+  { ticker: "DIA", nombre: "Dow Jones", detalle: "las 30 industriales" },
+  { ticker: "IWM", nombre: "Russell 2000", detalle: "small caps de EE.UU." },
+] as const;
+
+export interface Tenencia {
+  ticker: string;
+  nombre: string;
+  /** Peso dentro del fondo, en %. */
+  peso: number;
+  /** Si está en el universo, la fila lleva a su ficha. */
+  enUniverso: boolean;
+}
+
+export interface Composicion {
+  ticker: string;
+  nombre: string;
+  detalle: string;
+  precio: number | null;
+  dia: number | null;
+  año: number | null;
+  tenencias: Tenencia[];
+  /** Peso por sector GICS, en %. */
+  sectores: { sector: Sector; peso: number }[];
+  /** Cuánto del fondo explican las tenencias que se muestran. */
+  concentracion: number;
+}
+
+/** Yahoo nombra los sectores en camelCase; acá se traducen a los del dashboard. */
+const SECTOR_YAHOO_A_GICS: Record<string, Sector> = {
+  technology: "Information Technology",
+  financial_services: "Financials",
+  healthcare: "Health Care",
+  consumer_cyclical: "Consumer Discretionary",
+  consumer_defensive: "Consumer Staples",
+  communication_services: "Communication Services",
+  industrials: "Industrials",
+  energy: "Energy",
+  basic_materials: "Materials",
+  realestate: "Real Estate",
+  utilities: "Utilities",
+};
+
+interface TopHoldingsCrudo {
+  topHoldings?: {
+    holdings?: { symbol?: string; holdingName?: string; holdingPercent?: number }[];
+    sectorWeightings?: Record<string, number>[];
+  };
+  price?: { regularMarketPrice?: number; regularMarketChangePercent?: number };
+}
+
+/**
+ * Cómo se compone un ETF: sus mayores tenencias y el peso de cada sector.
+ *
+ * Yahoo devuelve las diez principales, no el fondo entero. La composición
+ * completa habría que raspársela a cada emisor —State Street publica un Excel,
+ * Invesco directamente bloquea la descarga— y cada uno tiene su formato. En
+ * SPY esas diez ya son más de un tercio del fondo, así que para entender de
+ * qué depende el índice alcanza; por eso se muestra la concentración al lado.
+ */
+export function getComposicion(ticker: string): Promise<Composicion | null> {
+  return memo(`composicion:${ticker}`, 3600, async () => {
+    const meta = ETFS_PRINCIPALES.find((e) => e.ticker === ticker);
+    if (!meta) return null;
+
+    const [resumen, cotizacion] = await Promise.all([
+      yf.quoteSummary(ticker, { modules: ["topHoldings", "price"] }, { validateResult: false }) as Promise<TopHoldingsCrudo>,
+      yf.quote(ticker, {
+        fields: ["regularMarketPrice", "regularMarketChangePercent", "fiftyTwoWeekChangePercent"],
+      }),
+    ]);
+
+    const crudas = resumen.topHoldings?.holdings ?? [];
+    const tenencias: Tenencia[] = crudas
+      .filter((h) => h.symbol && h.holdingPercent != null)
+      .map((h) => ({
+        ticker: h.symbol!,
+        nombre: h.holdingName ?? h.symbol!,
+        peso: h.holdingPercent! * 100,
+        enUniverso: POR_TICKER.has(h.symbol!),
+      }));
+
+    // Yahoo manda cada sector como un objeto de una sola clave: [{technology: 0.31}, …]
+    const sectores = (resumen.topHoldings?.sectorWeightings ?? [])
+      .flatMap((entrada) =>
+        Object.entries(entrada).map(([clave, peso]) => ({
+          sector: SECTOR_YAHOO_A_GICS[clave],
+          peso: (peso ?? 0) * 100,
+        }))
+      )
+      .filter((s): s is { sector: Sector; peso: number } => Boolean(s.sector) && s.peso > 0)
+      .sort((a, b) => b.peso - a.peso);
+
+    return {
+      ticker,
+      nombre: meta.nombre,
+      detalle: meta.detalle,
+      precio: numero(cotizacion.regularMarketPrice),
+      dia: numero(cotizacion.regularMarketChangePercent),
+      año: numero(cotizacion.fiftyTwoWeekChangePercent),
+      tenencias,
+      sectores,
+      concentracion: tenencias.reduce((total, t) => total + t.peso, 0),
+    };
+  });
+}
+
+/** Los cuatro ETF de referencia, en paralelo. */
+export async function getComposiciones(): Promise<Composicion[]> {
+  const todas = await Promise.all(
+    ETFS_PRINCIPALES.map((e) => getComposicion(e.ticker).catch(() => null))
+  );
+  return todas.filter((c): c is Composicion => c != null);
 }

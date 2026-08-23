@@ -1,5 +1,6 @@
 /**
- * Los 11 sectores GICS. Generado por `node scripts/generar-universo-sp500.mjs`.
+ * Sectores del universo de equity, en taxonomía GICS.
+ * Generado por `node scripts/generar-universo.mjs` el 2026-08-23.
  *
  * Separado de `equity-universo` a propósito: esto lo importan Client
  * Components, y la lista de empresas no tiene por qué viajar al navegador.
@@ -17,6 +18,7 @@ export const SECTORES = [
   "Materials",
   "Real Estate",
   "Utilities",
+  "Otros",
 ] as const;
 export type Sector = (typeof SECTORES)[number];
 
@@ -33,4 +35,5 @@ export const SECTOR_LABEL: Record<Sector, string> = {
   "Materials": "Materiales",
   "Real Estate": "Inmobiliario",
   "Utilities": "Servicios públicos",
+  "Otros": "Otros",
 };
