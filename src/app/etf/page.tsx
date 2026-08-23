@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { ETFS, getComposiciones } from "@/lib/equity";
-import { getObjetivoEs } from "@/lib/equity-claude";
 import EtfClient from "./EtfClient";
 
 export const metadata = { title: "ETF · Dashboard" };
@@ -15,22 +14,7 @@ export const dynamic = "force-dynamic";
  */
 async function Fondos() {
   const composiciones = await getComposiciones();
-
-  // Los objetivos vienen de Yahoo en jerga de prospecto y en inglés. Si falla
-  // una traducción, ese fondo se muestra sin el párrafo y los demás igual.
-  const traducidos = await Promise.all(
-    composiciones.map(async (c) =>
-      c.objetivo
-        ? [c.ticker, await getObjetivoEs(c.ticker, c.nombre, c.objetivo).catch(() => null)] as const
-        : [c.ticker, null] as const
-    )
-  );
-
-  const objetivos = Object.fromEntries(
-    traducidos.filter((t): t is readonly [string, string] => Boolean(t[1]))
-  );
-
-  return <EtfClient composiciones={composiciones} objetivos={objetivos} />;
+  return <EtfClient composiciones={composiciones} />;
 }
 
 function Esqueleto() {

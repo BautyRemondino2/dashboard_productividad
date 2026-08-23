@@ -49,8 +49,13 @@ Tres pantallas:
   la mediana de sus pares, ventas y márgenes por año, resultados contra el
   consenso, analistas, noticias e investigación con fuentes.
 - **`/etf`** — 26 fondos de referencia agrupados por familia (amplios,
-  sectoriales, internacionales, bonos y oro), con su objetivo en castellano,
-  comisión anual, composición sectorial y mayores tenencias enlazadas.
+  sectoriales, internacionales, bonos y oro), con su descripción en castellano,
+  gestora, comisión anual, composición sectorial y mayores tenencias enlazadas.
+  Las descripciones están escritas a mano en `ETFS` (`src/lib/equity.ts`) sobre
+  el objetivo que declara cada prospecto: son 26 productos estables, no tiene
+  sentido pagarle a un modelo por traducir lo mismo todos los días ni depender
+  de una clave de API para leer qué es el SPY. La gestora sí es dato: sale de
+  `fundProfile.family` de Yahoo.
 - **`/equity/earnings`** — calendario de balances por semana. No cuesta ningún
   request extra: las fechas ya vienen en el lote que alimenta el ranking.
 
@@ -97,7 +102,6 @@ Sin esa variable los paneles no se muestran y el resto de la ficha anda igual.
 | Función | Qué hace | Costo aproximado |
 |---|---|---|
 | `getDescripcionEs()` | Traduce y condensa al castellano la descripción de Yahoo | fracción de centavo, cacheado 30 días |
-| `getObjetivoEs()` | Traduce el objetivo declarado de un ETF, que Yahoo da en jerga de prospecto | fracción de centavo, cacheado 30 días |
 | `getInvestigacion()` | Busca en la web contratos, clientes, proveedores e inversiones | unos centavos de dólar, cacheado 24 h |
 
 Yahoo devuelve las descripciones **sólo en inglés**, sin importar el `lang` que

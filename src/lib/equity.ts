@@ -739,39 +739,76 @@ export function getNoticias(ticker: string, cantidad = 8): Promise<Noticia[]> {
 
 // ─── Composición de índices ─────────────────────────────────────────────────
 
-/** Los ETF que se pueden abrir en /etf. */
+/**
+ * Los ETF que se pueden abrir en /etf.
+ *
+ * La descripción está escrita a mano, en castellano, sobre el objetivo que
+ * declara cada fondo en su prospecto (lo que Yahoo devuelve en
+ * `assetProfile.longBusinessSummary`). Se escribe acá y no se traduce en
+ * runtime porque son 26 productos estables: no tiene sentido pagarle a un
+ * modelo por traducir lo mismo todos los días, ni depender de una clave de API
+ * para leer qué es el SPY.
+ *
+ * La gestora NO va acá: sale de `fundProfile.family` de Yahoo, que es dato.
+ */
 export const ETFS = [
-  { ticker: "SPY",  nombre: "S&P 500",         detalle: "las 500 grandes de EE.UU.",        familia: "amplios" },
-  { ticker: "QQQ",  nombre: "Nasdaq 100",      detalle: "las 100 mayores del Nasdaq",       familia: "amplios" },
-  { ticker: "DIA",  nombre: "Dow Jones",       detalle: "las 30 industriales",              familia: "amplios" },
-  { ticker: "IWM",  nombre: "Russell 2000",    detalle: "small caps de EE.UU.",             familia: "amplios" },
-  { ticker: "VTI",  nombre: "Total Market",    detalle: "todo el mercado de EE.UU.",        familia: "amplios" },
-  { ticker: "VOO",  nombre: "S&P 500 Vanguard", detalle: "mismo índice, menos comisión",    familia: "amplios" },
+  { ticker: "SPY", nombre: "S&P 500", detalle: "las 500 grandes de EE.UU.", familia: "amplios",
+    descripcion: "Replica el S&P 500 comprando las 500 acciones del índice con el mismo peso que tienen ahí. Es la referencia por defecto cuando se habla de \"cómo viene el mercado\" estadounidense." },
+  { ticker: "QQQ", nombre: "Nasdaq 100", detalle: "las 100 mayores del Nasdaq", familia: "amplios",
+    descripcion: "Sigue al Nasdaq 100: las cien mayores empresas no financieras que cotizan en el Nasdaq. Queda muy cargado a tecnología, así que se mueve bastante más que el S&P en las dos direcciones." },
+  { ticker: "DIA", nombre: "Dow Jones", detalle: "las 30 industriales", familia: "amplios",
+    descripcion: "Replica el Dow Jones Industrial Average, treinta empresas grandes de EE.UU. Es el único de esta lista ponderado por precio de la acción y no por tamaño de la empresa, lo que lo vuelve poco representativo pero muy citado." },
+  { ticker: "IWM", nombre: "Russell 2000", detalle: "small caps de EE.UU.", familia: "amplios",
+    descripcion: "Sigue al Russell 2000, que son las cerca de 1.900 empresas más chicas del Russell 3000. Sirve para ver cómo le va a las small caps, que suelen moverse distinto de las grandes." },
+  { ticker: "VTI", nombre: "Total Market", detalle: "todo el mercado de EE.UU.", familia: "amplios",
+    descripcion: "Replica el CRSP US Total Market, que cubre prácticamente todo el mercado accionario estadounidense invertible: grandes, medianas y chicas en un solo papel." },
+  { ticker: "VOO", nombre: "S&P 500 Vanguard", detalle: "mismo índice, menos comisión", familia: "amplios",
+    descripcion: "El mismo S&P 500 que replica el SPY, pero de Vanguard y con estructura de fondo en vez de trust. La diferencia práctica está en la comisión anual." },
 
-  { ticker: "XLK",  nombre: "Tecnología",      detalle: "sector tecnológico del S&P",       familia: "sectoriales" },
-  { ticker: "XLF",  nombre: "Financiero",      detalle: "bancos y aseguradoras",            familia: "sectoriales" },
-  { ticker: "XLV",  nombre: "Salud",           detalle: "farma, seguros y equipamiento",    familia: "sectoriales" },
-  { ticker: "XLY",  nombre: "Consumo discrecional", detalle: "lo que se compra si sobra",   familia: "sectoriales" },
-  { ticker: "XLP",  nombre: "Consumo básico",  detalle: "lo que se compra igual",           familia: "sectoriales" },
-  { ticker: "XLE",  nombre: "Energía",         detalle: "petróleo y gas",                   familia: "sectoriales" },
-  { ticker: "XLI",  nombre: "Industrial",      detalle: "maquinaria, transporte y defensa", familia: "sectoriales" },
-  { ticker: "XLB",  nombre: "Materiales",      detalle: "químicos, metales y envases",      familia: "sectoriales" },
-  { ticker: "XLRE", nombre: "Inmobiliario",    detalle: "REITs de EE.UU.",                  familia: "sectoriales" },
-  { ticker: "XLU",  nombre: "Servicios públicos", detalle: "energía eléctrica y agua",      familia: "sectoriales" },
-  { ticker: "XLC",  nombre: "Comunicaciones",  detalle: "medios, telecom e internet",       familia: "sectoriales" },
+  { ticker: "XLK", nombre: "Tecnología", detalle: "sector tecnológico del S&P", familia: "sectoriales",
+    descripcion: "Las tecnológicas del S&P 500 según la clasificación GICS: software, semiconductores y hardware. Réplica completa, con al menos el 95% del fondo en las acciones del índice." },
+  { ticker: "XLF", nombre: "Financiero", detalle: "bancos y aseguradoras", familia: "sectoriales",
+    descripcion: "Bancos, aseguradoras, gestoras de activos y financieras del S&P 500. Es el sector que más reacciona a los cambios de tasa." },
+  { ticker: "XLV", nombre: "Salud", detalle: "farma, seguros y equipamiento", familia: "sectoriales",
+    descripcion: "Salud del S&P 500: farmacéuticas, biotecnología, equipamiento médico y prestadores de servicios de salud." },
+  { ticker: "XLY", nombre: "Consumo discrecional", detalle: "lo que se compra si sobra", familia: "sectoriales",
+    descripcion: "Consumo discrecional del S&P 500: autos, retail, hoteles y restaurantes. Todo lo que la gente compra cuando le sobra plata, así que sigue de cerca al ciclo económico." },
+  { ticker: "XLP", nombre: "Consumo básico", detalle: "lo que se compra igual", familia: "sectoriales",
+    descripcion: "Consumo básico: alimentos, bebidas, tabaco y limpieza. Lo que se compra pase lo que pase, así que suele aguantar mejor las caídas." },
+  { ticker: "XLE", nombre: "Energía", detalle: "petróleo y gas", familia: "sectoriales",
+    descripcion: "Energía del S&P 500, dominado por las petroleras integradas y las de servicios petroleros. Se mueve más con el precio del crudo que con el resto del mercado." },
+  { ticker: "XLI", nombre: "Industrial", detalle: "maquinaria, transporte y defensa", familia: "sectoriales",
+    descripcion: "Industriales del S&P 500: maquinaria, transporte, aeroespacial, defensa y servicios comerciales." },
+  { ticker: "XLB", nombre: "Materiales", detalle: "químicos, metales y envases", familia: "sectoriales",
+    descripcion: "Materiales del S&P 500: químicos, metales y minería, envases y materiales de construcción. Es el sector más chico del índice." },
+  { ticker: "XLRE", nombre: "Inmobiliario", detalle: "REITs de EE.UU.", familia: "sectoriales",
+    descripcion: "Los REITs y las inmobiliarias del S&P 500. Al ser fideicomisos que reparten casi toda su ganancia, es el sector más sensible a la tasa larga." },
+  { ticker: "XLU", nombre: "Servicios públicos", detalle: "energía eléctrica y agua", familia: "sectoriales",
+    descripcion: "Servicios públicos del S&P 500: eléctricas, gas natural y agua. Negocios regulados y previsibles, que se usan como refugio defensivo." },
+  { ticker: "XLC", nombre: "Comunicaciones", detalle: "medios, telecom e internet", familia: "sectoriales",
+    descripcion: "Comunicaciones del S&P 500: telecomunicaciones, medios, entretenimiento e internet. Es el sector más concentrado de los once." },
 
-  { ticker: "VEA",  nombre: "Desarrollados ex-EE.UU.", detalle: "Europa, Japón y Australia", familia: "internacionales" },
-  { ticker: "VWO",  nombre: "Emergentes",      detalle: "China, India, Brasil y otros",     familia: "internacionales" },
-  { ticker: "EFA",  nombre: "EAFE",            detalle: "desarrollados de Europa y Asia",   familia: "internacionales" },
-  { ticker: "EEM",  nombre: "Emergentes iShares", detalle: "mismo universo, otro emisor",   familia: "internacionales" },
+  { ticker: "VEA", nombre: "Desarrollados ex-EE.UU.", detalle: "Europa, Japón y Australia", familia: "internacionales",
+    descripcion: "Acciones de países desarrollados fuera de Estados Unidos —Europa, Japón, Canadá y Australia— de todos los tamaños. Sigue al FTSE Developed All Cap ex US." },
+  { ticker: "VWO", nombre: "Emergentes", detalle: "China, India, Brasil y otros", familia: "internacionales",
+    descripcion: "Mercados emergentes siguiendo un índice de FTSE que incluye acciones A chinas. Invierte por muestreo, no comprando el índice entero." },
+  { ticker: "EFA", nombre: "EAFE", detalle: "desarrollados de Europa y Asia", familia: "internacionales",
+    descripcion: "El índice EAFE de MSCI: desarrollados de Europa, Australasia y Lejano Oriente. A diferencia de VEA, deja afuera a Canadá y sólo toma empresas grandes y medianas." },
+  { ticker: "EEM", nombre: "Emergentes iShares", detalle: "mismo universo, otro emisor", familia: "internacionales",
+    descripcion: "Emergentes siguiendo el índice de MSCI en vez del de FTSE. Cubre un universo parecido al de VWO, con una comisión anual bastante más alta." },
 
-  { ticker: "AGG",  nombre: "Bonos EE.UU.",    detalle: "renta fija de grado inversor",     familia: "otros" },
-  { ticker: "TLT",  nombre: "Treasuries largos", detalle: "bonos del Tesoro a 20+ años",    familia: "otros" },
-  { ticker: "GLD",  nombre: "Oro",             detalle: "lingotes en custodia",             familia: "otros" },
-  { ticker: "SMH",  nombre: "Semiconductores", detalle: "el corazón de la ola de IA",       familia: "otros" },
-  { ticker: "ARKK", nombre: "ARK Innovation",  detalle: "gestión activa, alta volatilidad", familia: "otros" },
+  { ticker: "AGG", nombre: "Bonos EE.UU.", detalle: "renta fija de grado inversor", familia: "otros",
+    descripcion: "Todo el mercado de bonos estadounidenses de grado inversor: Treasuries, corporativos y respaldados por hipotecas. Es renta fija, no acciones: por eso no tiene cartera accionaria que mostrar." },
+  { ticker: "TLT", nombre: "Treasuries largos", detalle: "bonos del Tesoro a 20+ años", familia: "otros",
+    descripcion: "Bonos del Tesoro de EE.UU. con más de veinte años de plazo restante. Al ser tan largo es muy sensible a la tasa: cuando la tasa sube, cae fuerte." },
+  { ticker: "GLD", nombre: "Oro", detalle: "lingotes en custodia", familia: "otros",
+    descripcion: "Un fideicomiso que guarda lingotes de oro. Las cuotapartes siguen el precio del oro menos los gastos del trust; no hay empresas detrás." },
+  { ticker: "SMH", nombre: "Semiconductores", detalle: "el corazón de la ola de IA", familia: "otros",
+    descripcion: "Semiconductoras listadas en Estados Unidos, incluidos ADR de empresas extranjeras. Muy concentrado: pocas compañías explican buena parte del fondo." },
+  { ticker: "ARKK", nombre: "ARK Innovation", detalle: "gestión activa, alta volatilidad", familia: "otros",
+    descripcion: "El único de gestión activa de esta lista: no replica ningún índice, el equipo elige empresas que considera de \"innovación disruptiva\". Comisión alta y mucha más volatilidad que un indexado." },
 ] as const satisfies readonly {
-  ticker: string; nombre: string; detalle: string; familia: FamiliaETF;
+  ticker: string; nombre: string; detalle: string; familia: FamiliaETF; descripcion: string;
 }[];
 
 /** Los cuatro que se muestran resumidos en el monitor. */
@@ -801,8 +838,10 @@ export interface Composicion {
   concentracion: number;
   /** Comisión anual del fondo, en %. */
   gastoAnual: number | null;
-  /** El objetivo declarado del fondo, tal como lo publica Yahoo (en inglés). */
-  objetivo: string | null;
+  /** Qué es el fondo, en castellano. Escrito a mano en la lista de ETFS. */
+  descripcion: string;
+  /** Quién lo gestiona, según Yahoo. */
+  gestora: string | null;
 }
 
 /** Yahoo nombra los sectores en camelCase; acá se traducen a los del dashboard. */
@@ -825,8 +864,10 @@ interface TopHoldingsCrudo {
     holdings?: { symbol?: string; holdingName?: string; holdingPercent?: number }[];
     sectorWeightings?: Record<string, number>[];
   };
-  fundProfile?: { feesExpensesInvestment?: { annualReportExpenseRatio?: number } };
-  assetProfile?: { longBusinessSummary?: string };
+  fundProfile?: {
+    feesExpensesInvestment?: { annualReportExpenseRatio?: number };
+    family?: string;
+  };
 }
 
 /**
@@ -846,7 +887,7 @@ export function getComposicion(ticker: string): Promise<Composicion | null> {
     const [resumen, cotizacion] = await Promise.all([
       yf.quoteSummary(
         ticker,
-        { modules: ["topHoldings", "fundProfile", "assetProfile"] },
+        { modules: ["topHoldings", "fundProfile"] },
         { validateResult: false }
       ) as Promise<TopHoldingsCrudo>,
       yf.quote(ticker, {
@@ -881,7 +922,8 @@ export function getComposicion(ticker: string): Promise<Composicion | null> {
       detalle: meta.detalle,
       familia: meta.familia,
       gastoAnual: aPorcentaje(resumen.fundProfile?.feesExpensesInvestment?.annualReportExpenseRatio),
-      objetivo: resumen.assetProfile?.longBusinessSummary ?? null,
+      descripcion: meta.descripcion,
+      gestora: resumen.fundProfile?.family ?? null,
       precio: numero(cotizacion.regularMarketPrice),
       dia: numero(cotizacion.regularMarketChangePercent),
       año: numero(cotizacion.fiftyTwoWeekChangePercent),

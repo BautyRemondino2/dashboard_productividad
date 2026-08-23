@@ -12,14 +12,7 @@ import type { Composicion } from "@/lib/equity";
 
 const ORDEN: FamiliaETF[] = ["amplios", "sectoriales", "internacionales", "otros"];
 
-export default function EtfClient({
-  composiciones,
-  objetivos,
-}: {
-  composiciones: Composicion[];
-  /** Objetivo traducido al castellano, por ticker. Vacío si no hay clave de API. */
-  objetivos: Record<string, string>;
-}) {
+export default function EtfClient({ composiciones }: { composiciones: Composicion[] }) {
   const [abierto, setAbierto] = useState<string | null>(composiciones[0]?.ticker ?? null);
   const activo = composiciones.find((c) => c.ticker === abierto) ?? null;
 
@@ -90,7 +83,17 @@ export default function EtfClient({
               </div>
             </div>
 
+            <p className="text-[12px] leading-relaxed text-slate-300 mt-4">
+              {activo.descripcion}
+            </p>
+
             <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 pt-4 border-t border-slate-800/60">
+              {activo.gestora && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-600">Gestora</p>
+                  <p className="text-[13px] text-slate-200 mt-0.5">{activo.gestora}</p>
+                </div>
+              )}
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-slate-600">
                   Comisión anual
@@ -114,16 +117,6 @@ export default function EtfClient({
               )}
             </div>
 
-            {objetivos[activo.ticker] && (
-              <div className="mt-4 pt-4 border-t border-slate-800/60">
-                <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-1.5">
-                  A qué le da exposición
-                </p>
-                <p className="text-[12px] leading-relaxed text-slate-300">
-                  {objetivos[activo.ticker]}
-                </p>
-              </div>
-            )}
           </div>
 
           {activo.sectores.length > 0 && (
