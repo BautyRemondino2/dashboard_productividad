@@ -7,12 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:migrate": "node scripts/migrate-clientes.mjs",
     "auth:setup": "node scripts/generar-credenciales.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",
-    "@libsql/client": "^0.17.4",
     "better-sqlite3": "^12.9.0",
     "katex": "^0.16.46",
     "next": "16.2.6",

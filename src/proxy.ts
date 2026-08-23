@@ -3,9 +3,7 @@ import { COOKIE_SESION, authConfigurada, leerSesion } from "@/lib/auth";
 
 /**
  * Puerta de entrada del dashboard (en Next 16 el viejo middleware se llama
- * proxy). Todo el sitio queda detrás del login: el CRM tiene datos de clientes
- * y el widget de acciones los muestra en el home, así que no alcanza con tapar
- * /crm.
+ * proxy). Todo el sitio queda detrás del login: es un dashboard privado.
  *
  * Si las variables de auth no están configuradas, no bloquea nada: en local se
  * sigue trabajando sin login.
@@ -13,8 +11,8 @@ import { COOKIE_SESION, authConfigurada, leerSesion } from "@/lib/auth";
 export async function proxy(req: NextRequest) {
   if (!authConfigurada()) {
     // En producción sin login configurado no se sirve nada: que se note el
-    // error de configuración es mejor que publicar datos de clientes por
-    // omisión. En desarrollo se sigue trabajando sin login.
+    // error de configuración es mejor que publicar el dashboard por omisión.
+    // En desarrollo se sigue trabajando sin login.
     if (process.env.NODE_ENV === "production") {
       return new NextResponse(
         "Falta configurar el login: AUTH_EMAIL, AUTH_PASSWORD_HASH y AUTH_SECRET.",

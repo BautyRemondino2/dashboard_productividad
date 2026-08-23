@@ -4,12 +4,11 @@ import type { MarketInstrument, MarketSeriesPoint } from "@/lib/mercado";
 import MercadoClient from "./MercadoClient";
 import RefreshButton from "./RefreshButton";
 import { TERMINO_POR_TICKER, type InstrumentoDef } from "@/lib/glosario-instrumentos";
-import AccionesHoy from "@/components/AccionesHoy";
 
 export const metadata = { title: "Mercado · Dashboard" };
 
-// El widget de acciones del CRM lee datos que cambian todo el día: la página no
-// puede quedar congelada en el build.
+// El panel lee la DB en cada request: los valores del día cambian con cada
+// refresh, así que la página no puede quedar congelada en el build.
 export const dynamic = "force-dynamic";
 
 /**
@@ -116,7 +115,6 @@ export default function MercadoPage() {
         instruments={allInstruments}
         series={series}
         definiciones={definiciones}
-        widgetHoy={<AccionesHoy />}
       />
     </div>
   );

@@ -31,7 +31,6 @@ function fuzzyScore(query: string, text: string): number {
 
 const NAV_COMMANDS: CommandPaletteItem[] = [
   { type: "nav", id: -1, label: "Ir a Mercado",    subtitle: "Panel del día", href: "/mercado" },
-  { type: "nav", id: -4, label: "Ir a CRM",        subtitle: "Prospectos y clientes", href: "/crm" },
   { type: "nav", id: -2, label: "Ir a Glosario",   subtitle: "Términos financieros", href: "/glossary" },
   { type: "nav", id: -3, label: "Ir a Efemérides", subtitle: "Feriados y fechas", href: "/efemerides" },
 ];

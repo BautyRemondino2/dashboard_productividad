@@ -37,22 +37,16 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ---
 
-## CRM: base de datos y login
+## Login
 
-El CRM es el único módulo cuyos datos tienen que sobrevivir al deploy, así que
-vive en **Turso** (SQLite hosteado) en vez del archivo local. Y como maneja
-datos de clientes, **todo el dashboard queda detrás de un login** de un solo
-usuario.
-
-Sin variables de entorno configuradas, en tu máquina todo sigue funcionando como
-antes: el CRM usa `data/dashboard.db` y no hay login.
+El dashboard es privado, así que todo queda detrás de un login de un solo
+usuario. Sin las variables configuradas, en tu máquina se sigue trabajando sin
+login; en producción, si faltan, no se sirve nada.
 
 ### Variables de entorno
 
 | Variable | Para qué | Dónde |
 |---|---|---|
-| `TURSO_DATABASE_URL` | Base del CRM (`libsql://…`). Sin ella se usa el archivo local. | Turso |
-| `TURSO_AUTH_TOKEN` | Token de esa base. | Turso |
 | `AUTH_EMAIL` | El mail con el que entrás. | vos |
 | `AUTH_PASSWORD_HASH` | Hash PBKDF2 de tu contraseña (`pbkdf2:iters:salt:hash`). | `npm run auth:setup` |
 | `AUTH_SECRET` | Firma la cookie de sesión. | `npm run auth:setup` |
@@ -65,12 +59,9 @@ En local van en `.env.local` (ignorado por git). En Vercel se cargan con
 
 ### Puesta en marcha
 
-1. Crear la base en [turso.tech](https://turso.tech) y copiar URL y token.
-2. `npm run auth:setup` — pide email y contraseña, imprime el hash y el secreto.
-3. Pegar las cinco variables en `.env.local` y cargarlas también en Vercel.
-4. `npm run db:migrate` — crea la tabla `clientes` en Turso y siembra los
-   ejemplos si está vacía. Es idempotente; con `-- --reseed` reinicia los datos.
-5. `vercel deploy --prod --yes`.
+1. `npm run auth:setup` — pide email y contraseña, imprime el hash y el secreto.
+2. Pegar las tres variables en `.env.local` y cargarlas también en Vercel.
+3. `vercel deploy --prod --yes`.
 
 El deploy de este proyecto **no sale del push a git**: hay que correr el comando
 de Vercel a mano.

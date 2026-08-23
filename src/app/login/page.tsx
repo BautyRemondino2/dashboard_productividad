@@ -21,7 +21,7 @@ export default function LoginPage() {
 
         <h1 className="text-2xl font-semibold text-slate-100 tracking-tight">Entrar</h1>
         <p className="text-[13px] text-slate-500 mt-1 mb-6">
-          El dashboard es privado: tiene datos de clientes.
+          El dashboard es privado.
         </p>
 
         <Suspense fallback={null}>

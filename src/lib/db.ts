@@ -620,9 +620,6 @@ export function getDb(): Database.Database {
     seedGlossary(global.__db);
     seedMercado(global.__db);
     seedGlosarioInstrumentos(global.__db);
-    // El CRM no pasa por acá: vive en Turso (ver crm-db.ts) porque es el único
-    // módulo cuyos datos tienen que sobrevivir al deploy. Se migra aparte con
-    // `npm run db:migrate`.
   }
   return global.__db;
 }

@@ -43,7 +43,6 @@ export default function TopNav({ ephemeral = false, conLogin = false }: {
       </div>
 
       <NavLink href="/mercado"    label="Mercado"     active={isActive("/mercado")} />
-      <NavLink href="/crm"        label="CRM"         active={isActive("/crm")} />
       <NavLink href="/glossary"   label="Glosario"    active={isActive("/glossary")} />
       <NavLink href="/efemerides" label="Efemérides"  active={isActive("/efemerides")} />
 
