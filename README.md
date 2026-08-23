@@ -37,6 +37,53 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ---
 
+## Macro Argentina y las provincias
+
+`/mercado` es el panel macro: dólar, tasas en pesos, inflación, riesgo y
+reservas, global, commodities y acciones. Abajo suma quién gobierna —Ejecutivo
+nacional y el reparto de las 24 jurisdicciones por población— y un **mapa
+interactivo** de las provincias.
+
+El mapa se colorea por empleo privado, exportaciones, población u orientación
+del gobierno provincial. Al elegir una provincia muestra gobernador, partido,
+bloque, población, empleo y exportaciones, más el ranking de las que más crecen
+y las que más caen.
+
+### De dónde salen los datos provinciales
+
+| Dato | Fuente | Frecuencia |
+|---|---|---|
+| Geometría de las 24 | Natural Earth (dominio público), simplificada y proyectada a SVG en `scripts/generar-provincias.mjs` | fija |
+| Gobernador, partido, orientación | Escrito a mano en el generador, mandatos 2023-2027 | se corre a mano al cambiar |
+| Población | Censo Nacional 2022 (INDEC) | fija |
+| **Empleo privado registrado** | SSPM vía CSV de datos.gob.ar | mensual |
+| **Exportaciones** | INDEC vía la API de series de datos.gob.ar | anual |
+
+**Lo que no se muestra, y por qué:** producto bruto geográfico y empleo público
+por provincia. Argentina no los publica de forma regular ni comparable entre
+jurisdicciones, y no están en ninguna API del Estado. Estimarlos sería
+inventarlos, así que la ficha lo dice en vez de rellenar el hueco.
+
+> Dos trampas de la API de series, ya resueltas en el código: el parámetro
+> `dataset_title` **no filtra nada** —devuelve cualquier cosa, incluidas
+> estadísticas criminales—, hay que buscar por texto; y los IDs de serie no
+> siguen un patrón deducible (`350.1_JUJUY_TOTAJUY__17`), así que se emparejan
+> por descripción.
+
+El generador valida antes de escribir: si un gobernador aparece en dos
+provincias, aborta. Ese control apareció después de cargar a Weretilneck en Río
+Negro **y** en La Rioja.
+
+---
+
+## Renta fija
+
+`/renta-fija` tiene los soberanos hard-dollar (GD29–GD46 ley NY, AL29–AL41 ley
+AR), la curva en pesos y los corporativos. Comparte componente con `/mercado`:
+se le pasa qué secciones renderiza.
+
+---
+
 ## Equity — monitor de NYSE + Nasdaq
 
 Tres pantallas:
