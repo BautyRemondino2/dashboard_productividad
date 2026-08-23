@@ -5,12 +5,12 @@ import Link from "next/link";
 import TortaSectores from "./TortaSectores";
 import { SECTOR_LABEL } from "@/lib/equity-sectores";
 import {
-  FAMILIA_LABEL, FAMILIA_NOTA, colorRetorno, fmtNivel, fmtNumero, fmtPct, fmtUsd,
+  FAMILIAS_ETF, FAMILIA_LABEL, FAMILIA_NOTA, colorRetorno, fmtNivel, fmtNumero, fmtPct, fmtUsd,
 } from "@/lib/equity-formato";
 import type { FamiliaETF } from "@/lib/equity-formato";
 import type { Composicion } from "@/lib/equity";
 
-const ORDEN: FamiliaETF[] = ["amplios", "sectoriales", "internacionales", "otros"];
+const ORDEN: FamiliaETF[] = [...FAMILIAS_ETF];
 
 export default function EtfClient({ composiciones }: { composiciones: Composicion[] }) {
   const [abierto, setAbierto] = useState<string | null>(composiciones[0]?.ticker ?? null);

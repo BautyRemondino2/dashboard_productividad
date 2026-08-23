@@ -246,19 +246,30 @@ export function resumirTendencia(t: {
 
 // ─── Familias de ETF ────────────────────────────────────────────────────────
 
-export const FAMILIAS_ETF = ["amplios", "sectoriales", "internacionales", "otros"] as const;
+export const FAMILIAS_ETF = [
+  "amplios", "sectoriales", "paises", "internacionales",
+  "renta_fija", "materias_primas", "estrategias", "tematicos",
+] as const;
 export type FamiliaETF = (typeof FAMILIAS_ETF)[number];
 
 export const FAMILIA_LABEL: Record<FamiliaETF, string> = {
   amplios: "Índices amplios",
   sectoriales: "Sectoriales de EE.UU.",
-  internacionales: "Internacionales",
-  otros: "Bonos, oro y temáticos",
+  paises: "Países",
+  internacionales: "Regiones",
+  renta_fija: "Renta fija",
+  materias_primas: "Materias primas",
+  estrategias: "Estrategias y factores",
+  tematicos: "Temáticos",
 };
 
 export const FAMILIA_NOTA: Record<FamiliaETF, string> = {
   amplios: "El mercado estadounidense entero, con distintos cortes",
   sectoriales: "Los once sectores del S&P por separado",
-  internacionales: "Lo que pasa fuera de Estados Unidos",
-  otros: "No son acciones: sirven de contrapeso en una cartera",
+  paises: "Un solo mercado por fondo — Argentina incluida",
+  internacionales: "Canastas de varios países en un solo papel",
+  renta_fija: "Bonos: no son acciones, sirven de contrapeso",
+  materias_primas: "Oro, plata y petróleo",
+  estrategias: "El mismo mercado, filtrado por otro criterio",
+  tematicos: "Apuestas concentradas en una industria",
 };

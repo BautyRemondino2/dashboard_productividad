@@ -48,8 +48,9 @@ Tres pantallas:
 - **`/equity/<TICKER>`** — la ficha: gráfico de TradingView, fundamentals contra
   la mediana de sus pares, ventas y márgenes por año, resultados contra el
   consenso, analistas, noticias e investigación con fuentes.
-- **`/etf`** — 26 fondos de referencia agrupados por familia (amplios,
-  sectoriales, internacionales, bonos y oro), con su descripción en castellano,
+- **`/etf`** — 53 fondos de referencia agrupados en ocho familias (amplios,
+  sectoriales, países, regiones, renta fija, materias primas, estrategias y
+  temáticos), con su descripción en castellano,
   gestora, comisión anual, composición sectorial y mayores tenencias enlazadas.
   Las descripciones están escritas a mano en `ETFS` (`src/lib/equity.ts`) sobre
   el objetivo que declara cada prospecto: son 26 productos estables, no tiene
