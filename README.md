@@ -37,31 +37,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ---
 
-## Login
+## Deploy
 
-El dashboard es privado, así que todo queda detrás de un login de un solo
-usuario. Sin las variables configuradas, en tu máquina se sigue trabajando sin
-login; en producción, si faltan, no se sirve nada.
-
-### Variables de entorno
-
-| Variable | Para qué | Dónde |
-|---|---|---|
-| `AUTH_EMAIL` | El mail con el que entrás. | vos |
-| `AUTH_PASSWORD_HASH` | Hash PBKDF2 de tu contraseña (`pbkdf2:iters:salt:hash`). | `npm run auth:setup` |
-| `AUTH_SECRET` | Firma la cookie de sesión. | `npm run auth:setup` |
-
-En local van en `.env.local` (ignorado por git). En Vercel se cargan con
-`vercel env add <VARIABLE> production`.
-
-> El hash usa `:` como separador y no `$` a propósito: los archivos `.env` de
-> Next expanden `$VARIABLE` y romperían el valor.
-
-### Puesta en marcha
-
-1. `npm run auth:setup` — pide email y contraseña, imprime el hash y el secreto.
-2. Pegar las tres variables en `.env.local` y cargarlas también en Vercel.
-3. `vercel deploy --prod --yes`.
-
-El deploy de este proyecto **no sale del push a git**: hay que correr el comando
-de Vercel a mano.
+El deploy de este proyecto **no sale del push a git**: hay que correr
+`vercel deploy --prod --yes` a mano.
