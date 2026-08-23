@@ -1,7 +1,8 @@
 import { Suspense } from "react";
-import { getRanking } from "@/lib/equity";
+import { getBenchmarks, getRanking, getRetornosIndice } from "@/lib/equity";
 import { UNIVERSO_SP500 } from "@/lib/equity-universo";
 import EquityClient from "./EquityClient";
+import Referencias from "./Referencias";
 import RefrescarEquity from "./RefrescarEquity";
 
 export const metadata = { title: "Equity · Dashboard" };
@@ -16,8 +17,21 @@ export const dynamic = "force-dynamic";
  * renderiza dentro de un Suspense para que el encabezado pinte al instante.
  */
 async function Ranking() {
-  const filas = await getRanking();
-  return <EquityClient filas={filas} />;
+  // El alpha necesita el retorno del índice en los mismos períodos. El "hoy"
+  // no sale de la serie diaria (el cierre de ayer no incluye la rueda en curso),
+  // así que ese viene del quote en vivo.
+  const [filas, retornosIndice, benchmarks] = await Promise.all([
+    getRanking(),
+    getRetornosIndice(),
+    getBenchmarks(),
+  ]);
+
+  return (
+    <EquityClient
+      filas={filas}
+      indice={{ dia: benchmarks[0]?.dia ?? null, ...retornosIndice }}
+    />
+  );
 }
 
 function Esqueleto() {
@@ -52,9 +66,17 @@ export default function EquityPage() {
         <RefrescarEquity />
       </div>
 
-      <Suspense fallback={<Esqueleto />}>
-        <Ranking />
-      </Suspense>
+      <div className="space-y-4">
+        <Suspense
+          fallback={<div className="h-[62px] rounded-xl border border-slate-800 bg-slate-900/20 animate-pulse" />}
+        >
+          <Referencias />
+        </Suspense>
+
+        <Suspense fallback={<Esqueleto />}>
+          <Ranking />
+        </Suspense>
+      </div>
     </div>
   );
 }

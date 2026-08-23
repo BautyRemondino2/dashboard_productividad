@@ -3,10 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { POR_TICKER } from "@/lib/equity-universo";
 import { SECTOR_LABEL } from "@/lib/equity-sectores";
-import { getComparables, getFicha, getRetornosDe } from "@/lib/equity";
+import {
+  getComparables, getComparacion, getConsenso, getFicha, getHistoriaFinanciera, getRetornosDe,
+} from "@/lib/equity";
+import {
+  PanelConsenso, PanelFundamentals, PanelHistoria, PanelSorpresas,
+} from "./Fundamentals";
 import {
   PERIODOS, PERIODO_LABEL, RECOMENDACION_LABEL, colorRetorno,
-  fmtCap, fmtFecha, fmtNivel, fmtNumero, fmtPct, fmtUsd,
+  fmtCap, fmtFecha, fmtNumero, fmtPct, fmtUsd,
 } from "@/lib/equity-formato";
 import type { FilaTablero } from "@/lib/equity-formato";
 import GraficoTradingView from "./GraficoTradingView";
@@ -65,6 +70,27 @@ async function Retornos({ ticker }: { ticker: string }) {
       ))}
     </div>
   );
+}
+
+async function Comparacion({ ticker }: { ticker: string }) {
+  const comparacion = await getComparacion(ticker);
+  if (!comparacion) return <p className="text-[11px] text-slate-600">Sin datos comparables.</p>;
+  return <PanelFundamentals comparacion={comparacion} />;
+}
+
+async function Sorpresas({ ticker }: { ticker: string }) {
+  const { sorpresas } = await getConsenso(ticker);
+  return <PanelSorpresas sorpresas={sorpresas} />;
+}
+
+async function Consenso({ ticker }: { ticker: string }) {
+  const consenso = await getConsenso(ticker);
+  return <PanelConsenso consenso={consenso} />;
+}
+
+async function Historia({ ticker }: { ticker: string }) {
+  const historia = await getHistoriaFinanciera(ticker);
+  return <PanelHistoria historia={historia} />;
 }
 
 function Comparables({ filas, actual }: { filas: FilaTablero[]; actual: string }) {
@@ -128,7 +154,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
   const [ficha, comparables] = await Promise.all([getFicha(ticker), getComparables(ticker)]);
   if (!ficha) notFound();
 
-  const { fundamentals: fun, analistas: ana, earnings } = ficha;
+  const { analistas: ana, earnings } = ficha;
   const upside =
     ana.precioObjetivo && ficha.precio ? (ana.precioObjetivo / ficha.precio - 1) * 100 : null;
 
@@ -193,6 +219,20 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             </Suspense>
           </Panel>
 
+          <div className="grid md:grid-cols-2 gap-5">
+            <Panel titulo="Ventas y márgenes" nota="por año">
+              <Suspense fallback={<div className="h-[130px] animate-pulse bg-slate-900/40 rounded" />}>
+                <Historia ticker={ficha.ticker} />
+              </Suspense>
+            </Panel>
+
+            <Panel titulo="Resultados vs. consenso" nota="últimos trimestres">
+              <Suspense fallback={<div className="h-[130px] animate-pulse bg-slate-900/40 rounded" />}>
+                <Sorpresas ticker={ficha.ticker} />
+              </Suspense>
+            </Panel>
+          </div>
+
           {ficha.descripcion && (
             <Panel titulo="A qué se dedica" nota="descripción de Yahoo Finance, en inglés">
               <p className="text-[12px] leading-relaxed text-slate-400">{ficha.descripcion}</p>
@@ -206,36 +246,10 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
 
         {/* ── Sidebar ───────────────────────────────────────────────── */}
         <div className="space-y-5">
-          <Panel titulo="Fundamentals">
-            <div className="grid grid-cols-2 gap-y-4 gap-x-4">
-              <Dato label="Capitalización" valor={fmtCap(fun.capitalizacion)} />
-              <Dato
-                label="PER"
-                valor={fmtNumero(fun.perTrailing)}
-                ayuda="Precio sobre ganancias de los últimos 12 meses"
-              />
-              <Dato
-                label="PER forward"
-                valor={fmtNumero(fun.perForward)}
-                ayuda="Sobre las ganancias que espera el consenso"
-              />
-              <Dato label="Precio / libros" valor={fmtNumero(fun.priceToBook, 2)} />
-              <Dato label="Margen bruto" valor={fmtNivel(fun.margenBruto)} />
-              <Dato label="Margen neto" valor={fmtNivel(fun.margenNeto)} />
-              <Dato label="ROE" valor={fmtNivel(fun.roe)} ayuda="Retorno sobre el patrimonio" />
-              <Dato
-                label="Deuda / patrimonio"
-                valor={fmtNivel(fun.deudaSobrePatrimonio)}
-                ayuda="Deuda total como porcentaje del patrimonio neto"
-              />
-              <Dato
-                label="Crec. ventas"
-                valor={fmtPct(fun.crecimientoVentas)}
-                ayuda="Último trimestre contra el mismo del año anterior"
-              />
-              <Dato label="Crec. ganancias" valor={fmtPct(fun.crecimientoGanancias)} />
-              <Dato label="Dividendo" valor={fmtNivel(fun.dividendo, 2)} ayuda="Rendimiento anual por dividendos sobre el precio actual" />
-            </div>
+          <Panel titulo="Fundamentals" nota="contra sus pares">
+            <Suspense fallback={<div className="h-[380px] animate-pulse bg-slate-900/40 rounded" />}>
+              <Comparacion ticker={ficha.ticker} />
+            </Suspense>
           </Panel>
 
           <Panel titulo="Analistas" nota={ana.cantidad ? `${ana.cantidad} opiniones` : undefined}>
@@ -265,6 +279,14 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
                     rango {fmtUsd(ana.objetivoMin)} – {fmtUsd(ana.objetivoMax)}
                   </p>
                 )}
+              </div>
+
+              <div className="pt-1 border-t border-slate-800/60">
+                <Suspense
+                  fallback={<div className="h-[150px] animate-pulse bg-slate-900/40 rounded mt-3" />}
+                >
+                  <Consenso ticker={ficha.ticker} />
+                </Suspense>
               </div>
             </div>
           </Panel>

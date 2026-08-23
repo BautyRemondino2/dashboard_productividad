@@ -135,3 +135,106 @@ export function colorRetorno(v: number | null): string {
   if (v < 0) return "text-rose-400";
   return "text-slate-400";
 }
+
+// ─── Lectura de fundamentals ────────────────────────────────────────────────
+
+export type Sentido = "alto_mejor" | "alto_caro" | "alto_apalancado";
+
+export interface MetricaComparada {
+  clave: string;
+  label: string;
+  valor: number | null;
+  mediana: number | null;
+  formato: "pct" | "num" | "cap" | "usd";
+  sentido: Sentido;
+  ayuda?: string;
+}
+
+export type Tono = "bueno" | "malo" | "neutro";
+
+export interface Lectura {
+  texto: string;
+  tono: Tono;
+  /** Desvío contra la mediana, en %. Para dibujar la barra. */
+  desvio: number;
+}
+
+/**
+ * Traduce "32,9 contra una mediana de 35,5" a algo que se lee de un vistazo.
+ *
+ * La valuación sale en tono neutro a propósito: que una acción esté cara no
+ * es malo por sí solo (puede estar cara porque crece), y que esté barata puede
+ * ser una trampa de valor. Rentabilidad y crecimiento sí llevan color, porque
+ * ahí más es inequívocamente mejor.
+ */
+export function leerMetrica(m: MetricaComparada): Lectura | null {
+  const { valor, mediana, sentido } = m;
+  if (valor == null || mediana == null) return null;
+  // Con un negativo de por medio el cociente pierde sentido (un PER negativo no
+  // es "más barato"): se compara la dirección, no la magnitud.
+  if (mediana === 0 || valor < 0 || mediana < 0) {
+    const mejor = sentido === "alto_mejor" ? valor > mediana : valor < mediana;
+    return {
+      texto: mejor ? "mejor que sus pares" : "peor que sus pares",
+      tono: sentido === "alto_caro" ? "neutro" : mejor ? "bueno" : "malo",
+      desvio: 0,
+    };
+  }
+
+  const desvio = (valor / mediana - 1) * 100;
+  const magnitud = Math.abs(desvio);
+  if (magnitud < 10) return { texto: "en línea con sus pares", tono: "neutro", desvio };
+
+  const mucho = magnitud >= 40 ? "mucho " : "";
+  const arriba = desvio > 0;
+
+  if (sentido === "alto_caro") {
+    return { texto: `${mucho}más ${arriba ? "caro" : "barato"}`, tono: "neutro", desvio };
+  }
+  if (sentido === "alto_apalancado") {
+    return {
+      texto: `${mucho}${arriba ? "más" : "menos"} endeudado`,
+      tono: arriba ? "malo" : "bueno",
+      desvio,
+    };
+  }
+  return {
+    texto: `${mucho}${arriba ? "por encima" : "por debajo"}`,
+    tono: arriba ? "bueno" : "malo",
+    desvio,
+  };
+}
+
+export const TONO_COLOR: Record<Tono, string> = {
+  bueno: "text-emerald-400",
+  malo: "text-rose-400",
+  neutro: "text-slate-500",
+};
+
+/** Formatea el valor de una métrica según su tipo. */
+export function fmtMetrica(v: number | null, formato: MetricaComparada["formato"]): string {
+  switch (formato) {
+    case "pct": return fmtNivel(v);
+    case "cap": return fmtCap(v);
+    case "usd": return fmtUsd(v);
+    case "num": return fmtNumero(v);
+  }
+}
+
+/** Nombre legible de la acción de un analista. */
+export const ACCION_LABEL: Record<string, string> = {
+  init: "inicia cobertura",
+  main: "mantiene",
+  reit: "reitera",
+  up: "sube",
+  down: "baja",
+};
+
+/** Cuenta de recomendaciones → texto y color del consenso. */
+export function resumirTendencia(t: {
+  compraFuerte: number; compra: number; mantener: number; venta: number; ventaFuerte: number;
+}): { compras: number; neutros: number; ventas: number; total: number } {
+  const compras = t.compraFuerte + t.compra;
+  const ventas = t.venta + t.ventaFuerte;
+  return { compras, neutros: t.mantener, ventas, total: compras + t.mantener + ventas };
+}

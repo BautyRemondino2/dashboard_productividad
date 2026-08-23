@@ -16,7 +16,7 @@
 import YahooFinance from "yahoo-finance2";
 import { UNIVERSO_SP500, POR_TICKER } from "@/lib/equity-universo";
 import type { Sector } from "@/lib/equity-sectores";
-import type { FilaTablero, FilaConRetornos, Retornos } from "@/lib/equity-formato";
+import type { FilaTablero, FilaConRetornos, Retornos, MetricaComparada } from "@/lib/equity-formato";
 
 // Los tipos y el formato viven en `equity-formato` para que los Client
 // Components los usen sin arrastrar `yahoo-finance2` al bundle del navegador.
@@ -393,4 +393,303 @@ export async function getComparables(ticker: string, limite = 6): Promise<FilaTa
     .filter((f) => f.sector === empresa.sector && f.ticker !== ticker)
     .sort((a, b) => (b.capitalizacion ?? 0) - (a.capitalizacion ?? 0))
     .slice(0, limite);
+}
+
+// ─── Referencias del mercado ────────────────────────────────────────────────
+
+/**
+ * El índice y los 11 ETFs sectoriales de SPDR. Sirven de referencia: sin esto
+ * no se sabe si una acción subió por mérito propio o porque subió todo.
+ */
+export const BENCHMARKS = {
+  "^GSPC": "S&P 500",
+  XLK: "Tecnología",
+  XLF: "Financiero",
+  XLV: "Salud",
+  XLY: "Consumo discrecional",
+  XLP: "Consumo básico",
+  XLE: "Energía",
+  XLI: "Industrial",
+  XLB: "Materiales",
+  XLRE: "Inmobiliario",
+  XLU: "Servicios públicos",
+  XLC: "Comunicaciones",
+} as const;
+
+/** El ETF que representa a cada sector GICS, para comparar contra su rubro. */
+export const ETF_POR_SECTOR: Record<Sector, keyof typeof BENCHMARKS> = {
+  "Information Technology": "XLK",
+  Financials: "XLF",
+  "Health Care": "XLV",
+  "Consumer Discretionary": "XLY",
+  "Consumer Staples": "XLP",
+  Energy: "XLE",
+  Industrials: "XLI",
+  Materials: "XLB",
+  "Real Estate": "XLRE",
+  Utilities: "XLU",
+  "Communication Services": "XLC",
+};
+
+export interface Benchmark {
+  ticker: string;
+  nombre: string;
+  precio: number | null;
+  dia: number | null;
+  año: number | null;
+}
+
+/** Índice y sectores del día. Un request. */
+export function getBenchmarks(): Promise<Benchmark[]> {
+  return memo("benchmarks", 600, async () => {
+    const tickers = Object.keys(BENCHMARKS);
+    const quotes = await yf.quote(tickers, {
+      fields: ["symbol", "regularMarketPrice", "regularMarketChangePercent", "fiftyTwoWeekChangePercent"],
+    });
+    const porTicker = new Map(quotes.map((q) => [q.symbol, q]));
+    return tickers.map((t) => {
+      const q = porTicker.get(t);
+      return {
+        ticker: t,
+        nombre: BENCHMARKS[t as keyof typeof BENCHMARKS],
+        precio: numero(q?.regularMarketPrice),
+        dia: numero(q?.regularMarketChangePercent),
+        año: numero(q?.fiftyTwoWeekChangePercent),
+      };
+    });
+  });
+}
+
+/**
+ * Retornos del S&P 500 por período. Restarlos al retorno de una acción da el
+ * alpha: cuánto le sacó (o le perdió) a comprar el índice y no hacer nada.
+ */
+export async function getRetornosIndice(): Promise<Retornos> {
+  const serie = await getSerie("^GSPC");
+  return calcularRetornos(serie);
+}
+
+// ─── Fundamentals con contexto ──────────────────────────────────────────────
+
+function mediana(valores: (number | null)[]): number | null {
+  const xs = valores.filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
+  if (xs.length === 0) return null;
+  const m = Math.floor(xs.length / 2);
+  return xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2;
+}
+
+/** Los fundamentals crudos de un ticker, sin adornos. Se usa para los pares. */
+async function fundamentalsCrudos(ticker: string) {
+  const r = await yf.quoteSummary(ticker, {
+    modules: ["summaryDetail", "financialData", "defaultKeyStatistics"],
+  });
+  return {
+    perTrailing: numero(r.summaryDetail?.trailingPE),
+    perForward: numero(r.summaryDetail?.forwardPE),
+    priceToBook: numero(r.defaultKeyStatistics?.priceToBook),
+    margenBruto: aPorcentaje(r.financialData?.grossMargins),
+    margenNeto: aPorcentaje(r.financialData?.profitMargins),
+    roe: aPorcentaje(r.financialData?.returnOnEquity),
+    crecimientoVentas: aPorcentaje(r.financialData?.revenueGrowth),
+    crecimientoGanancias: aPorcentaje(r.financialData?.earningsGrowth),
+    deudaSobrePatrimonio: numero(r.financialData?.debtToEquity),
+  };
+}
+
+export interface Comparacion {
+  metricas: MetricaComparada[];
+  /** Contra cuántos pares se comparó, y cuáles. */
+  pares: string[];
+}
+
+/**
+ * Compara los fundamentals del ticker contra la mediana de sus pares.
+ *
+ * Los pares son las empresas más grandes de su mismo sector GICS. Un PER de 33
+ * no dice nada solo; contra una mediana sectorial de 28 sí dice algo. Cuesta un
+ * request por par, así que se toman pocos y se cachea una hora.
+ */
+export function getComparacion(ticker: string, cantidadPares = 8): Promise<Comparacion | null> {
+  return memo(`comparacion:${ticker}:${cantidadPares}`, 3600, async () => {
+    const empresa = POR_TICKER.get(ticker);
+    if (!empresa) return null;
+
+    const tablero = await getTablero();
+    const pares = tablero
+      .filter((f) => f.sector === empresa.sector && f.ticker !== ticker)
+      .sort((a, b) => (b.capitalizacion ?? 0) - (a.capitalizacion ?? 0))
+      .slice(0, cantidadPares)
+      .map((f) => f.ticker);
+
+    const [propio, ...deLosPares] = await Promise.all([
+      fundamentalsCrudos(ticker),
+      ...pares.map((p) => fundamentalsCrudos(p).catch(() => null)),
+    ]);
+
+    const vivos = deLosPares.filter((p): p is NonNullable<typeof p> => p != null);
+    const med = (k: keyof typeof propio) => mediana(vivos.map((p) => p[k]));
+
+    const metricas: MetricaComparada[] = [
+      { clave: "perTrailing", label: "PER", valor: propio.perTrailing, mediana: med("perTrailing"),
+        formato: "num", sentido: "alto_caro",
+        ayuda: "Precio sobre ganancias de los últimos 12 meses" },
+      { clave: "perForward", label: "PER forward", valor: propio.perForward, mediana: med("perForward"),
+        formato: "num", sentido: "alto_caro",
+        ayuda: "Sobre las ganancias que espera el consenso para el año que viene" },
+      { clave: "priceToBook", label: "Precio / libros", valor: propio.priceToBook, mediana: med("priceToBook"),
+        formato: "num", sentido: "alto_caro" },
+      { clave: "margenBruto", label: "Margen bruto", valor: propio.margenBruto, mediana: med("margenBruto"),
+        formato: "pct", sentido: "alto_mejor" },
+      { clave: "margenNeto", label: "Margen neto", valor: propio.margenNeto, mediana: med("margenNeto"),
+        formato: "pct", sentido: "alto_mejor" },
+      { clave: "roe", label: "ROE", valor: propio.roe, mediana: med("roe"),
+        formato: "pct", sentido: "alto_mejor", ayuda: "Retorno sobre el patrimonio" },
+      { clave: "crecimientoVentas", label: "Crec. ventas", valor: propio.crecimientoVentas,
+        mediana: med("crecimientoVentas"), formato: "pct", sentido: "alto_mejor",
+        ayuda: "Último trimestre contra el mismo del año anterior" },
+      { clave: "crecimientoGanancias", label: "Crec. ganancias", valor: propio.crecimientoGanancias,
+        mediana: med("crecimientoGanancias"), formato: "pct", sentido: "alto_mejor" },
+      { clave: "deudaSobrePatrimonio", label: "Deuda / patrimonio", valor: propio.deudaSobrePatrimonio,
+        mediana: med("deudaSobrePatrimonio"), formato: "pct", sentido: "alto_apalancado",
+        ayuda: "Deuda total como porcentaje del patrimonio neto" },
+    ];
+
+    return { metricas, pares };
+  });
+}
+
+// ─── Señales del consenso ───────────────────────────────────────────────────
+
+export interface SorpresaEarnings {
+  trimestre: string;
+  estimado: number | null;
+  real: number | null;
+  /** Diferencia contra lo esperado, en %. Positivo = le ganó al consenso. */
+  sorpresa: number | null;
+}
+
+export interface TendenciaConsenso {
+  periodo: string;
+  compraFuerte: number;
+  compra: number;
+  mantener: number;
+  venta: number;
+  ventaFuerte: number;
+}
+
+export interface CambioAnalista {
+  fecha: string | null;
+  firma: string;
+  desde: string | null;
+  hacia: string;
+  accion: string;
+  objetivo: number | null;
+  objetivoPrevio: number | null;
+}
+
+export interface Consenso {
+  sorpresas: SorpresaEarnings[];
+  tendencia: TendenciaConsenso[];
+  cambios: CambioAnalista[];
+  institucional: number | null;
+}
+
+/**
+ * Lo que el mercado viene diciendo del papel: si le gana o le pierde al
+ * consenso trimestre a trimestre, si las recomendaciones mejoran o se
+ * deterioran, y quién movió su precio objetivo últimamente.
+ */
+export function getConsenso(ticker: string): Promise<Consenso> {
+  return memo(`consenso:${ticker}`, 3600, async () => {
+    const r = await yf.quoteSummary(ticker, {
+      modules: [
+        "earningsHistory",
+        "recommendationTrend",
+        "upgradeDowngradeHistory",
+        "majorHoldersBreakdown",
+      ],
+    });
+
+    const sorpresas: SorpresaEarnings[] = (r.earningsHistory?.history ?? [])
+      .map((h) => ({
+        trimestre: aFechaISO(h.quarter) ?? "",
+        estimado: numero(h.epsEstimate),
+        real: numero(h.epsActual),
+        sorpresa: aPorcentaje(h.surprisePercent),
+      }))
+      .filter((s) => s.trimestre);
+
+    const tendencia: TendenciaConsenso[] = (r.recommendationTrend?.trend ?? [])
+      .slice(0, 4)
+      .map((t) => ({
+        periodo: t.period,
+        compraFuerte: t.strongBuy ?? 0,
+        compra: t.buy ?? 0,
+        mantener: t.hold ?? 0,
+        venta: t.sell ?? 0,
+        ventaFuerte: t.strongSell ?? 0,
+      }));
+
+    // Yahoo suele mandarlos del más nuevo al más viejo, pero son cientos de
+    // filas y el orden no está garantizado: ordenar antes de recortar.
+    const cambios: CambioAnalista[] = [...(r.upgradeDowngradeHistory?.history ?? [])]
+      .sort((a, b) => Number(new Date(b.epochGradeDate)) - Number(new Date(a.epochGradeDate)))
+      .slice(0, 6)
+      .map((h) => ({
+        fecha: aFechaISO(h.epochGradeDate),
+        firma: h.firm ?? "",
+        desde: h.fromGrade || null,
+        hacia: h.toGrade ?? "",
+        accion: h.action ?? "",
+        objetivo: numero(h.currentPriceTarget as number),
+        // Yahoo manda 0 cuando no había objetivo previo (iniciación de cobertura)
+        objetivoPrevio: numero(h.priorPriceTarget as number) || null,
+      }));
+
+    return {
+      sorpresas,
+      tendencia,
+      cambios,
+      institucional: aPorcentaje(r.majorHoldersBreakdown?.institutionsPercentHeld as number),
+    };
+  });
+}
+
+// ─── Historia financiera ────────────────────────────────────────────────────
+
+export interface AñoFinanciero {
+  año: string;
+  ventas: number | null;
+  neto: number | null;
+  margenBruto: number | null;
+  margenNeto: number | null;
+}
+
+/**
+ * Ventas y márgenes de los últimos años. La foto de un trimestre no distingue
+ * una empresa que viene mejorando de una que se está deteriorando.
+ */
+export function getHistoriaFinanciera(ticker: string): Promise<AñoFinanciero[]> {
+  return memo(`historia:${ticker}`, 86400, async () => {
+    const r = await yf.fundamentalsTimeSeries(
+      ticker,
+      { period1: "2019-01-01", type: "annual", module: "financials" },
+      { validateResult: false }
+    );
+
+    return (r as Record<string, unknown>[])
+      .map((x) => {
+        const ventas = numero((x.totalRevenue ?? x.operatingRevenue) as number);
+        const neto = numero((x.netIncome ?? x.netIncomeContinuousOperations) as number);
+        const bruto = numero(x.grossProfit as number);
+        return {
+          año: aFechaISO(x.date)?.slice(0, 4) ?? "",
+          ventas,
+          neto,
+          margenBruto: bruto && ventas ? (bruto / ventas) * 100 : null,
+          margenNeto: neto && ventas ? (neto / ventas) * 100 : null,
+        };
+      })
+      .filter((a) => a.año && a.ventas);
+  });
 }
