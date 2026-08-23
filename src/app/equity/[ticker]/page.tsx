@@ -1,0 +1,299 @@
+import { Suspense } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { POR_TICKER } from "@/lib/equity-universo";
+import { SECTOR_LABEL } from "@/lib/equity-sectores";
+import { getComparables, getFicha, getRetornosDe } from "@/lib/equity";
+import {
+  PERIODOS, PERIODO_LABEL, RECOMENDACION_LABEL, colorRetorno,
+  fmtCap, fmtFecha, fmtNivel, fmtNumero, fmtPct, fmtUsd,
+} from "@/lib/equity-formato";
+import type { FilaTablero } from "@/lib/equity-formato";
+import GraficoTradingView from "./GraficoTradingView";
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }) {
+  const { ticker } = await params;
+  const empresa = POR_TICKER.get(ticker.toUpperCase());
+  return { title: empresa ? `${empresa.ticker} · ${empresa.nombre}` : "Equity · Dashboard" };
+}
+
+// ─── Piezas ─────────────────────────────────────────────────────────────────
+
+function Dato({ label, valor, ayuda }: { label: string; valor: string; ayuda?: string }) {
+  return (
+    <div title={ayuda}>
+      <p className="text-[10px] uppercase tracking-wider text-slate-600">{label}</p>
+      <p className="text-[15px] text-slate-200 tabular-nums mt-0.5">{valor}</p>
+    </div>
+  );
+}
+
+function Panel({ titulo, nota, children }: {
+  titulo: string;
+  nota?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-slate-800 bg-slate-900/20 overflow-hidden">
+      <header className="px-4 py-2.5 border-b border-slate-800/80 flex items-baseline gap-2">
+        <h2 className="text-[12px] font-semibold text-slate-200">{titulo}</h2>
+        {nota && <span className="text-[10px] text-slate-600">{nota}</span>}
+      </header>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+/** Retornos exactos por período. Es la parte que cuesta un request. */
+async function Retornos({ ticker }: { ticker: string }) {
+  const { retornos } = await getRetornosDe(ticker);
+  const periodos = PERIODOS.filter((p) => p !== "dia");
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-y-3 gap-x-4">
+      {periodos.map((p) => (
+        <div key={p}>
+          <p className="text-[10px] uppercase tracking-wider text-slate-600">
+            {PERIODO_LABEL[p]}
+          </p>
+          <p className={`text-[15px] tabular-nums mt-0.5 ${colorRetorno(retornos[p])}`}>
+            {fmtPct(retornos[p])}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Comparables({ filas, actual }: { filas: FilaTablero[]; actual: string }) {
+  if (filas.length === 0) {
+    return <p className="text-[11px] text-slate-600">Sin comparables en el índice.</p>;
+  }
+  return (
+    <div className="overflow-x-auto -m-4">
+      <table className="w-full min-w-[520px] border-collapse">
+        <thead>
+          <tr className="text-[10px] uppercase tracking-widest text-slate-600 border-b border-slate-800/80">
+            <th className="text-left font-normal pl-4 pr-2 py-2">Empresa</th>
+            <th className="text-right font-normal px-2 py-2">Hoy</th>
+            <th className="text-right font-normal px-2 py-2">12 meses</th>
+            <th className="text-right font-normal px-2 py-2">PER</th>
+            <th className="text-right font-normal pl-2 pr-4 py-2">Cap.</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-900">
+          {filas.map((f) => (
+            <tr key={f.ticker} className="hover:bg-slate-900/40 transition-colors">
+              <td className="pl-4 pr-2 py-2">
+                <Link href={`/equity/${f.ticker}`} className="block min-w-0">
+                  <span className="text-[12px] font-medium text-slate-200">{f.ticker}</span>
+                  <span className="block text-[10px] text-slate-600 truncate max-w-[180px]">
+                    {f.nombre}
+                  </span>
+                </Link>
+              </td>
+              <td className={`px-2 py-2 text-right text-[12px] tabular-nums ${colorRetorno(f.dia)}`}>
+                {fmtPct(f.dia)}
+              </td>
+              <td className={`px-2 py-2 text-right text-[12px] tabular-nums ${colorRetorno(f.año)}`}>
+                {fmtPct(f.año)}
+              </td>
+              <td className="px-2 py-2 text-right text-[12px] text-slate-400 tabular-nums">
+                {fmtNumero(f.per)}
+              </td>
+              <td className="pl-2 pr-4 py-2 text-right text-[12px] text-slate-400 tabular-nums whitespace-nowrap">
+                {fmtCap(f.capitalizacion)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="px-4 pt-3 text-[10px] text-slate-600">
+        Las más grandes del mismo sector que {actual}, por capitalización.
+      </p>
+    </div>
+  );
+}
+
+// ─── Página ─────────────────────────────────────────────────────────────────
+
+export default async function TickerPage({ params }: { params: Promise<{ ticker: string }> }) {
+  const { ticker: crudo } = await params;
+  const ticker = crudo.toUpperCase();
+
+  if (!POR_TICKER.has(ticker)) notFound();
+
+  const [ficha, comparables] = await Promise.all([getFicha(ticker), getComparables(ticker)]);
+  if (!ficha) notFound();
+
+  const { fundamentals: fun, analistas: ana, earnings } = ficha;
+  const upside =
+    ana.precioObjetivo && ficha.precio ? (ana.precioObjetivo / ficha.precio - 1) * 100 : null;
+
+  return (
+    <div className="px-8 py-7 max-w-[1400px]">
+      {/* ── Encabezado ──────────────────────────────────────────────── */}
+      <div className="mb-6 fade-up fade-up-1">
+        <Link
+          href="/equity"
+          className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
+        >
+          ← Equity
+        </Link>
+
+        <div className="flex items-end justify-between gap-6 flex-wrap mt-2">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">
+              {ficha.ticker}
+            </h1>
+            <p className="text-sm text-slate-400 mt-0.5">{ficha.nombre}</p>
+            <p className="text-[11px] text-slate-600 mt-1.5">
+              {SECTOR_LABEL[ficha.sector]}
+              {ficha.industria && ` · ${ficha.industria}`}
+              {ficha.empleados && ` · ${ficha.empleados.toLocaleString("es-AR")} empleados`}
+              {ficha.web && (
+                <>
+                  {" · "}
+                  <a
+                    href={ficha.web}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-slate-400 transition-colors underline decoration-slate-800 underline-offset-2"
+                  >
+                    sitio
+                  </a>
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="text-right">
+            <p className="text-3xl font-semibold text-slate-100 tabular-nums">
+              {fmtUsd(ficha.precio)}
+            </p>
+            <p className={`text-sm tabular-nums mt-0.5 ${colorRetorno(ficha.dia)}`}>
+              {fmtPct(ficha.dia, 2)} hoy
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-[1fr_340px] gap-5 items-start">
+        {/* ── Columna principal ─────────────────────────────────────── */}
+        <div className="space-y-5 min-w-0">
+          <GraficoTradingView ticker={ficha.ticker} />
+
+          <Panel titulo="Retornos" nota="sobre cierres diarios">
+            <Suspense
+              fallback={<div className="h-[46px] animate-pulse bg-slate-900/50 rounded" />}
+            >
+              <Retornos ticker={ficha.ticker} />
+            </Suspense>
+          </Panel>
+
+          {ficha.descripcion && (
+            <Panel titulo="A qué se dedica" nota="descripción de Yahoo Finance, en inglés">
+              <p className="text-[12px] leading-relaxed text-slate-400">{ficha.descripcion}</p>
+            </Panel>
+          )}
+
+          <Panel titulo="Comparables del sector">
+            <Comparables filas={comparables} actual={ficha.ticker} />
+          </Panel>
+        </div>
+
+        {/* ── Sidebar ───────────────────────────────────────────────── */}
+        <div className="space-y-5">
+          <Panel titulo="Fundamentals">
+            <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+              <Dato label="Capitalización" valor={fmtCap(fun.capitalizacion)} />
+              <Dato
+                label="PER"
+                valor={fmtNumero(fun.perTrailing)}
+                ayuda="Precio sobre ganancias de los últimos 12 meses"
+              />
+              <Dato
+                label="PER forward"
+                valor={fmtNumero(fun.perForward)}
+                ayuda="Sobre las ganancias que espera el consenso"
+              />
+              <Dato label="Precio / libros" valor={fmtNumero(fun.priceToBook, 2)} />
+              <Dato label="Margen bruto" valor={fmtNivel(fun.margenBruto)} />
+              <Dato label="Margen neto" valor={fmtNivel(fun.margenNeto)} />
+              <Dato label="ROE" valor={fmtNivel(fun.roe)} ayuda="Retorno sobre el patrimonio" />
+              <Dato
+                label="Deuda / patrimonio"
+                valor={fmtNivel(fun.deudaSobrePatrimonio)}
+                ayuda="Deuda total como porcentaje del patrimonio neto"
+              />
+              <Dato
+                label="Crec. ventas"
+                valor={fmtPct(fun.crecimientoVentas)}
+                ayuda="Último trimestre contra el mismo del año anterior"
+              />
+              <Dato label="Crec. ganancias" valor={fmtPct(fun.crecimientoGanancias)} />
+              <Dato label="Dividendo" valor={fmtNivel(fun.dividendo, 2)} ayuda="Rendimiento anual por dividendos sobre el precio actual" />
+            </div>
+          </Panel>
+
+          <Panel titulo="Analistas" nota={ana.cantidad ? `${ana.cantidad} opiniones` : undefined}>
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-slate-600">Consenso</p>
+                <p className="text-[15px] text-slate-200 mt-0.5">
+                  {ana.recomendacion
+                    ? RECOMENDACION_LABEL[ana.recomendacion] ?? ana.recomendacion
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                  Precio objetivo
+                </p>
+                <p className="text-[15px] text-slate-200 tabular-nums mt-0.5">
+                  {fmtUsd(ana.precioObjetivo)}
+                  {upside != null && (
+                    <span className={`text-[12px] ml-2 ${colorRetorno(upside)}`}>
+                      {fmtPct(upside)}
+                    </span>
+                  )}
+                </p>
+                {ana.objetivoMin != null && ana.objetivoMax != null && (
+                  <p className="text-[10px] text-slate-600 tabular-nums mt-1">
+                    rango {fmtUsd(ana.objetivoMin)} – {fmtUsd(ana.objetivoMax)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel
+            titulo="Próximo earnings"
+            nota={earnings.fecha && earnings.estimada ? "fecha estimada" : undefined}
+          >
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-slate-600">Fecha</p>
+                <p className="text-[15px] text-slate-200 mt-0.5">{fmtFecha(earnings.fecha)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4">
+                <Dato
+                  label="EPS esperado"
+                  valor={earnings.epsEsperado != null ? fmtUsd(earnings.epsEsperado) : "—"}
+                  ayuda="Ganancia por acción que espera el consenso"
+                />
+                <Dato
+                  label="Ventas esperadas"
+                  valor={fmtCap(earnings.ventasEsperadas)}
+                  ayuda="Facturación del trimestre que espera el consenso"
+                />
+              </div>
+            </div>
+          </Panel>
+        </div>
+      </div>
+    </div>
+  );
+}

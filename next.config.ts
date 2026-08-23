@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3", "@anthropic-ai/sdk"],
+  serverExternalPackages: ["better-sqlite3", "@anthropic-ai/sdk", "yahoo-finance2"],
   // La DB se abre por path armado en runtime, así que el tracing no la ve:
   // sin esto la función serverless arranca sin datos.
   outputFileTracingIncludes: {
