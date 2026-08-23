@@ -4,7 +4,7 @@ import { getBenchmarks, getRanking, getRetornosIndice } from "@/lib/equity";
 import { UNIVERSO } from "@/lib/equity-universo";
 import EquityClient from "./EquityClient";
 import Referencias from "./Referencias";
-import FranjaIndices from "./Composicion";
+import FranjaEtf from "./FranjaEtf";
 import RefrescarEquity from "./RefrescarEquity";
 
 export const metadata = { title: "Equity · Dashboard" };
@@ -67,12 +67,6 @@ export default function EquityPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="/equity/indices"
-            className="text-[11px] px-3 py-1.5 rounded-md border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-colors whitespace-nowrap"
-          >
-            índices →
-          </Link>
-          <Link
             href="/equity/earnings"
             className="text-[11px] px-3 py-1.5 rounded-md border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-colors whitespace-nowrap"
           >
@@ -92,7 +86,7 @@ export default function EquityPage() {
         <Suspense
           fallback={<div className="h-[62px] rounded-xl border border-slate-800 bg-slate-900/20 animate-pulse" />}
         >
-          <FranjaIndices />
+          <FranjaEtf />
         </Suspense>
 
         <Suspense fallback={<Esqueleto />}>

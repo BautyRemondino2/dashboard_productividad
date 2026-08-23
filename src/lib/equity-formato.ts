@@ -243,3 +243,22 @@ export function resumirTendencia(t: {
   const ventas = t.venta + t.ventaFuerte;
   return { compras, neutros: t.mantener, ventas, total: compras + t.mantener + ventas };
 }
+
+// ─── Familias de ETF ────────────────────────────────────────────────────────
+
+export const FAMILIAS_ETF = ["amplios", "sectoriales", "internacionales", "otros"] as const;
+export type FamiliaETF = (typeof FAMILIAS_ETF)[number];
+
+export const FAMILIA_LABEL: Record<FamiliaETF, string> = {
+  amplios: "Índices amplios",
+  sectoriales: "Sectoriales de EE.UU.",
+  internacionales: "Internacionales",
+  otros: "Bonos, oro y temáticos",
+};
+
+export const FAMILIA_NOTA: Record<FamiliaETF, string> = {
+  amplios: "El mercado estadounidense entero, con distintos cortes",
+  sectoriales: "Los once sectores del S&P por separado",
+  internacionales: "Lo que pasa fuera de Estados Unidos",
+  otros: "No son acciones: sirven de contrapeso en una cartera",
+};

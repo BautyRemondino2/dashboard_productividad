@@ -17,7 +17,9 @@
 import YahooFinance from "yahoo-finance2";
 import { UNIVERSO, POR_TICKER } from "@/lib/equity-universo";
 import type { Sector } from "@/lib/equity-sectores";
-import type { FilaTablero, FilaConRetornos, Retornos, MetricaComparada } from "@/lib/equity-formato";
+import type {
+  FilaTablero, FilaConRetornos, Retornos, MetricaComparada, FamiliaETF,
+} from "@/lib/equity-formato";
 
 // Los tipos y el formato viven en `equity-formato` para que los Client
 // Components los usen sin arrastrar `yahoo-finance2` al bundle del navegador.
@@ -737,24 +739,7 @@ export function getNoticias(ticker: string, cantidad = 8): Promise<Noticia[]> {
 
 // ─── Composición de índices ─────────────────────────────────────────────────
 
-export const FAMILIAS_ETF = ["amplios", "sectoriales", "internacionales", "otros"] as const;
-export type FamiliaETF = (typeof FAMILIAS_ETF)[number];
-
-export const FAMILIA_LABEL: Record<FamiliaETF, string> = {
-  amplios: "Índices amplios",
-  sectoriales: "Sectoriales de EE.UU.",
-  internacionales: "Internacionales",
-  otros: "Bonos, oro y temáticos",
-};
-
-export const FAMILIA_NOTA: Record<FamiliaETF, string> = {
-  amplios: "El mercado estadounidense entero, con distintos cortes",
-  sectoriales: "Los once sectores del S&P por separado",
-  internacionales: "Lo que pasa fuera de Estados Unidos",
-  otros: "No son acciones: sirven de contrapeso en una cartera",
-};
-
-/** Los ETF que se pueden abrir en /equity/indices. */
+/** Los ETF que se pueden abrir en /etf. */
 export const ETFS = [
   { ticker: "SPY",  nombre: "S&P 500",         detalle: "las 500 grandes de EE.UU.",        familia: "amplios" },
   { ticker: "QQQ",  nombre: "Nasdaq 100",      detalle: "las 100 mayores del Nasdaq",       familia: "amplios" },

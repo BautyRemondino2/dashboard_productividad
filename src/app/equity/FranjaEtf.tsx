@@ -3,13 +3,13 @@ import { ETFS, ETFS_DESTACADOS, getComposiciones } from "@/lib/equity";
 import { colorRetorno, fmtPct, fmtUsd } from "@/lib/equity-formato";
 
 /**
- * Franja de índices del monitor.
+ * Franja de ETF del monitor.
  *
  * Sólo los cuatro de referencia y sin composición: el análisis completo —torta
- * sectorial, tenencias, objetivo del fondo— vive en /equity/indices, donde hay
- * espacio para los 25 fondos.
+ * sectorial, tenencias, objetivo del fondo— vive en /etf, que tiene su propia
+ * entrada en la navegación.
  */
-export default async function FranjaIndices() {
+export default async function FranjaEtf() {
   const composiciones = await getComposiciones(ETFS_DESTACADOS);
   if (composiciones.length === 0) return null;
 
@@ -18,7 +18,7 @@ export default async function FranjaIndices() {
       {composiciones.map((c) => (
         <Link
           key={c.ticker}
-          href="/equity/indices"
+          href="/etf"
           className="flex-1 min-w-[168px] px-4 py-3 border-r border-slate-800 hover:bg-slate-900/50 transition-colors"
         >
           <div className="flex items-baseline gap-2">
@@ -33,10 +33,10 @@ export default async function FranjaIndices() {
       ))}
 
       <Link
-        href="/equity/indices"
+        href="/etf"
         className="px-4 py-3 flex items-center text-[11px] text-slate-500 hover:text-slate-200 transition-colors whitespace-nowrap"
       >
-        ver los {ETFS.length} índices →
+        ver los {ETFS.length} ETF →
       </Link>
     </section>
   );

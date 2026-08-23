@@ -48,7 +48,7 @@ Tres pantallas:
 - **`/equity/<TICKER>`** — la ficha: gráfico de TradingView, fundamentals contra
   la mediana de sus pares, ventas y márgenes por año, resultados contra el
   consenso, analistas, noticias e investigación con fuentes.
-- **`/equity/indices`** — 26 fondos de referencia agrupados por familia (amplios,
+- **`/etf`** — 26 fondos de referencia agrupados por familia (amplios,
   sectoriales, internacionales, bonos y oro), con su objetivo en castellano,
   comisión anual, composición sectorial y mayores tenencias enlazadas.
 - **`/equity/earnings`** — calendario de balances por semana. No cuesta ningún

@@ -4,26 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import TortaSectores from "./TortaSectores";
 import { SECTOR_LABEL } from "@/lib/equity-sectores";
-import { colorRetorno, fmtNivel, fmtNumero, fmtPct, fmtUsd } from "@/lib/equity-formato";
-import type { Composicion, FamiliaETF } from "@/lib/equity";
+import {
+  FAMILIA_LABEL, FAMILIA_NOTA, colorRetorno, fmtNivel, fmtNumero, fmtPct, fmtUsd,
+} from "@/lib/equity-formato";
+import type { FamiliaETF } from "@/lib/equity-formato";
+import type { Composicion } from "@/lib/equity";
 
 const ORDEN: FamiliaETF[] = ["amplios", "sectoriales", "internacionales", "otros"];
 
-const FAMILIA_LABEL: Record<FamiliaETF, string> = {
-  amplios: "Índices amplios",
-  sectoriales: "Sectoriales de EE.UU.",
-  internacionales: "Internacionales",
-  otros: "Bonos, oro y temáticos",
-};
-
-const FAMILIA_NOTA: Record<FamiliaETF, string> = {
-  amplios: "El mercado estadounidense entero, con distintos cortes",
-  sectoriales: "Los once sectores del S&P por separado",
-  internacionales: "Lo que pasa fuera de Estados Unidos",
-  otros: "No son acciones: sirven de contrapeso en una cartera",
-};
-
-export default function IndicesClient({
+export default function EtfClient({
   composiciones,
   objetivos,
 }: {
