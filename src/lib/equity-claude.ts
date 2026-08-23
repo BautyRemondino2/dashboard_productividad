@@ -273,3 +273,50 @@ Cada sección: dos o tres frases. Sin listas, sin viñetas, prosa corrida.`,
     };
   });
 }
+
+// ─── Objetivo de un fondo, en castellano ────────────────────────────────────
+
+/**
+ * Traduce y aterriza el objetivo declarado de un ETF.
+ *
+ * El texto original es prospecto puro ("The trust seeks to achieve its
+ * investment objective by holding a portfolio of the common stocks…"): dice
+ * mucho y explica poco. Lo que sirve es a qué le estás comprando exposición.
+ */
+export function getObjetivoEs(
+  ticker: string,
+  nombre: string,
+  objetivoEn: string
+): Promise<string | null> {
+  return memo(`objetivo:${ticker}`, 30 * 86400, async () => {
+    const client = cliente();
+    if (!client || !objetivoEn) return null;
+
+    const r = await client.messages.create({
+      model: MODELO,
+      max_tokens: 4000,
+      output_config: { effort: "low" },
+      system:
+        "Sos un analista financiero argentino que le explica productos a un asesor. " +
+        "Castellano rioplatense, directo. Sin markdown ni encabezados.",
+      messages: [
+        {
+          role: "user",
+          content: `Explicá en dos o tres frases qué es el ETF ${ticker} (${nombre}), a partir de su objetivo declarado.
+
+Reglas:
+- Decí a qué le da exposición: qué compra, de qué mercado, con qué criterio.
+- Si el texto menciona el índice que replica, nombralo.
+- Traducí el contenido, no la jerga de prospecto. "Seeks to provide investment results that correspond generally to the price and yield performance" se dice "replica".
+- No agregues datos que no estén en el texto (ni comisiones, ni rendimientos, ni opiniones).
+- No empieces con "Este ETF" ni repitas el ticker en cada frase.
+
+Objetivo declarado:
+${objetivoEn}`,
+        },
+      ],
+    });
+
+    return textoDe(r.content) || null;
+  });
+}

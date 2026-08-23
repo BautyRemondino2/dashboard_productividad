@@ -72,7 +72,7 @@ export function invalidarCache() {
 // ─── Utilidades ─────────────────────────────────────────────────────────────
 
 async function conLimite<T, R>(
-  items: T[],
+  items: readonly T[],
   limite: number,
   fn: (item: T) => Promise<R>
 ): Promise<(R | null)[]> {
@@ -737,13 +737,60 @@ export function getNoticias(ticker: string, cantidad = 8): Promise<Noticia[]> {
 
 // ─── Composición de índices ─────────────────────────────────────────────────
 
-/** Los ETF cuya composición se puede mirar desde el monitor. */
-export const ETFS_PRINCIPALES = [
-  { ticker: "SPY", nombre: "S&P 500", detalle: "las 500 grandes de EE.UU." },
-  { ticker: "QQQ", nombre: "Nasdaq 100", detalle: "las 100 mayores del Nasdaq" },
-  { ticker: "DIA", nombre: "Dow Jones", detalle: "las 30 industriales" },
-  { ticker: "IWM", nombre: "Russell 2000", detalle: "small caps de EE.UU." },
-] as const;
+export const FAMILIAS_ETF = ["amplios", "sectoriales", "internacionales", "otros"] as const;
+export type FamiliaETF = (typeof FAMILIAS_ETF)[number];
+
+export const FAMILIA_LABEL: Record<FamiliaETF, string> = {
+  amplios: "Índices amplios",
+  sectoriales: "Sectoriales de EE.UU.",
+  internacionales: "Internacionales",
+  otros: "Bonos, oro y temáticos",
+};
+
+export const FAMILIA_NOTA: Record<FamiliaETF, string> = {
+  amplios: "El mercado estadounidense entero, con distintos cortes",
+  sectoriales: "Los once sectores del S&P por separado",
+  internacionales: "Lo que pasa fuera de Estados Unidos",
+  otros: "No son acciones: sirven de contrapeso en una cartera",
+};
+
+/** Los ETF que se pueden abrir en /equity/indices. */
+export const ETFS = [
+  { ticker: "SPY",  nombre: "S&P 500",         detalle: "las 500 grandes de EE.UU.",        familia: "amplios" },
+  { ticker: "QQQ",  nombre: "Nasdaq 100",      detalle: "las 100 mayores del Nasdaq",       familia: "amplios" },
+  { ticker: "DIA",  nombre: "Dow Jones",       detalle: "las 30 industriales",              familia: "amplios" },
+  { ticker: "IWM",  nombre: "Russell 2000",    detalle: "small caps de EE.UU.",             familia: "amplios" },
+  { ticker: "VTI",  nombre: "Total Market",    detalle: "todo el mercado de EE.UU.",        familia: "amplios" },
+  { ticker: "VOO",  nombre: "S&P 500 Vanguard", detalle: "mismo índice, menos comisión",    familia: "amplios" },
+
+  { ticker: "XLK",  nombre: "Tecnología",      detalle: "sector tecnológico del S&P",       familia: "sectoriales" },
+  { ticker: "XLF",  nombre: "Financiero",      detalle: "bancos y aseguradoras",            familia: "sectoriales" },
+  { ticker: "XLV",  nombre: "Salud",           detalle: "farma, seguros y equipamiento",    familia: "sectoriales" },
+  { ticker: "XLY",  nombre: "Consumo discrecional", detalle: "lo que se compra si sobra",   familia: "sectoriales" },
+  { ticker: "XLP",  nombre: "Consumo básico",  detalle: "lo que se compra igual",           familia: "sectoriales" },
+  { ticker: "XLE",  nombre: "Energía",         detalle: "petróleo y gas",                   familia: "sectoriales" },
+  { ticker: "XLI",  nombre: "Industrial",      detalle: "maquinaria, transporte y defensa", familia: "sectoriales" },
+  { ticker: "XLB",  nombre: "Materiales",      detalle: "químicos, metales y envases",      familia: "sectoriales" },
+  { ticker: "XLRE", nombre: "Inmobiliario",    detalle: "REITs de EE.UU.",                  familia: "sectoriales" },
+  { ticker: "XLU",  nombre: "Servicios públicos", detalle: "energía eléctrica y agua",      familia: "sectoriales" },
+  { ticker: "XLC",  nombre: "Comunicaciones",  detalle: "medios, telecom e internet",       familia: "sectoriales" },
+
+  { ticker: "VEA",  nombre: "Desarrollados ex-EE.UU.", detalle: "Europa, Japón y Australia", familia: "internacionales" },
+  { ticker: "VWO",  nombre: "Emergentes",      detalle: "China, India, Brasil y otros",     familia: "internacionales" },
+  { ticker: "EFA",  nombre: "EAFE",            detalle: "desarrollados de Europa y Asia",   familia: "internacionales" },
+  { ticker: "EEM",  nombre: "Emergentes iShares", detalle: "mismo universo, otro emisor",   familia: "internacionales" },
+
+  { ticker: "AGG",  nombre: "Bonos EE.UU.",    detalle: "renta fija de grado inversor",     familia: "otros" },
+  { ticker: "TLT",  nombre: "Treasuries largos", detalle: "bonos del Tesoro a 20+ años",    familia: "otros" },
+  { ticker: "GLD",  nombre: "Oro",             detalle: "lingotes en custodia",             familia: "otros" },
+  { ticker: "SMH",  nombre: "Semiconductores", detalle: "el corazón de la ola de IA",       familia: "otros" },
+  { ticker: "ARKK", nombre: "ARK Innovation",  detalle: "gestión activa, alta volatilidad", familia: "otros" },
+] as const satisfies readonly {
+  ticker: string; nombre: string; detalle: string; familia: FamiliaETF;
+}[];
+
+/** Los cuatro que se muestran resumidos en el monitor. */
+export const ETFS_DESTACADOS = ["SPY", "QQQ", "DIA", "IWM"] as const;
 
 export interface Tenencia {
   ticker: string;
@@ -758,6 +805,7 @@ export interface Composicion {
   ticker: string;
   nombre: string;
   detalle: string;
+  familia: FamiliaETF;
   precio: number | null;
   dia: number | null;
   año: number | null;
@@ -766,6 +814,10 @@ export interface Composicion {
   sectores: { sector: Sector; peso: number }[];
   /** Cuánto del fondo explican las tenencias que se muestran. */
   concentracion: number;
+  /** Comisión anual del fondo, en %. */
+  gastoAnual: number | null;
+  /** El objetivo declarado del fondo, tal como lo publica Yahoo (en inglés). */
+  objetivo: string | null;
 }
 
 /** Yahoo nombra los sectores en camelCase; acá se traducen a los del dashboard. */
@@ -788,7 +840,8 @@ interface TopHoldingsCrudo {
     holdings?: { symbol?: string; holdingName?: string; holdingPercent?: number }[];
     sectorWeightings?: Record<string, number>[];
   };
-  price?: { regularMarketPrice?: number; regularMarketChangePercent?: number };
+  fundProfile?: { feesExpensesInvestment?: { annualReportExpenseRatio?: number } };
+  assetProfile?: { longBusinessSummary?: string };
 }
 
 /**
@@ -802,11 +855,15 @@ interface TopHoldingsCrudo {
  */
 export function getComposicion(ticker: string): Promise<Composicion | null> {
   return memo(`composicion:${ticker}`, 3600, async () => {
-    const meta = ETFS_PRINCIPALES.find((e) => e.ticker === ticker);
+    const meta = ETFS.find((e) => e.ticker === ticker);
     if (!meta) return null;
 
     const [resumen, cotizacion] = await Promise.all([
-      yf.quoteSummary(ticker, { modules: ["topHoldings", "price"] }, { validateResult: false }) as Promise<TopHoldingsCrudo>,
+      yf.quoteSummary(
+        ticker,
+        { modules: ["topHoldings", "fundProfile", "assetProfile"] },
+        { validateResult: false }
+      ) as Promise<TopHoldingsCrudo>,
       yf.quote(ticker, {
         fields: ["regularMarketPrice", "regularMarketChangePercent", "fiftyTwoWeekChangePercent"],
       }),
@@ -837,6 +894,9 @@ export function getComposicion(ticker: string): Promise<Composicion | null> {
       ticker,
       nombre: meta.nombre,
       detalle: meta.detalle,
+      familia: meta.familia,
+      gastoAnual: aPorcentaje(resumen.fundProfile?.feesExpensesInvestment?.annualReportExpenseRatio),
+      objetivo: resumen.assetProfile?.longBusinessSummary ?? null,
       precio: numero(cotizacion.regularMarketPrice),
       dia: numero(cotizacion.regularMarketChangePercent),
       año: numero(cotizacion.fiftyTwoWeekChangePercent),
@@ -847,10 +907,10 @@ export function getComposicion(ticker: string): Promise<Composicion | null> {
   });
 }
 
-/** Los cuatro ETF de referencia, en paralelo. */
-export async function getComposiciones(): Promise<Composicion[]> {
-  const todas = await Promise.all(
-    ETFS_PRINCIPALES.map((e) => getComposicion(e.ticker).catch(() => null))
-  );
+/** Varios ETF en paralelo, sin que uno que falle voltee al resto. */
+export async function getComposiciones(
+  tickers: readonly string[] = ETFS.map((e) => e.ticker)
+): Promise<Composicion[]> {
+  const todas = await conLimite(tickers, 8, (t) => getComposicion(t));
   return todas.filter((c): c is Composicion => c != null);
 }

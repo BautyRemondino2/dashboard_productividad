@@ -48,6 +48,9 @@ Tres pantallas:
 - **`/equity/<TICKER>`** — la ficha: gráfico de TradingView, fundamentals contra
   la mediana de sus pares, ventas y márgenes por año, resultados contra el
   consenso, analistas, noticias e investigación con fuentes.
+- **`/equity/indices`** — 26 fondos de referencia agrupados por familia (amplios,
+  sectoriales, internacionales, bonos y oro), con su objetivo en castellano,
+  comisión anual, composición sectorial y mayores tenencias enlazadas.
 - **`/equity/earnings`** — calendario de balances por semana. No cuesta ningún
   request extra: las fechas ya vienen en el lote que alimenta el ranking.
 
@@ -69,6 +72,13 @@ mayores tenencias** de cada fondo, no la cartera completa. Bajarla entera
 implicaría raspar a cada emisor —State Street publica un Excel, Invesco
 directamente bloquea la descarga— con un formato distinto por casa.
 
+> La torta sectorial muestra los **seis mayores sectores y agrupa el resto**.
+> Once porciones con valores del 2% y 3% pegados no se leen, y harían falta once
+> colores que ningún daltónico puede separar; la paleta de seis está validada
+> contra el fondo del dashboard. Los once valores exactos van en la lista de al
+> lado. Los fondos de bonos y materias primas (AGG, TLT, GLD) no tienen cartera
+> de acciones: ahí el panel lo dice en vez de mostrarse vacío.
+
 > **Ojo con las unidades de Yahoo:** algunos campos vienen en porcentaje
 > (`regularMarketChangePercent`) y otros en fracción (`fiftyDayAverageChangePercent`,
 > `profitMargins`, `dividendYield`), y `debtToEquity` ya viene en porcentaje.
@@ -87,7 +97,12 @@ Sin esa variable los paneles no se muestran y el resto de la ficha anda igual.
 | Función | Qué hace | Costo aproximado |
 |---|---|---|
 | `getDescripcionEs()` | Traduce y condensa al castellano la descripción de Yahoo | fracción de centavo, cacheado 30 días |
+| `getObjetivoEs()` | Traduce el objetivo declarado de un ETF, que Yahoo da en jerga de prospecto | fracción de centavo, cacheado 30 días |
 | `getInvestigacion()` | Busca en la web contratos, clientes, proveedores e inversiones | unos centavos de dólar, cacheado 24 h |
+
+Yahoo devuelve las descripciones **sólo en inglés**, sin importar el `lang` que
+se le pase: está verificado contra `es-AR`, `es-ES` y `es-MX`. Traducirlas es la
+única vía, así que sin la clave la ficha las muestra en el original y lo aclara.
 
 **Por qué la investigación usa búsqueda web y no el conocimiento del modelo:**
 un modelo respondiendo de memoria sobre contratos y clientes inventa nombres y

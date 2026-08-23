@@ -274,7 +274,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
           {ficha.descripcion && (
             <Panel
               titulo="A qué se dedica"
-              nota={conClaude ? "resumido al castellano" : "descripción de Yahoo, en inglés"}
+              nota={conClaude ? "resumido al castellano" : "sin traducir"}
             >
               {conClaude ? (
                 <Suspense
@@ -287,7 +287,15 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
                   />
                 </Suspense>
               ) : (
-                <p className="text-[12px] leading-relaxed text-slate-400">{ficha.descripcion}</p>
+                <>
+                  <p className="text-[12px] leading-relaxed text-slate-400">
+                    {ficha.descripcion}
+                  </p>
+                  <p className="text-[10px] text-slate-600 mt-3">
+                    Yahoo publica esta descripción sólo en inglés. Para verla en castellano
+                    hay que configurar <code>ANTHROPIC_API_KEY</code>.
+                  </p>
+                </>
               )}
             </Panel>
           )}
