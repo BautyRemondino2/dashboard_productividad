@@ -16,14 +16,11 @@ import type {
   Moneda, PanelIndicator, Unidad,
 } from "@/lib/mercado";
 import { addMarketInstrument, saveMarketValues } from "@/app/actions";
+import { VISTA_MERCADO } from "@/lib/mercado";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const grupoColor = (g: Grupo, l = 65) => `oklch(${l}% 0.11 ${GRUPO_HUE[g]})`;
 const grupoSoft  = (g: Grupo, a = 0.4) => `oklch(28% 0.05 ${GRUPO_HUE[g]} / ${a})`;
-
-/** Secciones que se muestran como tiles (indicadores) y como tabla (instrumentos). */
-const GRUPOS_TILE: Grupo[] = ["fx", "tasas_ars", "inflacion", "riesgo", "global", "commodities", "acciones"];
-const GRUPOS_TABLA: Grupo[] = ["soberanos", "pesos", "corp"];
 
 /** "1.234,5" o "64.30" → number (acepta coma o punto decimal). */
 function parseDecimal(s: string): number {
@@ -437,10 +434,17 @@ function AddInstrument() {
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
-export default function MercadoClient({ instruments, series, definiciones }: {
+export default function MercadoClient({
+  instruments,
+  series,
+  definiciones,
+  vista = VISTA_MERCADO,
+}: {
   instruments: MarketInstrument[];
   series: Record<string, MarketSeriesPoint[]>;
   definiciones: Record<string, InstrumentoDef>;
+  /** Qué secciones renderiza esta página. */
+  vista?: { tiles: Grupo[]; tablas: Grupo[] };
 }) {
   const [openTicker, setOpenTicker] = useState<string | null>(null);
 
@@ -472,10 +476,17 @@ export default function MercadoClient({ instruments, series, definiciones }: {
     return map;
   }, [instruments, computed]);
 
-  // Solo lo que ninguna fuente automática cubre necesita carga a mano
-  const sinFuente = instruments.filter((i) => (series[i.ticker] ?? []).length === 0);
+  // La página sólo se ocupa de los grupos que muestra: el panel de carga manual
+  // de /mercado no tiene por qué listar bonos, ni al revés.
+  const deLaVista = useMemo(() => {
+    const visibles = new Set<Grupo>([...vista.tiles, ...vista.tablas]);
+    return instruments.filter((i) => visibles.has(GRUPOS.includes(i.grupo) ? i.grupo : "riesgo"));
+  }, [instruments, vista]);
 
-  const sinDatos = instruments.length > 0 && instruments.every((i) => !computed[i.ticker].ind.last);
+  // Solo lo que ninguna fuente automática cubre necesita carga a mano
+  const sinFuente = deLaVista.filter((i) => (series[i.ticker] ?? []).length === 0);
+
+  const sinDatos = deLaVista.length > 0 && deLaVista.every((i) => !computed[i.ticker].ind.last);
 
   const openInst = openTicker ? instruments.find((i) => i.ticker === openTicker) : null;
 
@@ -492,7 +503,7 @@ export default function MercadoClient({ instruments, series, definiciones }: {
             </div>
           )}
 
-          {GRUPOS_TILE.map((g) => {
+          {vista.tiles.map((g) => {
             const rows = byGrupo[g];
             if (rows.length === 0) return null;
             return (
@@ -507,7 +518,7 @@ export default function MercadoClient({ instruments, series, definiciones }: {
             );
           })}
 
-          {GRUPOS_TABLA.map((g) => {
+          {vista.tablas.map((g) => {
             const rows = byGrupo[g];
             if (rows.length === 0) return null;
             return (

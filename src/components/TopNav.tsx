@@ -29,7 +29,8 @@ export default function TopNav({ ephemeral = false }: { ephemeral?: boolean }) {
         </span>
       </div>
 
-      <NavLink href="/mercado"    label="Mercado"     active={isActive("/mercado")} />
+      <NavLink href="/mercado"    label="Macro"       active={isActive("/mercado")} />
+      <NavLink href="/renta-fija" label="Renta fija"  active={isActive("/renta-fija")} />
       <NavLink href="/equity"     label="Equity"      active={isActive("/equity")} />
       <NavLink href="/etf"        label="ETF"         active={isActive("/etf")} />
       <NavLink href="/glossary"   label="Glosario"    active={isActive("/glossary")} />

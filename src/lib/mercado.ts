@@ -238,3 +238,23 @@ export function formatDelta(delta: DeltaInfo, unidad: Unidad): string {
   // mars e idx crecen mucho en nivel: el % dice más que el absoluto
   return `${Math.abs(delta.pct).toLocaleString("es-AR", { maximumFractionDigits: 2 })}%`;
 }
+
+// ─── Vistas del panel ───────────────────────────────────────────────────────
+
+/**
+ * Qué secciones muestra cada página.
+ *
+ * Los indicadores macro van como tiles con sparkline; los instrumentos de renta
+ * fija como tabla, porque lo que se compara entre bonos es fila contra fila.
+ * Están en páginas distintas: mirar cómo viene el dólar y elegir entre un GD30
+ * y un AL30 son dos momentos distintos del día.
+ */
+export const VISTA_MERCADO = {
+  tiles: ["fx", "tasas_ars", "inflacion", "riesgo", "global", "commodities", "acciones"] as Grupo[],
+  tablas: [] as Grupo[],
+};
+
+export const VISTA_RENTA_FIJA = {
+  tiles: [] as Grupo[],
+  tablas: ["soberanos", "pesos", "corp"] as Grupo[],
+};
