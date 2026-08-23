@@ -50,7 +50,7 @@ Tres pantallas:
   consenso, analistas, noticias e investigación con fuentes.
 - **`/etf`** — 53 fondos de referencia agrupados en ocho familias (amplios,
   sectoriales, países, regiones, renta fija, materias primas, estrategias y
-  temáticos), con su descripción en castellano,
+  temáticos), con su descripción en castellano, el índice del mercado local,
   gestora, comisión anual, composición sectorial y mayores tenencias enlazadas.
   Las descripciones están escritas a mano en `ETFS` (`src/lib/equity.ts`) sobre
   el objetivo que declara cada prospecto: son 26 productos estables, no tiene

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { ETFS, getComposiciones } from "@/lib/equity";
+import { ETFS, getComposiciones, getIndicesReferencia } from "@/lib/equity";
 import EtfClient from "./EtfClient";
 
 export const metadata = { title: "ETF · Dashboard" };
@@ -13,8 +13,11 @@ export const dynamic = "force-dynamic";
  * carga del día paga y el resto sale de memoria.
  */
 async function Fondos() {
-  const composiciones = await getComposiciones();
-  return <EtfClient composiciones={composiciones} />;
+  const [composiciones, indices] = await Promise.all([
+    getComposiciones(),
+    getIndicesReferencia().catch(() => ({})),
+  ]);
+  return <EtfClient composiciones={composiciones} indices={indices} />;
 }
 
 function Esqueleto() {

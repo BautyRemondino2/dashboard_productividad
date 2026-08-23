@@ -8,11 +8,18 @@ import {
   FAMILIAS_ETF, FAMILIA_LABEL, FAMILIA_NOTA, colorRetorno, fmtNivel, fmtNumero, fmtPct, fmtUsd,
 } from "@/lib/equity-formato";
 import type { FamiliaETF } from "@/lib/equity-formato";
-import type { Composicion } from "@/lib/equity";
+import type { Composicion, IndiceReferencia } from "@/lib/equity";
 
 const ORDEN: FamiliaETF[] = [...FAMILIAS_ETF];
 
-export default function EtfClient({ composiciones }: { composiciones: Composicion[] }) {
+export default function EtfClient({
+  composiciones,
+  indices,
+}: {
+  composiciones: Composicion[];
+  /** Índice local del mercado subyacente, por ticker de ETF. */
+  indices: Record<string, IndiceReferencia>;
+}) {
   const [abierto, setAbierto] = useState<string | null>(composiciones[0]?.ticker ?? null);
   const activo = composiciones.find((c) => c.ticker === abierto) ?? null;
 
@@ -88,6 +95,32 @@ export default function EtfClient({ composiciones }: { composiciones: Composicio
             </p>
 
             <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 pt-4 border-t border-slate-800/60">
+              {indices[activo.ticker] && (
+                <div>
+                  <p
+                    className="text-[10px] uppercase tracking-wider text-slate-600"
+                    title="El índice del mercado subyacente, en su moneda. No es el índice que el fondo replica: la diferencia con el ETF es el tipo de cambio."
+                  >
+                    Mercado local
+                  </p>
+                  <p className="text-[13px] text-slate-200 tabular-nums mt-0.5">
+                    {indices[activo.ticker].nivel?.toLocaleString("es-AR", {
+                      maximumFractionDigits: 0,
+                    }) ?? "—"}
+                    <span className="text-[10px] text-slate-600 ml-1">
+                      {indices[activo.ticker].moneda ?? ""}
+                    </span>
+                    <span
+                      className={`text-[11px] ml-2 ${colorRetorno(indices[activo.ticker].dia)}`}
+                    >
+                      {fmtPct(indices[activo.ticker].dia, 2)}
+                    </span>
+                  </p>
+                  <p className="text-[10px] text-slate-600 mt-0.5">
+                    {indices[activo.ticker].nombre}
+                  </p>
+                </div>
+              )}
               {activo.gestora && (
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-slate-600">Gestora</p>

@@ -814,8 +814,8 @@ export const ETFS = [
     descripcion: "Las grandes y medianas de Brasil según MSCI. Muy pesado en materias primas y bancos, así que se mueve con el real y con el precio del hierro y el petróleo." },
   { ticker: "EWW", nombre: "México", detalle: "atado al ciclo de EE.UU.", familia: "paises",
     descripcion: "Las grandes y medianas de México según MSCI. Muy ligado al ciclo estadounidense por la integración comercial entre los dos países." },
-  { ticker: "EWY", nombre: "Corea del Sur", detalle: "el mercado del KOSPI", familia: "paises",
-    descripcion: "Las grandes y medianas de Corea del Sur, el mercado que sigue el KOSPI. Está muy concentrado en tecnología y semiconductores." },
+  { ticker: "EWY", nombre: "Corea del Sur", detalle: "grandes y medianas coreanas", familia: "paises",
+    descripcion: "Las grandes y medianas de Corea del Sur según MSCI. Ojo: no replica el KOSPI Composite, que además incluye a las chicas; este toma sólo grandes y medianas y ajusta por capital flotante. Está muy concentrado en tecnología y semiconductores." },
   { ticker: "EWJ", nombre: "Japón", detalle: "sin cobertura de yen", familia: "paises",
     descripcion: "Las grandes y medianas de Japón según MSCI. Cotiza en dólares sin cobertura cambiaria, así que el resultado incluye lo que haga el yen." },
   { ticker: "MCHI", nombre: "China", detalle: "incluye Hong Kong y ADR", familia: "paises",
@@ -870,6 +870,62 @@ export const ETFS = [
 ] as const satisfies readonly {
   ticker: string; nombre: string; detalle: string; familia: FamiliaETF; descripcion: string;
 }[];
+
+/**
+ * El índice local de referencia de cada fondo.
+ *
+ * Un ETF de país cotiza en dólares y el índice de ese país en su moneda, así
+ * que los dos retornos no coinciden: la diferencia es el tipo de cambio. Tener
+ * el índice al lado lo hace explícito — el KOSPI puede subir en wones mientras
+ * EWY queda plano en dólares.
+ *
+ * No es el índice que el fondo replica: EWY sigue a MSCI Korea, no al KOSPI.
+ * Es el termómetro del mercado subyacente.
+ */
+export const INDICE_REFERENCIA: Record<string, string> = {
+  SPY: "^GSPC", VOO: "^GSPC", QQQ: "^NDX", DIA: "^DJI", IWM: "^RUT",
+  ARGT: "^MERV", EWZ: "^BVSP", EWW: "^MXX", EWY: "^KS11", EWJ: "^N225",
+  MCHI: "^HSI", INDA: "^BSESN", EWT: "^TWII", EWG: "^GDAXI", EWU: "^FTSE",
+  EWC: "^GSPTSE", VGK: "^STOXX50E",
+};
+
+export interface IndiceReferencia {
+  ticker: string;
+  nombre: string;
+  nivel: number | null;
+  dia: number | null;
+  moneda: string | null;
+}
+
+/** Todos los índices de referencia en un solo request. Cacheado 10 minutos. */
+export function getIndicesReferencia(): Promise<Record<string, IndiceReferencia>> {
+  return memo("indices-referencia", 600, async () => {
+    const simbolos = [...new Set(Object.values(INDICE_REFERENCIA))];
+    const quotes = await yf.quote(
+      simbolos,
+      { fields: ["symbol", "longName", "shortName", "regularMarketPrice", "regularMarketChangePercent", "currency"] },
+      { validateResult: false }
+    );
+
+    const porSimbolo = new Map(
+      (quotes as Record<string, unknown>[]).map((q) => [String(q.symbol), q])
+    );
+
+    const salida: Record<string, IndiceReferencia> = {};
+    for (const [etf, indice] of Object.entries(INDICE_REFERENCIA)) {
+      const q = porSimbolo.get(indice);
+      if (!q) continue;
+      salida[etf] = {
+        ticker: indice,
+        nombre: String(q.longName ?? q.shortName ?? indice).trim(),
+        nivel: numero(q.regularMarketPrice as number),
+        dia: numero(q.regularMarketChangePercent as number),
+        moneda: (q.currency as string) ?? null,
+      };
+    }
+    return salida;
+  });
+}
 
 /** Los cuatro que se muestran resumidos en el monitor. */
 export const ETFS_DESTACADOS = ["SPY", "QQQ", "DIA", "IWM"] as const;
