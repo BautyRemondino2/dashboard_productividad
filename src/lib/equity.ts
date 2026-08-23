@@ -693,3 +693,37 @@ export function getHistoriaFinanciera(ticker: string): Promise<AñoFinanciero[]>
       .filter((a) => a.año && a.ventas);
   });
 }
+
+// ─── Noticias ───────────────────────────────────────────────────────────────
+
+export interface Noticia {
+  titulo: string;
+  medio: string;
+  fecha: string | null;
+  url: string;
+}
+
+/**
+ * Últimas noticias del ticker. Salen del buscador de Yahoo, que devuelve el
+ * mismo feed que muestra en la página del papel. Cacheadas 30 minutos.
+ */
+export function getNoticias(ticker: string, cantidad = 8): Promise<Noticia[]> {
+  return memo(`noticias:${ticker}:${cantidad}`, 1800, async () => {
+    // Sin validar: Yahoo cambia los campos de las noticias seguido y el
+    // esquema de la librería queda viejo, tirando la respuesta entera.
+    const r = (await yf.search(
+      ticker,
+      { newsCount: cantidad, quotesCount: 0, enableFuzzyQuery: false },
+      { validateResult: false }
+    )) as { news?: Record<string, unknown>[] };
+
+    return (r.news ?? [])
+      .map((n) => ({
+        titulo: String(n.title ?? ""),
+        medio: String(n.publisher ?? ""),
+        fecha: aFechaISO(n.providerPublishTime),
+        url: String(n.link ?? ""),
+      }))
+      .filter((n) => n.titulo && n.url);
+  });
+}

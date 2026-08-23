@@ -39,9 +39,16 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Equity — monitor del S&P 500
 
-`/equity` rankea las 503 empresas del índice por cuánto se movieron, y de cada
-una hay una ficha en `/equity/<TICKER>` con el gráfico de TradingView, los
-fundamentals, los comparables del sector y el próximo earnings.
+Tres pantallas:
+
+- **`/equity`** — rankea las 503 empresas del índice por cuánto se movieron.
+  Franja con el S&P y los once sectores del día, retornos contra el índice
+  (alpha), filtros guardados y agrupado por sector.
+- **`/equity/<TICKER>`** — la ficha: gráfico de TradingView, fundamentals contra
+  la mediana de sus pares, ventas y márgenes por año, resultados contra el
+  consenso, analistas, noticias e investigación con fuentes.
+- **`/equity/earnings`** — calendario de balances por semana. No cuesta ningún
+  request extra: las fechas ya vienen en el lote que alimenta el ranking.
 
 ### Cómo se piden los datos
 
@@ -65,6 +72,25 @@ que introduce está documentado en `src/lib/equity.ts`.
 No toca la base de datos: el caché es en memoria del proceso, con TTL (10 min el
 tablero, 30 min las series, 1 hora las fichas). En Vercel la DB es efímera y
 estos datos se rebajan solos, así que no hay nada que persistir.
+
+### La capa de Claude
+
+Dos cosas viven en `src/lib/equity-claude.ts` y necesitan `ANTHROPIC_API_KEY`.
+Sin esa variable los paneles no se muestran y el resto de la ficha anda igual.
+
+| Función | Qué hace | Costo aproximado |
+|---|---|---|
+| `getDescripcionEs()` | Traduce y condensa al castellano la descripción de Yahoo | fracción de centavo, cacheado 30 días |
+| `getInvestigacion()` | Busca en la web contratos, clientes, proveedores e inversiones | unos centavos de dólar, cacheado 24 h |
+
+**Por qué la investigación usa búsqueda web y no el conocimiento del modelo:**
+un modelo respondiendo de memoria sobre contratos y clientes inventa nombres y
+fechas que suenan perfectos. Esto termina en una conversación con un cliente,
+así que cada afirmación tiene que tener una fuente que se pueda abrir. El prompt
+le exige decir "no encontré información" antes que completar el hueco, y la
+ficha muestra siempre la lista de páginas consultadas.
+
+Modelo: `claude-opus-5` (igual que `/api/glossary/explain`).
 
 ### Actualizar el universo
 

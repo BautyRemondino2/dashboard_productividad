@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { POR_TICKER } from "@/lib/equity-universo";
 import { SECTOR_LABEL } from "@/lib/equity-sectores";
 import {
-  getComparables, getComparacion, getConsenso, getFicha, getHistoriaFinanciera, getRetornosDe,
+  getComparables, getComparacion, getConsenso, getFicha, getHistoriaFinanciera,
+  getNoticias, getRetornosDe,
 } from "@/lib/equity";
+import { getDescripcionEs, getInvestigacion, hayClaude } from "@/lib/equity-claude";
 import {
   PanelConsenso, PanelFundamentals, PanelHistoria, PanelSorpresas,
 } from "./Fundamentals";
@@ -15,6 +17,8 @@ import {
 } from "@/lib/equity-formato";
 import type { FilaTablero } from "@/lib/equity-formato";
 import GraficoTradingView from "./GraficoTradingView";
+import Logo from "./Logo";
+import { PanelInvestigacion, PanelNoticias } from "./Investigacion";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +97,34 @@ async function Historia({ ticker }: { ticker: string }) {
   return <PanelHistoria historia={historia} />;
 }
 
+async function Descripcion({ ticker, nombre, original }: {
+  ticker: string; nombre: string; original: string;
+}) {
+  const es = await getDescripcionEs(ticker, nombre, original).catch(() => null);
+  return (
+    <p className="text-[12px] leading-relaxed text-slate-300">
+      {es ?? original}
+    </p>
+  );
+}
+
+async function Noticias({ ticker }: { ticker: string }) {
+  const noticias = await getNoticias(ticker);
+  return <PanelNoticias noticias={noticias} />;
+}
+
+async function Investigada({ ticker, nombre }: { ticker: string; nombre: string }) {
+  const investigacion = await getInvestigacion(ticker, nombre).catch(() => null);
+  if (!investigacion) {
+    return (
+      <p className="text-[11px] text-slate-600">
+        No se pudo completar la investigación. Probá refrescar en un rato.
+      </p>
+    );
+  }
+  return <PanelInvestigacion investigacion={investigacion} />;
+}
+
 function Comparables({ filas, actual }: { filas: FilaTablero[]; actual: string }) {
   if (filas.length === 0) {
     return <p className="text-[11px] text-slate-600">Sin comparables en el índice.</p>;
@@ -155,6 +187,9 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
   if (!ficha) notFound();
 
   const { analistas: ana, earnings } = ficha;
+  // Sin ANTHROPIC_API_KEY los paneles de Claude no se muestran en vez de
+  // renderizar un error: el resto de la ficha funciona igual.
+  const conClaude = hayClaude();
   const upside =
     ana.precioObjetivo && ficha.precio ? (ana.precioObjetivo / ficha.precio - 1) * 100 : null;
 
@@ -170,7 +205,9 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
         </Link>
 
         <div className="flex items-end justify-between gap-6 flex-wrap mt-2">
-          <div className="min-w-0">
+          <div className="min-w-0 flex items-start gap-3">
+            <Logo web={ficha.web} ticker={ficha.ticker} tamaño={44} />
+            <div className="min-w-0">
             <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">
               {ficha.ticker}
             </h1>
@@ -193,6 +230,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
                 </>
               )}
             </p>
+            </div>
           </div>
 
           <div className="text-right">
@@ -234,8 +272,40 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
           </div>
 
           {ficha.descripcion && (
-            <Panel titulo="A qué se dedica" nota="descripción de Yahoo Finance, en inglés">
-              <p className="text-[12px] leading-relaxed text-slate-400">{ficha.descripcion}</p>
+            <Panel
+              titulo="A qué se dedica"
+              nota={conClaude ? "resumido al castellano" : "descripción de Yahoo, en inglés"}
+            >
+              {conClaude ? (
+                <Suspense
+                  fallback={<div className="h-16 animate-pulse bg-slate-900/40 rounded" />}
+                >
+                  <Descripcion
+                    ticker={ficha.ticker}
+                    nombre={ficha.nombre}
+                    original={ficha.descripcion}
+                  />
+                </Suspense>
+              ) : (
+                <p className="text-[12px] leading-relaxed text-slate-400">{ficha.descripcion}</p>
+              )}
+            </Panel>
+          )}
+
+          {conClaude && (
+            <Panel titulo="Investigación" nota="búsqueda web con fuentes">
+              <Suspense
+                fallback={
+                  <div className="space-y-3">
+                    <p className="text-[11px] text-slate-600">
+                      Buscando contratos, clientes e inversiones en la web…
+                    </p>
+                    <div className="h-40 animate-pulse bg-slate-900/40 rounded" />
+                  </div>
+                }
+              >
+                <Investigada ticker={ficha.ticker} nombre={ficha.nombre} />
+              </Suspense>
             </Panel>
           )}
 
@@ -246,6 +316,12 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
 
         {/* ── Sidebar ───────────────────────────────────────────────── */}
         <div className="space-y-5">
+          <Panel titulo="Noticias">
+            <Suspense fallback={<div className="h-40 animate-pulse bg-slate-900/40 rounded" />}>
+              <Noticias ticker={ficha.ticker} />
+            </Suspense>
+          </Panel>
+
           <Panel titulo="Fundamentals" nota="contra sus pares">
             <Suspense fallback={<div className="h-[380px] animate-pulse bg-slate-900/40 rounded" />}>
               <Comparacion ticker={ficha.ticker} />

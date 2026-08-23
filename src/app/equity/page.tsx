@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { getBenchmarks, getRanking, getRetornosIndice } from "@/lib/equity";
 import { UNIVERSO_SP500 } from "@/lib/equity-universo";
 import EquityClient from "./EquityClient";
@@ -63,7 +64,15 @@ export default function EquityPage() {
             S&amp;P 500 · {UNIVERSO_SP500.length} empresas · lo que más se movió
           </p>
         </div>
-        <RefrescarEquity />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/equity/earnings"
+            className="text-[11px] px-3 py-1.5 rounded-md border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-colors whitespace-nowrap"
+          >
+            calendario de earnings →
+          </Link>
+          <RefrescarEquity />
+        </div>
       </div>
 
       <div className="space-y-4">

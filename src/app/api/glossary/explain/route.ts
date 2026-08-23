@@ -21,8 +21,13 @@ export async function POST(req: NextRequest) {
   const client = new Anthropic({ apiKey });
 
   const stream = client.messages.stream({
-    model: "claude-opus-4-7",
-    max_tokens: 700,
+    model: "claude-opus-5",
+    // En Opus 5 el razonamiento viene activado por omisión y consume tokens de
+    // salida: con los 700 de antes la explicación se cortaba a la mitad.
+    max_tokens: 8000,
+    // Explicar un término de glosario no amerita razonar a fondo; con esfuerzo
+    // medio la respuesta empieza a salir rápido y no pierde calidad.
+    output_config: { effort: "medium" },
     messages: [
       {
         role: "user",
