@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MAPA_ALTO, MAPA_ANCHO, PROVINCIAS, type Orientacion, type Provincia } from "@/lib/provincias";
-import type { DatosProvincia } from "@/lib/macro-provincias";
+import { RUBRO_LABEL, type DatosProvincia } from "@/lib/macro-provincias";
 
 /**
  * Mapa de las 24 jurisdicciones.
@@ -44,6 +44,14 @@ const ORIENTACION: Record<Orientacion, string> = {
   centro: "#64748b",
   centroderecha: "#fbbf24",
   derecha: "#d97706",
+};
+
+/** Un tono por rubro exportador. Cuatro categorías, separables entre sí. */
+const RUBRO: Record<string, string> = {
+  pp: "#c98500",
+  moa: "#199e70",
+  moi: "#3987e5",
+  cye: "#d95926",
 };
 
 const ORDEN_ORIENTACION: Orientacion[] = [
@@ -122,6 +130,17 @@ export default function MapaProvincias({ datos }: { datos: Record<string, DatosP
     }
     return salida;
   }, [valores, metrica]);
+
+  /** Totales del país, para calcular cuánto pesa cada provincia. */
+  const nacional = useMemo(() => {
+    let empleo = 0, expo = 0, poblacion = 0;
+    for (const p of PROVINCIAS) {
+      empleo += datos[p.iso]?.empleo?.nivel ?? 0;
+      expo += datos[p.iso]?.exportaciones?.monto ?? 0;
+      poblacion += p.poblacion ?? 0;
+    }
+    return { empleo, expo, poblacion };
+  }, [datos]);
 
   const activaMeta = METRICAS.find((m) => m.id === metrica)!;
 
@@ -210,6 +229,7 @@ export default function MapaProvincias({ datos }: { datos: Record<string, DatosP
             datos={datos[provincia.iso] ?? null}
             fijada={fijada === provincia.iso}
             interactuando={Boolean(seleccionada)}
+            nacional={nacional}
           />
 
           <Ranking
@@ -267,6 +287,73 @@ function Escala({ metrica, valores }: { metrica: Metrica; valores: Map<string, n
       )}
     </div>
   );
+}
+
+// ─── Lectura de la provincia ────────────────────────────────────────────────
+
+/**
+ * Cómo viene la provincia, escrito a partir de los datos.
+ *
+ * Se arma con los números en vez de guardar 24 textos fijos: así no queda vieja
+ * cuando cambian las cifras, y nunca dice algo que el dato no respalde.
+ */
+function Lectura({
+  provincia,
+  empleo,
+  expo,
+  nacional,
+}: {
+  provincia: Provincia;
+  empleo: DatosProvincia["empleo"] | undefined;
+  expo: DatosProvincia["exportaciones"] | undefined;
+  nacional: { empleo: number; expo: number; poblacion: number };
+}) {
+  const frases: string[] = [];
+
+  if (provincia.poblacion && nacional.poblacion) {
+    const pobPct = (provincia.poblacion / nacional.poblacion) * 100;
+    const empPct = empleo && nacional.empleo ? (empleo.nivel / nacional.empleo) * 100 : null;
+    const expPct = expo && nacional.expo ? (expo.monto / nacional.expo) * 100 : null;
+
+    const partes = [`${fmt(pobPct, 1)}% de la población`];
+    if (empPct != null) partes.push(`${fmt(empPct, 1)}% del empleo privado registrado`);
+    if (expPct != null) partes.push(`${fmt(expPct, 1)}% de las exportaciones`);
+    // "el A, el B y el C" — la última va con "y", no con coma
+    const ultima = partes.pop()!;
+    const listado = partes.length ? `${partes.join(", el ")} y el ${ultima}` : ultima;
+    frases.push(`Concentra el ${listado} del país.`);
+  }
+
+  if (expo?.composicion.length) {
+    const top = expo.composicion[0];
+    frases.push(
+      top.peso >= 60
+        ? `Su comercio exterior depende casi por completo de ${RUBRO_LABEL[top.rubro].toLowerCase()}: ${fmt(top.peso, 0)}% del total.`
+        : `Lo que más exporta son ${RUBRO_LABEL[top.rubro].toLowerCase()} (${fmt(top.peso, 0)}%), sobre una base más repartida.`
+    );
+  }
+
+  if (empleo?.interanual != null) {
+    const v = empleo.interanual;
+    frases.push(
+      v > 2 ? `El empleo privado crece con fuerza: ${fmtPct(v)} interanual.`
+      : v > 0.3 ? `El empleo privado crece despacio, ${fmtPct(v)} interanual.`
+      : v > -0.3 ? "El empleo privado está estancado."
+      // Sin el signo: "cae +2,4%" se contradice a sí mismo
+      : v > -3 ? `El empleo privado cae ${fmt(Math.abs(v), 1)}% interanual.`
+      : `El empleo privado se está desplomando: cae ${fmt(Math.abs(v), 1)}% interanual.`
+    );
+  }
+
+  if (empleo && provincia.poblacion) {
+    frases.push(
+      `Hay ${fmt((empleo.nivel * 1000 * 100) / provincia.poblacion, 1)} asalariados privados registrados cada 100 habitantes.`
+    );
+  }
+
+  if (frases.length === 0) return null;
+
+  return <p className="text-[11px] text-slate-400 leading-relaxed mt-4">{frases.join(" ")}</p>;
 }
 
 // ─── Ranking ────────────────────────────────────────────────────────────────
@@ -356,18 +443,41 @@ function Detalle({
   datos,
   fijada,
   interactuando,
+  nacional,
 }: {
   provincia: Provincia;
   datos: DatosProvincia | null;
   fijada: boolean;
   /** False cuando es la provincia por defecto y nadie tocó el mapa todavía. */
   interactuando: boolean;
+  /** Totales del país, para expresar cuánto pesa esta provincia. */
+  nacional: { empleo: number; expo: number; poblacion: number };
 }) {
   const empleo = datos?.empleo;
   const expo = datos?.exportaciones;
 
   return (
     <div className="min-w-0">
+      <div className="flex items-start gap-3">
+        {provincia.foto ? (
+          // eslint-disable-next-line @next/next/no-img-element -- Wikimedia Commons, sin optimizador
+          <img
+            src={provincia.foto}
+            alt={`${provincia.gobernador}, gobernador de ${provincia.nombre}`}
+            width={52}
+            height={52}
+            loading="lazy"
+            className="w-[52px] h-[52px] rounded-lg object-cover object-top border border-slate-800 shrink-0 bg-slate-900"
+          />
+        ) : (
+          <div className="w-[52px] h-[52px] rounded-lg border border-slate-800 bg-slate-900 shrink-0 flex items-center justify-center">
+            <span className="text-[13px] text-slate-600">
+              {provincia.gobernador.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+            </span>
+          </div>
+        )}
+
+        <div className="min-w-0">
       <div className="flex items-baseline gap-2 flex-wrap">
         <h3 className="text-xl font-semibold text-slate-100 tracking-tight">{provincia.nombre}</h3>
         {fijada ? (
@@ -389,6 +499,8 @@ function Detalle({
         </span>
         <span className="text-[10px] text-slate-600 capitalize">{provincia.orientacion}</span>
       </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-5">
         <Dato
@@ -408,15 +520,33 @@ function Detalle({
         />
       </div>
 
-      {empleo && provincia.poblacion && (
-        <p className="text-[11px] text-slate-500 mt-4">
-          {fmt((empleo.nivel * 1000 * 100) / provincia.poblacion, 1)} asalariados privados
-          registrados cada 100 habitantes.
-          {expo && (
-            <> Exporta US${fmt((expo.monto * 1e6) / provincia.poblacion)} por habitante al año.</>
-          )}
-        </p>
+      {expo && expo.composicion.length > 0 && (
+        <div className="mt-5">
+          <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
+            De dónde salen sus dólares
+          </p>
+          <div className="flex h-2.5 rounded-sm overflow-hidden gap-[2px]">
+            {expo.composicion.map((c) => (
+              <div
+                key={c.rubro}
+                style={{ width: `${c.peso}%`, background: RUBRO[c.rubro] }}
+                title={`${RUBRO_LABEL[c.rubro]}: ${fmt(c.peso, 1)}%`}
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+            {expo.composicion.map((c) => (
+              <span key={c.rubro} className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm" style={{ background: RUBRO[c.rubro] }} />
+                <span className="text-[10px] text-slate-500">{RUBRO_LABEL[c.rubro]}</span>
+                <span className="text-[10px] text-slate-400 tabular-nums">{fmt(c.peso, 0)}%</span>
+              </span>
+            ))}
+          </div>
+        </div>
       )}
+
+      <Lectura provincia={provincia} empleo={empleo} expo={expo} nacional={nacional} />
 
     </div>
   );

@@ -130,12 +130,25 @@ function normalizar(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]/g, "");
 }
 
+/** Los cuatro grandes rubros con que el INDEC clasifica las exportaciones. */
+export const RUBROS = ["pp", "moa", "moi", "cye"] as const;
+export type Rubro = (typeof RUBROS)[number];
+
+export const RUBRO_LABEL: Record<Rubro, string> = {
+  pp: "Productos primarios",
+  moa: "Manufacturas agropecuarias",
+  moi: "Manufacturas industriales",
+  cye: "Combustibles y energía",
+};
+
 export interface ExportacionesProvincia {
   /** Millones de dólares del último año disponible. */
   monto: number;
   anio: string;
   /** Variación contra el año anterior, en %. */
   interanual: number | null;
+  /** Peso de cada rubro dentro del total, en %. Vacío si no se pudo desglosar. */
+  composicion: { rubro: Rubro; monto: number; peso: number }[];
 }
 
 /**
@@ -158,6 +171,7 @@ export function getExportacionesProvinciales(): Promise<Record<string, Exportaci
     };
 
     const idPorProvincia = new Map<string, string>();
+    const idPorRubro = new Map<string, string>();
     for (const p of PROVINCIAS) {
       const clave = normalizar(p.nombre === "CABA" ? "ciudad de buenos aires" : p.nombre);
       // Las series de total repiten el nombre: "Exportaciones jujuy total jujuy"
@@ -165,6 +179,14 @@ export function getExportacionesProvinciales(): Promise<Record<string, Exportaci
         (d) => normalizar(String(d.field?.description ?? "")) === `exportaciones${clave}total${clave}`
       );
       if (hit?.field?.id) idPorProvincia.set(p.iso, hit.field.id);
+
+      // Y el desglose: "Exportaciones neuquen cye" para combustibles y energía
+      for (const rubro of RUBROS) {
+        const r = (catalogo.data ?? []).find(
+          (d) => normalizar(String(d.field?.description ?? "")) === `exportaciones${clave}${rubro}`
+        );
+        if (r?.field?.id) idPorRubro.set(`${p.iso}:${rubro}`, r.field.id);
+      }
     }
     if (idPorProvincia.size === 0) return {};
 
@@ -200,9 +222,41 @@ export function getExportacionesProvinciales(): Promise<Record<string, Exportaci
           monto,
           anio: String(ultima?.[0] ?? "").slice(0, 4),
           interanual: Number.isFinite(antes) && antes > 0 ? (monto / antes - 1) * 100 : null,
+          composicion: [],
         };
       });
     }
+
+    // 3. El desglose por rubro, en tandas
+    const rubroIds = [...idPorRubro.entries()];
+    for (let i = 0; i < rubroIds.length; i += 20) {
+      const tanda = rubroIds.slice(i, i + 20);
+      const r = await fetch(
+        `${API_SERIES}/series/?ids=${tanda.map(([, id]) => id).join(",")}&limit=1&sort=desc&format=json`
+      );
+      if (!r.ok) continue;
+
+      const j = (await r.json()) as { data?: (string | number | null)[][] };
+      const fila = j.data?.[0];
+      if (!fila) continue;
+
+      tanda.forEach(([clave], col) => {
+        const [iso, rubro] = clave.split(":") as [string, Rubro];
+        const monto = Number(fila[col + 1]);
+        if (!Number.isFinite(monto) || monto <= 0 || !salida[iso]) return;
+        salida[iso].composicion.push({ rubro, monto, peso: 0 });
+      });
+    }
+
+    // Los pesos se calculan sobre la suma de los rubros y no sobre el total
+    // declarado: si algún rubro no vino, así los porcentajes igual cierran.
+    for (const v of Object.values(salida)) {
+      const suma = v.composicion.reduce((s, c) => s + c.monto, 0);
+      if (suma <= 0) { v.composicion = []; continue; }
+      for (const c of v.composicion) c.peso = (c.monto / suma) * 100;
+      v.composicion.sort((a, b) => b.monto - a.monto);
+    }
+
     return salida;
   });
 }

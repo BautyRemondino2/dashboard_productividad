@@ -93,6 +93,85 @@ const POBLACION = {
   "AR-L": 358428, "AR-U": 603120, "AR-Z": 333473, "AR-V": 190641,
 };
 
+// ─── Fotos de los gobernadores ──────────────────────────────────────────────
+
+/**
+ * Busca en Wikidata la foto de cada gobernador.
+ *
+ * Wikidata guarda en la propiedad P18 el nombre del archivo en Wikimedia
+ * Commons, y Commons lo sirve redimensionado por `Special:FilePath`. Son fotos
+ * con licencia libre — a diferencia de los logos partidarios, que son marcas
+ * registradas y en Wikipedia están bajo uso legítimo, no reutilizables.
+ */
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const UA = { "user-agent": "personal-dashboard/1.0 (dashboard personal de un asesor)" };
+
+async function traer(url, intentos = 3) {
+  for (let i = 0; i < intentos; i++) {
+    try {
+      const r = await fetch(url, { headers: UA });
+      if (r.ok) return await r.json();
+    } catch { /* reintenta */ }
+    await dormir(700 * (i + 1));
+  }
+  return null;
+}
+
+const WIKI = "https://es.wikipedia.org/w/api.php";
+
+/** La URL trae parámetros de analítica que no hacen falta. */
+const limpiarUrl = (u) => String(u).split("?")[0];
+
+/**
+ * Fotos de los gobernadores, desde la Wikipedia en español.
+ *
+ * Se usa `prop=pageimages`, que devuelve la miniatura ya redimensionada y
+ * acepta **los 24 títulos en un solo pedido**. Antes esto iba contra Wikidata,
+ * ficha por ficha, y esa API corta las consultas anónimas: cada corrida
+ * resolvía un subconjunto distinto.
+ *
+ * Son fotos de Wikimedia Commons, con licencia libre. Los logos partidarios NO
+ * se traen: son marcas registradas y en Wikipedia están bajo uso legítimo, que
+ * no habilita reutilizarlos acá.
+ */
+async function buscarFotos(nombres) {
+  const salida = new Map();
+  if (nombres.length === 0) return salida;
+
+  const pedir = async (titulos) => {
+    const j = await traer(
+      `${WIKI}?action=query&titles=${titulos.map(encodeURIComponent).join("|")}` +
+      `&prop=pageimages&piprop=thumbnail&pithumbsize=240&redirects=1&format=json&origin=*`
+    );
+    return Object.values(j?.query?.pages ?? {});
+  };
+
+  for (let i = 0; i < nombres.length; i += 20) {
+    await dormir(400);
+    for (const pg of await pedir(nombres.slice(i, i + 20))) {
+      if (pg.thumbnail?.source) salida.set(pg.title, limpiarUrl(pg.thumbnail.source));
+    }
+  }
+
+  // Los que no resolvieron suelen tener el título desambiguado
+  // ("Ignacio Torres (político)"): se los busca primero.
+  for (const nombre of nombres.filter((n) => !salida.has(n))) {
+    await dormir(400);
+    const j = await traer(
+      `${WIKI}?action=query&list=search&srsearch=${encodeURIComponent(`${nombre} gobernador`)}&srlimit=3&format=json&origin=*`
+    );
+    const titulos = (j?.query?.search ?? []).map((x) => x.title);
+    if (!titulos.length) continue;
+
+    await dormir(400);
+    for (const pg of await pedir(titulos)) {
+      if (pg.thumbnail?.source) { salida.set(nombre, limpiarUrl(pg.thumbnail.source)); break; }
+    }
+  }
+  return salida;
+}
+
 // ─── Descarga y proyección ──────────────────────────────────────────────────
 
 console.log("Bajando geometría de Natural Earth (38 MB)…");
@@ -182,6 +261,40 @@ if (sinPoblacion.length) throw new Error(`Sin población: ${sinPoblacion.join(",
 const sinGobernador = provincias.filter((p) => !p.ref).map((p) => p.iso);
 if (sinGobernador.length) throw new Error(`Sin gobernador: ${sinGobernador.join(", ")}`);
 
+/**
+ * Wikidata limita las consultas anónimas y corta a mitad de camino, así que
+ * cada corrida encuentra un subconjunto distinto. Para que el resultado sea
+ * estable, se arranca de lo que ya está en el archivo generado y sólo se
+ * agrega: una corrida nunca puede borrar una foto que ya se había resuelto.
+ * Correrlo dos veces converge.
+ */
+function fotosYaGuardadas() {
+  const previas = new Map();
+  try {
+    const anterior = fs.readFileSync(DESTINO, "utf8");
+    for (const m of anterior.matchAll(/gobernador: "([^"]+)",[\s\S]{0,400}?foto: (null|"[^"]*")/g)) {
+      if (m[2] !== "null") previas.set(m[1], JSON.parse(m[2]));
+    }
+  } catch { /* primera corrida */ }
+  return previas;
+}
+
+console.log("Buscando fotos de los gobernadores en Wikipedia…");
+const fotos = fotosYaGuardadas();
+const previas = fotos.size;
+
+const nuevas = await buscarFotos(
+  [...new Set(provincias.map((p) => p.ref.gobernador))].filter((n) => !fotos.has(n))
+);
+for (const [n, f] of nuevas) fotos.set(n, f);
+for (const p of provincias) p.foto = fotos.get(p.ref.gobernador) ?? null;
+
+if (previas) console.log(`  ${previas} ya estaban guardadas · ${nuevas.size} nuevas`);
+const conFoto = provincias.filter((p) => p.foto).length;
+console.log(`  ${conFoto}/${provincias.length} con foto`);
+const sinFoto = provincias.filter((p) => !p.foto);
+if (sinFoto.length) console.log(`  sin foto: ${sinFoto.map((p) => p.ref.gobernador).join(", ")}`);
+
 const puntos = provincias.reduce((s, p) => s + p.anillos.reduce((t, a) => t + a.length, 0), 0);
 console.log(`  ${puntos} puntos tras simplificar · lienzo ${ANCHO}×${ALTO}`);
 
@@ -222,6 +335,8 @@ export interface Provincia {
   orientacion: Orientacion;
   /** Censo Nacional 2022 (INDEC). */
   poblacion: number | null;
+  /** Miniatura del gobernador en Wikimedia Commons. */
+  foto: string | null;
 }
 
 export const PROVINCIAS: Provincia[] = [
@@ -233,6 +348,7 @@ ${provincias.map((p) => `  {
     bloque: ${JSON.stringify(p.ref?.bloque ?? "Provincial")},
     orientacion: ${JSON.stringify(p.ref?.orientacion ?? "centro")},
     poblacion: ${p.poblacion},
+    foto: ${JSON.stringify(p.foto ?? null)},
     cx: ${p.cx}, cy: ${p.cy},
     d: ${JSON.stringify(p.d)},
   },`).join("\n")}

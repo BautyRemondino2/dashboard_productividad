@@ -55,6 +55,8 @@ y las que más caen.
 |---|---|---|
 | Geometría de las 24 | Natural Earth (dominio público), simplificada y proyectada a SVG en `scripts/generar-provincias.mjs` | fija |
 | Gobernador, partido, orientación | Escrito a mano en el generador, mandatos 2023-2027 | se corre a mano al cambiar |
+| Foto del gobernador | Wikipedia en español (`prop=pageimages`), imágenes de Wikimedia Commons | al regenerar |
+| **Composición de exportaciones** | INDEC, desglose por rubro (primarios, agro, industria, energía) | anual |
 | Población | Censo Nacional 2022 (INDEC) | fija |
 | **Empleo privado registrado** | SSPM vía CSV de datos.gob.ar | mensual |
 | **Exportaciones** | INDEC vía la API de series de datos.gob.ar | anual |
@@ -69,6 +71,21 @@ inventarlos, así que la ficha lo dice en vez de rellenar el hueco.
 > estadísticas criminales—, hay que buscar por texto; y los IDs de serie no
 > siguen un patrón deducible (`350.1_JUJUY_TOTAJUY__17`), así que se emparejan
 > por descripción.
+
+**Los logos partidarios no se traen.** Son marcas registradas y en Wikipedia
+están bajo uso legítimo, que no habilita reutilizarlos en otro sitio. En su
+lugar va el nombre del partido en una etiqueta. Las fotos sí: son de Wikimedia
+Commons con licencia libre.
+
+> La búsqueda de fotos va contra la Wikipedia en español y no contra Wikidata:
+> esa API corta las consultas anónimas y cada corrida resolvía un subconjunto
+> distinto. Igual el generador acumula —arranca de lo ya guardado y sólo
+> agrega—, así una corrida con la red mal nunca borra lo que ya estaba.
+
+La descripción de cada provincia se arma **con los datos**, no con textos fijos:
+cuánto pesa en población, empleo y exportaciones, de qué rubro salen sus
+dólares, y si el empleo crece, está estancado o cae. Así no queda vieja ni dice
+nada que el dato no respalde.
 
 El generador valida antes de escribir: si un gobernador aparece en dos
 provincias, aborta. Ese control apareció después de cargar a Weretilneck en Río
