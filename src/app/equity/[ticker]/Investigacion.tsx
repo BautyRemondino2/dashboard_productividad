@@ -19,7 +19,7 @@ export function PanelInvestigacion({ investigacion }: { investigacion: Investiga
           <h3 className="text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">
             {s.titulo}
           </h3>
-          <p className="text-[12px] leading-relaxed text-slate-300 whitespace-pre-line">
+          <p className="text-[12px] leading-relaxed text-slate-300 whitespace-pre-line max-w-[80ch]">
             {s.texto}
           </p>
         </div>

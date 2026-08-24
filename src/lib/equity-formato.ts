@@ -175,8 +175,15 @@ export interface Lectura {
 export function leerMetrica(m: MetricaComparada): Lectura | null {
   const { valor, mediana, sentido } = m;
   if (valor == null || mediana == null) return null;
-  // Con un negativo de por medio el cociente pierde sentido (un PER negativo no
-  // es "más barato"): se compara la dirección, no la magnitud.
+  // Un múltiplo de valuación negativo NO es "más barato": significa que la
+  // empresa pierde plata y el ratio deja de tener sentido. Decir "mejor que sus
+  // pares" ante un PER forward de -4.782 es exactamente al revés.
+  if (sentido === "alto_caro" && valor < 0) {
+    return { texto: "sin ganancias: el múltiplo no aplica", tono: "malo", desvio: 0 };
+  }
+
+  // Con un negativo de por medio el cociente pierde sentido, así que se compara
+  // la dirección y no la magnitud.
   if (mediana === 0 || valor < 0 || mediana < 0) {
     const mejor = sentido === "alto_mejor" ? valor > mediana : valor < mediana;
     return {

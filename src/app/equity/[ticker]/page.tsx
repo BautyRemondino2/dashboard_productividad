@@ -102,7 +102,7 @@ async function Descripcion({ ticker, nombre, original }: {
 }) {
   const es = await getDescripcionEs(ticker, nombre, original).catch(() => null);
   return (
-    <p className="text-[12px] leading-relaxed text-slate-300">
+    <p className="text-[12px] leading-relaxed text-slate-300 max-w-[80ch]">
       {es ?? original}
     </p>
   );
@@ -194,7 +194,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
     ana.precioObjetivo && ficha.precio ? (ana.precioObjetivo / ficha.precio - 1) * 100 : null;
 
   return (
-    <div className="px-8 py-7 max-w-[1400px]">
+    <div className="px-8 py-7 max-w-[1600px] mx-auto">
       {/* ── Encabezado ──────────────────────────────────────────────── */}
       <div className="mb-6 fade-up fade-up-1">
         <Link
@@ -244,7 +244,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-5 items-start">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
         {/* ── Columna principal ─────────────────────────────────────── */}
         <div className="space-y-5 min-w-0">
           <GraficoTradingView ticker={ficha.ticker} />
@@ -288,7 +288,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
                 </Suspense>
               ) : (
                 <>
-                  <p className="text-[12px] leading-relaxed text-slate-400">
+                  <p className="text-[12px] leading-relaxed text-slate-400 max-w-[80ch]">
                     {ficha.descripcion}
                   </p>
                   <p className="text-[10px] text-slate-600 mt-3">
@@ -299,6 +299,12 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
               )}
             </Panel>
           )}
+
+          <Panel titulo="Fundamentals" nota="contra la mediana de sus pares">
+            <Suspense fallback={<div className="h-[300px] animate-pulse bg-slate-900/40 rounded" />}>
+              <Comparacion ticker={ficha.ticker} />
+            </Suspense>
+          </Panel>
 
           {conClaude && (
             <Panel titulo="Investigación" nota="búsqueda web con fuentes">
@@ -327,12 +333,6 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
           <Panel titulo="Noticias">
             <Suspense fallback={<div className="h-40 animate-pulse bg-slate-900/40 rounded" />}>
               <Noticias ticker={ficha.ticker} />
-            </Suspense>
-          </Panel>
-
-          <Panel titulo="Fundamentals" nota="contra sus pares">
-            <Suspense fallback={<div className="h-[380px] animate-pulse bg-slate-900/40 rounded" />}>
-              <Comparacion ticker={ficha.ticker} />
             </Suspense>
           </Panel>
 
