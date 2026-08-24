@@ -216,7 +216,12 @@ Sin esa variable los paneles no se muestran y el resto de la ficha anda igual.
 | Función | Qué hace | Costo aproximado |
 |---|---|---|
 | `getDescripcionEs()` | Traduce y condensa al castellano la descripción de Yahoo | fracción de centavo, cacheado 30 días |
-| `getInvestigacion()` | Busca en la web contratos, clientes, proveedores e inversiones | unos centavos de dólar, cacheado 24 h |
+| `getInvestigacion()` | De dónde salen los ingresos, a quién le vende, concentración de clientes, backlog y riesgos | unos centavos, cacheado 24 h |
+
+El **año de fundación** no necesita la clave: Yahoo no lo trae como campo pero
+lo escribe dentro de la descripción ("was incorporated in 2015"), así que se
+extrae del texto — verificado sobre 20 tickers, incluidos los ADR argentinos,
+con cobertura completa. Wikidata lo tiene sólo para algunas empresas.
 
 Yahoo devuelve las descripciones **sólo en inglés**, sin importar el `lang` que
 se le pase: está verificado contra `es-AR`, `es-ES` y `es-MX`. Traducirlas es la

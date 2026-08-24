@@ -132,17 +132,17 @@ export interface Investigacion {
 }
 
 const SECCIONES = [
-  "NEGOCIO",
-  "CLIENTES Y PROVEEDORES",
-  "CONTRATOS Y ACUERDOS",
+  "INGRESOS",
+  "CLIENTES",
+  "CONTRATOS",
   "INVERSIONES",
   "RIESGOS",
 ] as const;
 
 const TITULO_SECCION: Record<string, string> = {
-  NEGOCIO: "De qué vive realmente",
-  "CLIENTES Y PROVEEDORES": "Clientes y proveedores",
-  "CONTRATOS Y ACUERDOS": "Contratos y acuerdos",
+  INGRESOS: "De dónde salen los ingresos",
+  CLIENTES: "A quién le vende",
+  CONTRATOS: "Contratos ya firmados",
   INVERSIONES: "Dónde está invirtiendo",
   RIESGOS: "Riesgos concretos",
 };
@@ -237,14 +237,14 @@ export function getInvestigacion(ticker: string, nombre: string): Promise<Invest
           role: "user",
           content: `Investigá ${nombre} (${ticker}) y escribí exactamente estas cinco secciones, con estos encabezados literales:
 
-## NEGOCIO
-De qué vive realmente: de dónde sale la facturación, qué peso tiene cada línea de negocio.
+## INGRESOS
+De dónde sale la facturación. Qué peso tiene cada línea de negocio, con porcentajes si los encontrás. Decí si es un negocio recurrente (suscripción, contrato, regulado) o transaccional.
 
-## CLIENTES Y PROVEEDORES
-Quiénes son sus clientes principales y de quién depende para producir. Si es proveedora de otra empresa conocida, decilo.
+## CLIENTES
+A quién le vende: ¿consumidor final, otras empresas, o el Estado? Si es proveedora de alguna empresa conocida, nombrala. Buscá si hay concentración de clientes —cuando unos pocos explican buena parte de la facturación, es un riesgo— y decí qué porcentaje representan.
 
-## CONTRATOS Y ACUERDOS
-Contratos vigentes o a futuro, acuerdos de provisión, alianzas y backlog anunciado.
+## CONTRATOS
+Facturación ya comprometida: backlog, contratos plurianuales firmados, acuerdos de provisión. Si encontrás a cuánto asciende o qué porcentaje de las ventas anuales cubre, ponelo.
 
 ## INVERSIONES
 Dónde está poniendo capital: plantas, adquisiciones, capex, expansión geográfica.

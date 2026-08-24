@@ -290,6 +290,10 @@ export interface Ficha {
   empleados: number | null;
   web: string | null;
   pais: string | null;
+  /** Ciudad y estado de la casa matriz. */
+  sede: string | null;
+  /** Año de fundación, sacado del texto de la descripción. */
+  fundada: number | null;
   precio: number | null;
   dia: number | null;
   moneda: string;
@@ -319,6 +323,22 @@ export interface Ficha {
     epsEsperado: number | null;
     ventasEsperadas: number | null;
   };
+}
+
+/**
+ * El año de fundación no viene como campo: Yahoo lo escribe dentro de la
+ * descripción, casi siempre al final ("was incorporated in 2015 and is
+ * headquartered in Chicago"). Wikidata lo tiene sólo para algunas empresas, así
+ * que sale más barato y más completo leerlo del texto.
+ */
+const RX_FUNDACION =
+  /\b(?:was\s+)?(?:founded|incorporated|established|formed|organized)\s+(?:in\s+)?(?:the\s+year\s+)?(\d{4})\b/i;
+
+function añoFundacion(descripcion: string | null | undefined): number | null {
+  const m = descripcion?.match(RX_FUNDACION);
+  const año = m ? Number(m[1]) : NaN;
+  // Un año fuera de rango es una coincidencia falsa, no un dato
+  return año >= 1600 && año <= new Date().getFullYear() ? año : null;
 }
 
 /** Perfil + fundamentals de un ticker. Un request. Cacheado 1 hora. */
@@ -354,6 +374,8 @@ export function getFicha(ticker: string): Promise<Ficha | null> {
       empleados: numero(perfil?.fullTimeEmployees),
       web: perfil?.website ?? null,
       pais: perfil?.country ?? null,
+      sede: [perfil?.city, perfil?.state].filter(Boolean).join(", ") || null,
+      fundada: añoFundacion(perfil?.longBusinessSummary),
       precio: numero(precio?.regularMarketPrice),
       dia: aPorcentaje(precio?.regularMarketChangePercent),
       moneda: precio?.currency ?? "USD",

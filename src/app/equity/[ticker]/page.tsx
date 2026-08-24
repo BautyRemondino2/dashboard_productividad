@@ -30,6 +30,17 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
 
 // ─── Piezas ─────────────────────────────────────────────────────────────────
 
+/** Un dato de la ficha técnica, al costado de la descripción. */
+function FichaDato({ label, valor, nota }: { label: string; valor: string; nota?: string }) {
+  return (
+    <div>
+      <dt className="text-[10px] uppercase tracking-wider text-slate-600">{label}</dt>
+      <dd className="text-[13px] text-slate-200 mt-0.5 leading-snug">{valor}</dd>
+      {nota && <dd className="text-[10px] text-slate-600">{nota}</dd>}
+    </div>
+  );
+}
+
 function Dato({ label, valor, ayuda }: { label: string; valor: string; ayuda?: string }) {
   return (
     <div title={ayuda}>
@@ -271,39 +282,67 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             </Panel>
           </div>
 
-          {ficha.descripcion && (
-            <Panel
-              titulo="A qué se dedica"
-              nota={conClaude ? "resumido al castellano" : "sin traducir"}
-            >
-              {conClaude ? (
-                <Suspense
-                  fallback={<div className="h-16 animate-pulse bg-slate-900/40 rounded" />}
-                >
-                  <Descripcion
-                    ticker={ficha.ticker}
-                    nombre={ficha.nombre}
-                    original={ficha.descripcion}
-                  />
-                </Suspense>
-              ) : (
-                <>
-                  <p className="text-[12px] leading-relaxed text-slate-400 max-w-[80ch]">
-                    {ficha.descripcion}
-                  </p>
-                  <p className="text-[10px] text-slate-600 mt-3">
-                    Yahoo publica esta descripción sólo en inglés. Para verla en castellano
-                    hay que configurar <code>ANTHROPIC_API_KEY</code>.
-                  </p>
-                </>
-              )}
-            </Panel>
-          )}
+          <Panel
+            titulo="A qué se dedica"
+            nota={conClaude ? "resumido al castellano" : "sin traducir"}
+          >
+            {/* Prosa a la izquierda con el renglón acotado, ficha técnica a la
+                derecha: el párrafo solo dejaba medio panel vacío en pantalla
+                ancha, y estos datos no tenían dónde vivir. */}
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_200px] gap-6">
+              <div className="min-w-0">
+                {ficha.descripcion ? (
+                  conClaude ? (
+                    <Suspense
+                      fallback={<div className="h-24 animate-pulse bg-slate-900/40 rounded" />}
+                    >
+                      <Descripcion
+                        ticker={ficha.ticker}
+                        nombre={ficha.nombre}
+                        original={ficha.descripcion}
+                      />
+                    </Suspense>
+                  ) : (
+                    <>
+                      <p className="text-[12px] leading-relaxed text-slate-400 max-w-[78ch]">
+                        {ficha.descripcion}
+                      </p>
+                      <p className="text-[10px] text-slate-600 mt-3 max-w-[78ch]">
+                        Yahoo publica esta descripción sólo en inglés. Para verla en castellano
+                        hay que configurar <code>ANTHROPIC_API_KEY</code>.
+                      </p>
+                    </>
+                  )
+                ) : (
+                  <p className="text-[12px] text-slate-600">Sin descripción disponible.</p>
+                )}
+              </div>
+
+              <dl className="space-y-3 lg:border-l lg:border-slate-800/60 lg:pl-6">
+                {ficha.fundada && (
+                  <FichaDato label="Fundada" valor={String(ficha.fundada)}
+                    nota={`hace ${new Date().getFullYear() - ficha.fundada} años`} />
+                )}
+                {ficha.empleados && (
+                  <FichaDato label="Empleados" valor={ficha.empleados.toLocaleString("es-AR")} />
+                )}
+                {ficha.sede && (
+                  <FichaDato label="Sede" valor={ficha.sede} nota={ficha.pais ?? undefined} />
+                )}
+                {ficha.industria && <FichaDato label="Industria" valor={ficha.industria} />}
+                <FichaDato label="Sector" valor={SECTOR_LABEL[ficha.sector]} />
+              </dl>
+            </div>
+          </Panel>
 
           <Panel titulo="Fundamentals" nota="contra la mediana de sus pares">
             <Suspense fallback={<div className="h-[300px] animate-pulse bg-slate-900/40 rounded" />}>
               <Comparacion ticker={ficha.ticker} />
             </Suspense>
+          </Panel>
+
+          <Panel titulo="Comparables del sector">
+            <Comparables filas={comparables} actual={ficha.ticker} />
           </Panel>
 
           {conClaude && (
@@ -323,9 +362,6 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             </Panel>
           )}
 
-          <Panel titulo="Comparables del sector">
-            <Comparables filas={comparables} actual={ficha.ticker} />
-          </Panel>
         </div>
 
         {/* ── Sidebar ───────────────────────────────────────────────── */}
