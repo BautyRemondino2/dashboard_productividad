@@ -174,12 +174,6 @@ export default function CurvaSoberanos({
             <span className="text-[11px] text-slate-400">
               vence <span className="text-slate-200 tabular-nums">{punto.vencimiento}</span>
             </span>
-            <span
-              className="text-[11px] text-slate-400"
-              title="Renta devengada del semestre en curso, por cada 100 nominales"
-            >
-              corridos <span className="text-slate-200 tabular-nums">{fmt(punto.corridos)}</span>
-            </span>
             {sospechoso(punto.ticker) && (
               <span className="text-[10px] text-amber-500/90">flujos a verificar</span>
             )}

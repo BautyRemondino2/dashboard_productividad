@@ -1,14 +1,22 @@
 import { cargarPanel, contarPorGrupos } from "@/lib/panel-datos";
-import { armarCurva, spreadsPorLey, validarCurva } from "@/lib/bonos";
+import { armarCurva, getCurvaOns, spreadsPorLey, validarCurva } from "@/lib/bonos";
+import { Suspense } from "react";
 import MercadoClient from "@/app/mercado/MercadoClient";
 import { VISTA_RENTA_FIJA } from "@/lib/mercado";
 import RefreshButton from "@/app/mercado/RefreshButton";
 import CurvaSoberanos from "./CurvaSoberanos";
+import CurvaOns from "./CurvaOns";
 
 export const metadata = { title: "Renta fija · Dashboard" };
 
 // Los precios cambian con la rueda: la página no puede quedar fija en el build.
 export const dynamic = "force-dynamic";
+
+/** Los precios de las ONs se piden en vivo: van en su propio Suspense. */
+async function SeccionOns({ soberanos }: { soberanos: { duration: number; tir: number; ticker: string }[] }) {
+  const puntos = await getCurvaOns().catch(() => []);
+  return <CurvaOns puntos={puntos} soberanos={soberanos} />;
+}
 
 export default function RentaFijaPage() {
   const datos = cargarPanel();
@@ -48,6 +56,31 @@ export default function RentaFijaPage() {
         </header>
         <div className="p-4">
           <CurvaSoberanos puntos={curva} spreads={spreads} validacion={validacion} />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-800 bg-slate-900/20 overflow-hidden mb-6 fade-up fade-up-2">
+        <header className="px-4 py-3 border-b border-slate-800/80 flex items-baseline gap-3 flex-wrap">
+          <h2 className="text-[13px] font-semibold text-slate-200">
+            Obligaciones negociables
+          </h2>
+          <span className="text-[10px] text-slate-600">
+            corporativas en dólares · lo que rinden por encima del soberano es el riesgo de
+            la empresa
+          </span>
+        </header>
+        <div className="p-4">
+          <Suspense
+            fallback={<div className="h-[380px] animate-pulse bg-slate-900/30 rounded" />}
+          >
+            {/* Sólo la curva ley NY como referencia: mezclar las dos leyes
+                daba una línea en zigzag que no es ninguna de las dos */}
+            <SeccionOns
+              soberanos={curva
+                .filter((p) => p.ley === "NY")
+                .map((p) => ({ duration: p.duration, tir: p.tir, ticker: p.ticker }))}
+            />
+          </Suspense>
         </div>
       </section>
 

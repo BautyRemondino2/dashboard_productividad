@@ -13,136 +13,51 @@
  * estuvieran mal, las TIR se irían lejos de esa referencia y la UI lo avisa.
  */
 
-export interface Flujo {
-  /** Fecha de pago, ISO. */
-  fecha: string;
-  /** Renta por cada 100 de valor nominal residual. */
-  cupon: number;
-  /** Amortización por cada 100 de valor nominal original. */
-  amortizacion: number;
-}
+import { ONS, SOBERANOS, type FlujoBono } from "@/lib/bonos-flujos";
+
+export type Flujo = FlujoBono;
 
 export interface EsquemaBono {
   ticker: string;
   nombre: string;
   ley: "AR" | "NY";
-  /** Año de vencimiento, para ordenar la curva. */
+  /** Año de vencimiento, para ordenar y etiquetar. */
   vencimiento: number;
   flujos: Flujo[];
 }
 
-// ─── Armado de esquemas ─────────────────────────────────────────────────────
-
-/**
- * Los bonos del canje 2020 comparten estructura: pagan el 9 de enero y el 9 de
- * julio, amortizan en cuotas iguales desde una fecha, y el cupón sube por
- * tramos. Se declara eso y se expanden los flujos.
- */
-function construir(
-  ticker: string,
-  nombre: string,
-  ley: "AR" | "NY",
-  opciones: {
-    /** Primera cuota de capital, y cuántas son. */
-    amortizaDesde: string;
-    cuotas: number;
-    /** Cupón anual vigente desde cada fecha, en %. */
-    cupones: { desde: string; tasa: number }[];
-    vencimiento: number;
-  }
-): EsquemaBono {
-  const { amortizaDesde, cuotas, cupones, vencimiento } = opciones;
-
-  const [añoIni, mesIni] = amortizaDesde.split("-").map(Number);
-  const fechas: string[] = [];
-  let año = añoIni;
-  let mes = mesIni;
-  for (let i = 0; i < cuotas; i++) {
-    fechas.push(`${año}-${String(mes).padStart(2, "0")}-09`);
-    mes += 6;
-    if (mes > 12) { mes -= 12; año += 1; }
-  }
-
-  // La renta se paga desde el primer semestre posterior a hoy hasta el final,
-  // aunque el capital todavía no haya empezado a amortizar
-  const primeraRenta = cupones[0].desde;
-  const [añoR, mesR] = primeraRenta.split("-").map(Number);
-  const fechasRenta: string[] = [];
-  let aR = añoR, mR = mesR;
-  const ultima = fechas[fechas.length - 1];
-  while (`${aR}-${String(mR).padStart(2, "0")}-09` <= ultima) {
-    fechasRenta.push(`${aR}-${String(mR).padStart(2, "0")}-09`);
-    mR += 6;
-    if (mR > 12) { mR -= 12; aR += 1; }
-  }
-
-  const cuota = 100 / cuotas;
-  const flujos: Flujo[] = [];
-
-  for (const fecha of fechasRenta) {
-    // Capital que sigue vivo justo antes de este pago
-    const amortizado = fechas.filter((f) => f < fecha).length * cuota;
-    const residual = Math.max(0, 100 - amortizado);
-
-    const tasa = [...cupones].reverse().find((c) => c.desde <= fecha)?.tasa ?? 0;
-    const amortiza = fechas.includes(fecha) ? cuota : 0;
-
-    flujos.push({
-      fecha,
-      cupon: (residual * tasa) / 100 / 2, // semestral
-      amortizacion: amortiza,
-    });
-  }
-
-  return { ticker, nombre, ley, vencimiento, flujos };
+/** Global 2030 / Bonar 2030 y así: el nombre sale del ticker y la ley. */
+function nombrar(ticker: string, ley: "AR" | "NY", año: number): string {
+  if (/^A[LEONV]/.test(ticker) && ley === "AR") return `Bonar ${año}`;
+  if (/^GD/.test(ticker)) return `Global ${año}`;
+  return `${ticker} ${año}`;
 }
 
-/**
- * Los soberanos del canje 2020.
- *
- * Sólo importan los cupones vigentes de acá en adelante: los tramos anteriores
- * ya se pagaron y no entran en el cálculo. Cada par Global/Bonar comparte
- * condiciones económicas y se diferencia sólo por la ley aplicable.
- */
-const CONDICIONES = [
-  { base: "29", venc: 2029, amortizaDesde: "2025-07", cuotas: 10,
-    cupones: [{ desde: "2021-07", tasa: 1.0 }] },
-  { base: "30", venc: 2030, amortizaDesde: "2024-07", cuotas: 13,
-    cupones: [{ desde: "2023-07", tasa: 0.75 }, { desde: "2027-07", tasa: 1.75 }] },
-  { base: "35", venc: 2035, amortizaDesde: "2031-07", cuotas: 10,
-    cupones: [{ desde: "2024-07", tasa: 4.125 }, { desde: "2027-07", tasa: 4.375 }] },
-  { base: "38", venc: 2038, amortizaDesde: "2027-01", cuotas: 22,
-    cupones: [{ desde: "2023-07", tasa: 4.25 }] },
-  { base: "41", venc: 2041, amortizaDesde: "2028-07", cuotas: 28,
-    cupones: [{ desde: "2022-07", tasa: 3.5 }, { desde: "2029-07", tasa: 4.875 }] },
-  { base: "46", venc: 2046, amortizaDesde: "2025-07", cuotas: 44,
-    cupones: [{ desde: "2024-07", tasa: 4.125 }, { desde: "2027-07", tasa: 4.375 }] },
-];
+export const ESQUEMAS: Record<string, EsquemaBono> = Object.fromEntries(
+  SOBERANOS.map((b) => {
+    const año = Number(b.vencimiento.slice(0, 4));
+    return [b.ticker, {
+      ticker: b.ticker,
+      nombre: nombrar(b.ticker, b.ley, año),
+      ley: b.ley,
+      vencimiento: año,
+      flujos: b.flujos,
+    }];
+  })
+);
 
-/** Qué ticker existe para cada ley. El 46 no tiene par en ley argentina. */
-const TICKERS: Record<string, { NY: string; AR: string | null; nombre: string }> = {
-  "29": { NY: "GD29", AR: "AL29", nombre: "2029" },
-  "30": { NY: "GD30", AR: "AL30", nombre: "2030" },
-  "35": { NY: "GD35", AR: "AL35", nombre: "2035" },
-  "38": { NY: "GD38", AR: "AE38", nombre: "2038" },
-  "41": { NY: "GD41", AR: "AL41", nombre: "2041" },
-  "46": { NY: "GD46", AR: null, nombre: "2046" },
-};
-
-export const ESQUEMAS: Record<string, EsquemaBono> = {};
-for (const c of CONDICIONES) {
-  const t = TICKERS[c.base];
-  for (const ley of ["NY", "AR"] as const) {
-    const ticker = t[ley];
-    if (!ticker) continue;
-    ESQUEMAS[ticker] = construir(
-      ticker,
-      `${ley === "NY" ? "Global" : "Bonar"} ${t.nombre}`,
-      ley,
-      { amortizaDesde: c.amortizaDesde, cuotas: c.cuotas, cupones: c.cupones, vencimiento: c.venc }
-    );
-  }
-}
+/** Las obligaciones negociables, con el mismo esquema que los soberanos. */
+export const ESQUEMAS_ON: Record<string, EsquemaBono & { simboloPrecio: string }> =
+  Object.fromEntries(
+    ONS.map((o) => [o.ticker, {
+      ticker: o.ticker,
+      nombre: o.nombre,
+      ley: "AR" as const,
+      vencimiento: Number(o.vencimiento.slice(0, 4)),
+      flujos: o.flujos,
+      simboloPrecio: o.simboloPrecio,
+    }])
+  );
 
 // ─── Cálculo ────────────────────────────────────────────────────────────────
 
@@ -175,7 +90,7 @@ function valorPresente(flujos: Flujo[], tasa: number, hoy: Date): number {
   for (const f of flujos) {
     const t = años30360(hoy, f.fecha);
     if (t <= 0) continue;
-    vp += (f.cupon + f.amortizacion) / Math.pow(1 + tasa / 2, 2 * t);
+    vp += f.monto / Math.pow(1 + tasa / 2, 2 * t);
   }
   return vp;
 }
@@ -217,33 +132,10 @@ export function calcularDuration(flujos: Flujo[], tir: number, hoy = new Date())
   for (const f of flujos) {
     const t = años30360(hoy, f.fecha);
     if (t <= 0) continue;
-    ponderado += (t * (f.cupon + f.amortizacion)) / Math.pow(1 + tir / 2, 2 * t);
+    ponderado += (t * f.monto) / Math.pow(1 + tir / 2, 2 * t);
   }
   const macaulay = ponderado / vp;
   return macaulay / (1 + tir / 2);
-}
-
-/**
- * Intereses corridos desde el último pago de renta.
- *
- * Importa para saber contra qué precio se descuentan los flujos: el precio
- * sucio (limpio + corridos) es el que iguala al valor presente. Estos bonos
- * pagan el 9 de enero y el 9 de julio, así que el semestre corre desde el
- * último 9 que pasó.
- */
-export function interesesCorridos(esquema: EsquemaBono, hoy = new Date()): number {
-  const proximo = esquema.flujos.find((f) => new Date(`${f.fecha}T00:00:00Z`) > hoy);
-  if (!proximo || proximo.cupon <= 0) return 0;
-
-  const fin = new Date(`${proximo.fecha}T00:00:00Z`);
-  const inicio = new Date(fin);
-  inicio.setUTCMonth(inicio.getUTCMonth() - 6);
-
-  const transcurrido = años30360(inicio, hoy.toISOString().slice(0, 10));
-  const total = años30360(inicio, proximo.fecha);
-  if (total <= 0) return 0;
-
-  return proximo.cupon * Math.min(1, Math.max(0, transcurrido / total));
 }
 
 export interface PuntoCurva {
@@ -256,8 +148,6 @@ export interface PuntoCurva {
   /** Duration modificada, en años. Es el eje X de la curva. */
   duration: number;
   vencimiento: number;
-  /** Intereses corridos del semestre en curso, por cada 100 nominales. */
-  corridos: number;
 }
 
 /** Lo que cuesta la ley: cuánto más rinde el bono local al mismo vencimiento. */
@@ -294,7 +184,6 @@ export function armarCurva(
       tir: tir * 100,
       duration,
       vencimiento: esquema.vencimiento,
-      corridos: interesesCorridos(esquema, hoy),
     });
   }
 
@@ -389,4 +278,86 @@ export function validarCurva(
     : null;
 
   return { sospechosos, implicita, mensaje };
+}
+
+// ─── Obligaciones negociables ───────────────────────────────────────────────
+
+const DATA912_CORP = "https://data912.com/live/arg_corp";
+
+interface FilaData912 {
+  symbol: string;
+  c?: number;
+  px_bid?: number;
+  px_ask?: number;
+}
+
+/** El precio de cierre; si no operó, el punto medio de las puntas. */
+function precioDe(r: FilaData912 | undefined): number | null {
+  if (!r) return null;
+  if ((r.c ?? 0) > 0) return r.c!;
+  if ((r.px_bid ?? 0) > 0 && (r.px_ask ?? 0) > 0) return (r.px_bid! + r.px_ask!) / 2;
+  return (r.px_bid ?? 0) > 0 ? r.px_bid! : (r.px_ask ?? 0) > 0 ? r.px_ask! : null;
+}
+
+export interface PuntoOn extends PuntoCurva {
+  /** Quién emitió: sirve para agrupar bancos, energía, etc. */
+  emisor: string;
+}
+
+interface EntradaOn {
+  valor: PuntoOn[];
+  vence: number;
+}
+
+declare global {
+  var __curvaOnsCache: EntradaOn | undefined;
+}
+
+/**
+ * La curva de obligaciones negociables en dólares.
+ *
+ * Los cronogramas están en el repo (ver `bonos-flujos.ts`); los precios se
+ * piden en vivo a data912, que es la misma fuente que alimenta el resto del
+ * panel. Cacheado diez minutos: es un panel de la mañana.
+ */
+export async function getCurvaOns(hoy = new Date()): Promise<PuntoOn[]> {
+  const cache = globalThis.__curvaOnsCache;
+  if (cache && cache.vence > Date.now()) return cache.valor;
+
+  const r = await fetch(DATA912_CORP, { headers: { "user-agent": "personal-dashboard" } });
+  if (!r.ok) throw new Error(`data912 respondió ${r.status}`);
+
+  const filas = (await r.json()) as FilaData912[];
+  const porSimbolo = new Map(filas.map((f) => [f.symbol, f]));
+
+  const puntos: PuntoOn[] = [];
+  for (const on of Object.values(ESQUEMAS_ON)) {
+    const precio = precioDe(porSimbolo.get(on.simboloPrecio));
+    if (precio == null) continue;
+
+    const tir = calcularTir(on.flujos, precio, hoy);
+    if (tir == null) continue;
+    const duration = calcularDuration(on.flujos, tir, hoy);
+    if (duration == null) continue;
+
+    // Una TIR fuera de este rango no es una oportunidad: es un precio mal
+    // publicado o un cronograma que no corresponde a ese símbolo
+    const pct = tir * 100;
+    if (pct < -5 || pct > 60) continue;
+
+    puntos.push({
+      ticker: on.ticker,
+      nombre: on.nombre,
+      ley: "AR",
+      precio,
+      tir: pct,
+      duration,
+      vencimiento: on.vencimiento,
+      emisor: on.nombre,
+    });
+  }
+
+  const ordenados = puntos.sort((a, b) => a.duration - b.duration);
+  globalThis.__curvaOnsCache = { valor: ordenados, vence: Date.now() + 600_000 };
+  return ordenados;
 }

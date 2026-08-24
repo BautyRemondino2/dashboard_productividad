@@ -116,37 +116,53 @@ verificaron data912, argentinadatos, Bolsar, BYMA, IAMC y Yahoo. Así que
 
 | | Qué usa | Por qué |
 |---|---|---|
-| Método | **Bisección** sobre la ecuación de valor presente | La TIR es la raíz de una ecuación escalar no lineal. Newton-Raphson converge más rápido pero puede divergir con flujos irregulares; la bisección sobre un intervalo acotado siempre converge o avisa que no hay solución |
-| Capitalización | **Semestral** (bond-equivalent yield) | Es la convención de estos bonos, que pagan renta dos veces al año. Capitalizar anual daba una TIR 17 pb más alta |
-| Base de días | **30/360** | La de estos bonos. Contra ACT/365 la diferencia es de menos de un punto básico, pero evita que el número no coincida con la pantalla del broker |
-| Duration | **Modificada**, dividiendo por (1 + TIR/2) | Con capitalización semestral hay que dividir por uno más la tasa del período, no de la anual |
+| Método | **Bisección** sobre la ecuación de valor presente | La TIR es la raíz de una ecuación escalar no lineal. Newton-Raphson converge más rápido pero puede divergir con flujos irregulares |
+| Capitalización | **Semestral** (bond-equivalent yield) | Es la convención de estos bonos. Capitalizar anual daba una TIR 17 pb más alta |
+| Base de días | **30/360** | La de estos bonos |
+| Duration | **Modificada**, dividiendo por (1 + TIR/2) | Con capitalización semestral hay que dividir por uno más la tasa del período |
 
 > **Gauss-Seidel no aplica acá.** Resuelve sistemas de ecuaciones lineales
-> (Ax = b); la TIR de un bono es la raíz de una ecuación escalar no lineal. El
-> método correcto es búsqueda de raíces: bisección, Brent o Newton-Raphson.
+> (Ax = b); la TIR de un bono es la raíz de una ecuación escalar no lineal.
 
-También se calculan los **intereses corridos** del semestre en curso y el
-**spread por ley**: cuánto más rinde el Bonar que el Global del mismo año, que
-al tener los mismos flujos y el mismo deudor aísla el precio de dónde se litiga.
+### Los cronogramas
 
-**Los flujos están escritos a mano** desde los prospectos del canje 2020, y son
-el eslabón débil: un cupón o una fecha mal cargados dan una TIR equivocada. Por
-eso hay dos controles automáticos:
+Los flujos de fondos salen de la API de configuración de **rendimientos.co** y
+se generan con:
 
-1. La curva debería orbitar `UST 10 años + riesgo país`, porque el riesgo país
-   es por definición el spread de estos mismos bonos.
-2. Si un bono se aleja más de 2,5 puntos de la recta que forman los demás, el
-   sospechoso es su flujo y no el mercado: los soberanos de un mismo emisor no
-   cotizan a tasas dispares sin motivo.
+```bash
+node scripts/generar-flujos-bonos.mjs
+```
 
-El segundo control **ya encontró un problema**: los 2029 y 2030 quedan fuera de
-la curva mientras 2035, 2038, 2041 y 2046 cierran contra el riesgo país. Esos
-cuatro se dibujan en gris punteado y la página lo avisa, en vez de mostrarlos
-como si fueran datos confiables.
+Quedan en `src/lib/bonos-flujos.ts` — 15 soberanos y 51 ONs. Se guardan en el
+repo porque un cronograma de amortización no cambia: así el dashboard no depende
+de que ese sitio esté arriba ni le pega un request por visita. Los precios sí se
+piden en vivo a data912, que es la fuente que ya usaba el panel.
 
-> Las curvas en pesos y de ONs no se pueden dibujar todavía: esos grupos no
-> tienen instrumentos cargados en la base. Se agregan desde el panel de la
-> derecha y la curva aparece sola.
+Antes estos cronogramas estaban escritos a mano desde los prospectos, y estaban
+mal: los 2029 y 2030 quedaban fuera de la curva que formaban los demás (AL29
+daba 17% contra un riesgo país que implicaba 9,8%). Con los datos reales, la
+validación no marca ningún sospechoso.
+
+> **Trampa de escala, ya resuelta en el generador:** la fuente publica los
+> soberanos por cada 100 de valor nominal y las ONs por cada 1. Los precios de
+> las dos vienen en base 100, así que sin normalizar el valor presente de una ON
+> daba ~1 contra un precio de ~101 y la bisección devolvía null para las 51. El
+> generador detecta la escala por la suma de los flujos y aborta si algo queda
+> fuera de rango.
+
+### Lo que muestra la página
+
+- **Curva de soberanos** — TIR contra duration, una serie por ley. La distancia
+  entre las dos es lo que se paga por litigar en Nueva York.
+- **Obligaciones negociables** — la nube de 45 corporativas en dólares, con la
+  curva soberana ley NY encima como referencia. Que una ON rinda *por debajo*
+  del soberano es habitual en Argentina: el Estado tiene historial de default y
+  las buenas empresas no.
+- La tabla de precios queda plegada abajo, para el detalle.
+
+Los bonos a menos de seis meses se dibujan en gris punteado: a esa altura un
+peso de diferencia en el precio mueve la TIR anualizada varios puntos, y arriba
+de la nube parecen una oportunidad cuando son ruido de liquidez.
 
 ---
 
