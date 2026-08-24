@@ -7,7 +7,7 @@ import {
   getComparables, getComparacion, getConsenso, getFicha, getHistoriaFinanciera,
   getNoticias, getRetornosDe,
 } from "@/lib/equity";
-import { getDescripcionEs, getInvestigacion, hayClaude } from "@/lib/equity-claude";
+import { traducirDescripcion } from "@/lib/traducir";
 import {
   PanelConsenso, PanelFundamentals, PanelHistoria, PanelSorpresas,
 } from "./Fundamentals";
@@ -18,7 +18,7 @@ import {
 import type { FilaTablero } from "@/lib/equity-formato";
 import GraficoTradingView from "@/components/GraficoTradingView";
 import Logo from "./Logo";
-import { PanelInvestigacion, PanelNoticias } from "./Investigacion";
+import { PanelNoticias } from "./Investigacion";
 
 export const dynamic = "force-dynamic";
 
@@ -108,32 +108,26 @@ async function Historia({ ticker }: { ticker: string }) {
   return <PanelHistoria historia={historia} />;
 }
 
-async function Descripcion({ ticker, nombre, original }: {
-  ticker: string; nombre: string; original: string;
-}) {
-  const es = await getDescripcionEs(ticker, nombre, original).catch(() => null);
+async function Descripcion({ ticker, original }: { ticker: string; original: string }) {
+  const es = await traducirDescripcion(ticker, original).catch(() => null);
   return (
-    <p className="text-[12px] leading-relaxed text-slate-300 max-w-[80ch]">
-      {es ?? original}
-    </p>
+    <>
+      <p className="text-[12px] leading-relaxed text-slate-300 max-w-[78ch]">
+        {es ?? original}
+      </p>
+      {!es && (
+        <p className="text-[10px] text-slate-600 mt-3 max-w-[78ch]">
+          No se pudo traducir —la cuota diaria del traductor es acotada—. Este es el
+          original de Yahoo.
+        </p>
+      )}
+    </>
   );
 }
 
 async function Noticias({ ticker }: { ticker: string }) {
   const noticias = await getNoticias(ticker);
   return <PanelNoticias noticias={noticias} />;
-}
-
-async function Investigada({ ticker, nombre }: { ticker: string; nombre: string }) {
-  const investigacion = await getInvestigacion(ticker, nombre).catch(() => null);
-  if (!investigacion) {
-    return (
-      <p className="text-[11px] text-slate-600">
-        No se pudo completar la investigación. Probá refrescar en un rato.
-      </p>
-    );
-  }
-  return <PanelInvestigacion investigacion={investigacion} />;
 }
 
 function Comparables({ filas, actual }: { filas: FilaTablero[]; actual: string }) {
@@ -198,9 +192,6 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
   if (!ficha) notFound();
 
   const { analistas: ana, earnings } = ficha;
-  // Sin ANTHROPIC_API_KEY los paneles de Claude no se muestran en vez de
-  // renderizar un error: el resto de la ficha funciona igual.
-  const conClaude = hayClaude();
   const upside =
     ana.precioObjetivo && ficha.precio ? (ana.precioObjetivo / ficha.precio - 1) * 100 : null;
 
@@ -282,37 +273,18 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             </Panel>
           </div>
 
-          <Panel
-            titulo="A qué se dedica"
-            nota={conClaude ? "resumido al castellano" : "sin traducir"}
-          >
+          <Panel titulo="A qué se dedica" nota="traducido del original de Yahoo">
             {/* Prosa a la izquierda con el renglón acotado, ficha técnica a la
                 derecha: el párrafo solo dejaba medio panel vacío en pantalla
                 ancha, y estos datos no tenían dónde vivir. */}
             <div className="grid lg:grid-cols-[minmax(0,1fr)_200px] gap-6">
               <div className="min-w-0">
                 {ficha.descripcion ? (
-                  conClaude ? (
-                    <Suspense
-                      fallback={<div className="h-24 animate-pulse bg-slate-900/40 rounded" />}
-                    >
-                      <Descripcion
-                        ticker={ficha.ticker}
-                        nombre={ficha.nombre}
-                        original={ficha.descripcion}
-                      />
-                    </Suspense>
-                  ) : (
-                    <>
-                      <p className="text-[12px] leading-relaxed text-slate-400 max-w-[78ch]">
-                        {ficha.descripcion}
-                      </p>
-                      <p className="text-[10px] text-slate-600 mt-3 max-w-[78ch]">
-                        Yahoo publica esta descripción sólo en inglés. Para verla en castellano
-                        hay que configurar <code>ANTHROPIC_API_KEY</code>.
-                      </p>
-                    </>
-                  )
+                  <Suspense
+                    fallback={<div className="h-24 animate-pulse bg-slate-900/40 rounded" />}
+                  >
+                    <Descripcion ticker={ficha.ticker} original={ficha.descripcion} />
+                  </Suspense>
                 ) : (
                   <p className="text-[12px] text-slate-600">Sin descripción disponible.</p>
                 )}
@@ -343,56 +315,6 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
 
           <Panel titulo="Comparables del sector">
             <Comparables filas={comparables} actual={ficha.ticker} />
-          </Panel>
-
-          {/* El panel se muestra siempre. Cuando se ocultaba al faltar la clave,
-              "sin configurar" y "roto" se veían igual y no había manera de
-              distinguirlos desde la pantalla. */}
-          <Panel
-            titulo="Investigación"
-            nota={conClaude ? "búsqueda web con fuentes" : "sin activar"}
-          >
-            {conClaude ? (
-              <Suspense
-                fallback={
-                  <div className="space-y-3">
-                    <p className="text-[11px] text-slate-600">
-                      Buscando en la web de dónde salen los ingresos, a quién le vende y
-                      qué contratos tiene firmados…
-                    </p>
-                    <div className="h-40 animate-pulse bg-slate-900/40 rounded" />
-                  </div>
-                }
-              >
-                <Investigada ticker={ficha.ticker} nombre={ficha.nombre} />
-              </Suspense>
-            ) : (
-              <div className="max-w-[78ch]">
-                <p className="text-[12px] text-slate-400 leading-relaxed">
-                  Esta sección sale a buscar en la web, con fuentes citadas, cinco cosas
-                  que no están en ninguna API financiera:
-                </p>
-                <ul className="mt-3 space-y-1.5">
-                  {[
-                    ["De dónde salen los ingresos", "el peso de cada línea de negocio y si es recurrente o transaccional"],
-                    ["A quién le vende", "consumidor final, empresas o Estado, y si unos pocos clientes explican la facturación"],
-                    ["Contratos ya firmados", "backlog y contratos plurianuales, y cuánto de las ventas cubren"],
-                    ["Dónde está invirtiendo", "plantas, adquisiciones, capex"],
-                    ["Riesgos concretos", "lo que hoy le puede pegar al negocio"],
-                  ].map(([titulo, detalle]) => (
-                    <li key={titulo} className="text-[11px] text-slate-500">
-                      <span className="text-slate-300">{titulo}</span> — {detalle}
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-[11px] text-slate-500 leading-relaxed mt-4 pt-3 border-t border-slate-800/60">
-                  Falta configurar <code className="text-slate-300">ANTHROPIC_API_KEY</code> en
-                  Vercel. Es la misma variable que traduce las descripciones al castellano:
-                </p>
-                <pre className="text-[11px] text-slate-400 bg-slate-950 border border-slate-800 rounded-md px-3 py-2 mt-2 overflow-x-auto">
-vercel env add ANTHROPIC_API_KEY production</pre>
-              </div>
-            )}
           </Panel>
 
         </div>

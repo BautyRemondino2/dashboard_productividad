@@ -8,9 +8,8 @@ export const dynamic = "force-dynamic";
 /**
  * Los ETF de referencia.
  *
- * Un request por fondo para la composición, más uno de traducción por objetivo.
- * Todo cacheado en `@/lib/equity` y `@/lib/equity-claude`, así que la primera
- * carga del día paga y el resto sale de memoria.
+ * Un request por fondo para la composición, cacheado en `@/lib/equity`: la
+ * primera carga del día paga y el resto sale de memoria.
  */
 async function Fondos() {
   const [composiciones, indices] = await Promise.all([

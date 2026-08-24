@@ -208,33 +208,30 @@ No toca la base de datos: el caché es en memoria del proceso, con TTL (10 min e
 tablero, 30 min las series, 1 hora las fichas). En Vercel la DB es efímera y
 estos datos se rebajan solos, así que no hay nada que persistir.
 
-### La capa de Claude
+### Las descripciones, en castellano y gratis
 
-Dos cosas viven en `src/lib/equity-claude.ts` y necesitan `ANTHROPIC_API_KEY`.
-Sin esa variable los paneles no se muestran y el resto de la ficha anda igual.
+Yahoo publica las descripciones de empresa **sólo en inglés**, sin importar el
+`lang` que se le pase — probado con `es-AR`, `es-ES` y `es-MX`. Se traducen en
+`src/lib/traducir.ts` con MyMemory, que es gratis.
 
-| Función | Qué hace | Costo aproximado |
-|---|---|---|
-| `getDescripcionEs()` | Traduce y condensa al castellano la descripción de Yahoo | fracción de centavo, cacheado 30 días |
-| `getInvestigacion()` | De dónde salen los ingresos, a quién le vende, concentración de clientes, backlog y riesgos | unos centavos, cacheado 24 h |
+Antes esto pasaba por Claude. Traduce mejor, pero cuesta en cada pasada
+(~US$0,005 por empresa) y obliga a tener una clave configurada. Para una
+descripción de negocio la diferencia de calidad no justifica ninguna de las dos
+cosas.
 
-El **año de fundación** no necesita la clave: Yahoo no lo trae como campo pero
-lo escribe dentro de la descripción ("was incorporated in 2015"), así que se
-extrae del texto — verificado sobre 20 tickers, incluidos los ADR argentinos,
-con cobertura completa. Wikidata lo tiene sólo para algunas empresas.
+Dos límites del servicio, contemplados en el código:
 
-Yahoo devuelve las descripciones **sólo en inglés**, sin importar el `lang` que
-se le pase: está verificado contra `es-AR`, `es-ES` y `es-MX`. Traducirlas es la
-única vía, así que sin la clave la ficha las muestra en el original y lo aclara.
+| Límite | Cómo se maneja |
+|---|---|
+| 500 caracteres por pedido | Las descripciones promedian 1.550: se parten por oración y se rearman |
+| Cuota diaria | ~5.000 caracteres sin registrar, 50.000 con un mail — unas 32 empresas por día. Al agotarse, la ficha vuelve al original en vez de romperse |
 
-**Por qué la investigación usa búsqueda web y no el conocimiento del modelo:**
-un modelo respondiendo de memoria sobre contratos y clientes inventa nombres y
-fechas que suenan perfectos. Esto termina en una conversación con un cliente,
-así que cada afirmación tiene que tener una fuente que se pueda abrir. El prompt
-le exige decir "no encontré información" antes que completar el hueco, y la
-ficha muestra siempre la lista de páginas consultadas.
+Para subir la cuota, registrar un mail en mymemory.translated.net y ponerlo en
+`MYMEMORY_EMAIL`. Sin esa variable funciona igual, con el tope más bajo.
 
-Modelo: `claude-opus-5` (igual que `/api/glossary/explain`).
+> Si un trozo falla, se descarta la traducción entera y se muestra el original:
+> media descripción en castellano y media en inglés se lee peor que el original
+> completo.
 
 ### Actualizar el universo
 
