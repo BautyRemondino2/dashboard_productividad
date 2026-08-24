@@ -1,5 +1,5 @@
 import { cargarPanel, contarPorGrupos } from "@/lib/panel-datos";
-import { armarCurva, validarCurva } from "@/lib/bonos";
+import { armarCurva, spreadsPorLey, validarCurva } from "@/lib/bonos";
 import MercadoClient from "@/app/mercado/MercadoClient";
 import { VISTA_RENTA_FIJA } from "@/lib/mercado";
 import RefreshButton from "@/app/mercado/RefreshButton";
@@ -22,6 +22,7 @@ export default function RentaFijaPage() {
   }
 
   const curva = armarCurva(precios);
+  const spreads = spreadsPorLey(curva);
   const validacion = validarCurva(curva, precios["RIESGO_PAIS"] ?? null, precios["UST10Y"] ?? null);
 
   return (
@@ -42,11 +43,11 @@ export default function RentaFijaPage() {
         <header className="px-4 py-3 border-b border-slate-800/80 flex items-baseline gap-3 flex-wrap">
           <h2 className="text-[13px] font-semibold text-slate-200">Curva de soberanos</h2>
           <span className="text-[10px] text-slate-600">
-            TIR contra duration · la distancia entre las dos series es lo que se paga por la ley
+            TIR anual con capitalización semestral y base 30/360, calculada sobre los flujos
           </span>
         </header>
         <div className="p-4">
-          <CurvaSoberanos puntos={curva} validacion={validacion} />
+          <CurvaSoberanos puntos={curva} spreads={spreads} validacion={validacion} />
         </div>
       </section>
 

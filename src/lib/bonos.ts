@@ -146,19 +146,36 @@ for (const c of CONDICIONES) {
 
 // ─── Cálculo ────────────────────────────────────────────────────────────────
 
-const DIAS_AÑO = 365;
-
-function añosHasta(desde: Date, fecha: string): number {
-  return (new Date(`${fecha}T00:00:00Z`).getTime() - desde.getTime()) / (DIAS_AÑO * 86400000);
+/**
+ * Convención 30/360: todos los meses valen 30 días y el año 360.
+ *
+ * Es la que usan estos bonos. Contra ACT/365 la diferencia es de menos de un
+ * punto básico, pero no cuesta nada hacerlo bien y evita que alguien tenga que
+ * preguntarse por qué el número no coincide con la pantalla del broker.
+ */
+function años30360(desde: Date, fecha: string): number {
+  const d = new Date(`${fecha}T00:00:00Z`);
+  const d1 = Math.min(desde.getUTCDate(), 30);
+  const d2 = Math.min(d.getUTCDate(), 30);
+  const meses = 12 * (d.getUTCFullYear() - desde.getUTCFullYear()) + (d.getUTCMonth() - desde.getUTCMonth());
+  return (30 * meses + (d2 - d1)) / 360;
 }
 
-/** Valor presente de los flujos futuros a una tasa dada. */
+/**
+ * Valor presente con **capitalización semestral**, que es la convención de
+ * estos bonos: pagan renta dos veces al año y su rendimiento se expresa como
+ * bond-equivalent yield.
+ *
+ * Capitalizar anual —como estaba antes— daba una TIR unos 17 puntos básicos
+ * más alta. Para un asesor que compara contra la pantalla del broker, esa
+ * diferencia se nota.
+ */
 function valorPresente(flujos: Flujo[], tasa: number, hoy: Date): number {
   let vp = 0;
   for (const f of flujos) {
-    const t = añosHasta(hoy, f.fecha);
+    const t = años30360(hoy, f.fecha);
     if (t <= 0) continue;
-    vp += (f.cupon + f.amortizacion) / Math.pow(1 + tasa, t);
+    vp += (f.cupon + f.amortizacion) / Math.pow(1 + tasa / 2, 2 * t);
   }
   return vp;
 }
@@ -185,19 +202,48 @@ export function calcularTir(flujos: Flujo[], precio: number, hoy = new Date()): 
   return (bajo + alto) / 2;
 }
 
-/** Duration modificada: cuánto cae el precio por cada punto que sube la tasa. */
+/**
+ * Duration modificada: cuánto cae el precio por cada punto que sube la tasa.
+ *
+ * Se divide por (1 + TIR/2) y no por (1 + TIR) porque la capitalización es
+ * semestral: la modificada tiene que dividir por uno más la tasa **del
+ * período**, no de la tasa anual.
+ */
 export function calcularDuration(flujos: Flujo[], tir: number, hoy = new Date()): number | null {
   const vp = valorPresente(flujos, tir, hoy);
   if (vp <= 0) return null;
 
   let ponderado = 0;
   for (const f of flujos) {
-    const t = añosHasta(hoy, f.fecha);
+    const t = años30360(hoy, f.fecha);
     if (t <= 0) continue;
-    ponderado += (t * (f.cupon + f.amortizacion)) / Math.pow(1 + tir, t);
+    ponderado += (t * (f.cupon + f.amortizacion)) / Math.pow(1 + tir / 2, 2 * t);
   }
   const macaulay = ponderado / vp;
-  return macaulay / (1 + tir);
+  return macaulay / (1 + tir / 2);
+}
+
+/**
+ * Intereses corridos desde el último pago de renta.
+ *
+ * Importa para saber contra qué precio se descuentan los flujos: el precio
+ * sucio (limpio + corridos) es el que iguala al valor presente. Estos bonos
+ * pagan el 9 de enero y el 9 de julio, así que el semestre corre desde el
+ * último 9 que pasó.
+ */
+export function interesesCorridos(esquema: EsquemaBono, hoy = new Date()): number {
+  const proximo = esquema.flujos.find((f) => new Date(`${f.fecha}T00:00:00Z`) > hoy);
+  if (!proximo || proximo.cupon <= 0) return 0;
+
+  const fin = new Date(`${proximo.fecha}T00:00:00Z`);
+  const inicio = new Date(fin);
+  inicio.setUTCMonth(inicio.getUTCMonth() - 6);
+
+  const transcurrido = años30360(inicio, hoy.toISOString().slice(0, 10));
+  const total = años30360(inicio, proximo.fecha);
+  if (total <= 0) return 0;
+
+  return proximo.cupon * Math.min(1, Math.max(0, transcurrido / total));
 }
 
 export interface PuntoCurva {
@@ -210,6 +256,17 @@ export interface PuntoCurva {
   /** Duration modificada, en años. Es el eje X de la curva. */
   duration: number;
   vencimiento: number;
+  /** Intereses corridos del semestre en curso, por cada 100 nominales. */
+  corridos: number;
+}
+
+/** Lo que cuesta la ley: cuánto más rinde el bono local al mismo vencimiento. */
+export interface SpreadLey {
+  vencimiento: number;
+  ar: PuntoCurva;
+  ny: PuntoCurva;
+  /** Diferencia de TIR en puntos básicos. Positivo = el local rinde más. */
+  spreadPb: number;
 }
 
 /** Arma los puntos de la curva a partir de los precios que haya. */
@@ -237,10 +294,39 @@ export function armarCurva(
       tir: tir * 100,
       duration,
       vencimiento: esquema.vencimiento,
+      corridos: interesesCorridos(esquema, hoy),
     });
   }
 
   return puntos.sort((a, b) => a.duration - b.duration);
+}
+
+/**
+ * El spread por ley, vencimiento por vencimiento.
+ *
+ * Es la comparación que importa: el Global y el Bonar del mismo año tienen los
+ * mismos flujos y el mismo deudor, y sólo se diferencian en dónde se litiga si
+ * hay default. Todo lo que el local rinde de más es el precio de esa
+ * diferencia.
+ */
+export function spreadsPorLey(puntos: PuntoCurva[]): SpreadLey[] {
+  const porVencimiento = new Map<number, { ar?: PuntoCurva; ny?: PuntoCurva }>();
+  for (const p of puntos) {
+    const e = porVencimiento.get(p.vencimiento) ?? {};
+    if (p.ley === "AR") e.ar = p;
+    else e.ny = p;
+    porVencimiento.set(p.vencimiento, e);
+  }
+
+  return [...porVencimiento.entries()]
+    .filter(([, e]) => e.ar && e.ny)
+    .map(([vencimiento, e]) => ({
+      vencimiento,
+      ar: e.ar!,
+      ny: e.ny!,
+      spreadPb: (e.ar!.tir - e.ny!.tir) * 100,
+    }))
+    .sort((a, b) => a.vencimiento - b.vencimiento);
 }
 
 // ─── Control de sanidad ─────────────────────────────────────────────────────

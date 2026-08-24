@@ -112,8 +112,22 @@ Buenos Aires. La tabla de precios queda plegada abajo, para el detalle.
 
 Ninguna fuente pública argentina publica el rendimiento de estos bonos — se
 verificaron data912, argentinadatos, Bolsar, BYMA, IAMC y Yahoo. Así que
-`src/lib/bonos.ts` calcula la TIR por bisección desde el precio y los flujos de
-fondos, y la duration modificada a partir de ahí.
+`src/lib/bonos.ts` lo calcula, con la convención del mercado:
+
+| | Qué usa | Por qué |
+|---|---|---|
+| Método | **Bisección** sobre la ecuación de valor presente | La TIR es la raíz de una ecuación escalar no lineal. Newton-Raphson converge más rápido pero puede divergir con flujos irregulares; la bisección sobre un intervalo acotado siempre converge o avisa que no hay solución |
+| Capitalización | **Semestral** (bond-equivalent yield) | Es la convención de estos bonos, que pagan renta dos veces al año. Capitalizar anual daba una TIR 17 pb más alta |
+| Base de días | **30/360** | La de estos bonos. Contra ACT/365 la diferencia es de menos de un punto básico, pero evita que el número no coincida con la pantalla del broker |
+| Duration | **Modificada**, dividiendo por (1 + TIR/2) | Con capitalización semestral hay que dividir por uno más la tasa del período, no de la anual |
+
+> **Gauss-Seidel no aplica acá.** Resuelve sistemas de ecuaciones lineales
+> (Ax = b); la TIR de un bono es la raíz de una ecuación escalar no lineal. El
+> método correcto es búsqueda de raíces: bisección, Brent o Newton-Raphson.
+
+También se calculan los **intereses corridos** del semestre en curso y el
+**spread por ley**: cuánto más rinde el Bonar que el Global del mismo año, que
+al tener los mismos flujos y el mismo deudor aísla el precio de dónde se litiga.
 
 **Los flujos están escritos a mano** desde los prospectos del canje 2020, y son
 el eslabón débil: un cupón o una fecha mal cargados dan una TIR equivocada. Por

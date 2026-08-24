@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, XAxis, YAxis, ZAxis,
 } from "recharts";
-import type { PuntoCurva, Validacion } from "@/lib/bonos";
+import type { PuntoCurva, SpreadLey, Validacion } from "@/lib/bonos";
 
 /**
  * Curva de rendimientos de los soberanos hard-dollar.
@@ -32,9 +32,11 @@ const fmt = (v: number, d = 2) =>
 
 export default function CurvaSoberanos({
   puntos,
+  spreads,
   validacion,
 }: {
   puntos: PuntoCurva[];
+  spreads: SpreadLey[];
   validacion: Validacion;
 }) {
   const [activo, setActivo] = useState<string | null>(null);
@@ -172,6 +174,12 @@ export default function CurvaSoberanos({
             <span className="text-[11px] text-slate-400">
               vence <span className="text-slate-200 tabular-nums">{punto.vencimiento}</span>
             </span>
+            <span
+              className="text-[11px] text-slate-400"
+              title="Renta devengada del semestre en curso, por cada 100 nominales"
+            >
+              corridos <span className="text-slate-200 tabular-nums">{fmt(punto.corridos)}</span>
+            </span>
             {sospechoso(punto.ticker) && (
               <span className="text-[10px] text-amber-500/90">flujos a verificar</span>
             )}
@@ -182,6 +190,36 @@ export default function CurvaSoberanos({
           </p>
         )}
       </div>
+
+      {spreads.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
+            Lo que cuesta la ley
+          </p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {spreads.map((s) => {
+              const dudoso =
+                validacion.sospechosos.includes(s.ar.ticker) ||
+                validacion.sospechosos.includes(s.ny.ticker);
+              return (
+                <span key={s.vencimiento} className="flex items-baseline gap-1.5">
+                  <span className="text-[11px] text-slate-500">{s.vencimiento}</span>
+                  <span
+                    className={`text-[13px] tabular-nums ${dudoso ? "text-slate-600" : "text-slate-200"}`}
+                  >
+                    {s.spreadPb > 0 ? "+" : ""}{Math.round(s.spreadPb)} pb
+                  </span>
+                  {dudoso && <span className="text-[9px] text-amber-600/80">?</span>}
+                </span>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-slate-600 mt-1.5 leading-relaxed">
+            Cuánto más rinde el Bonar que el Global del mismo año. Mismos flujos y mismo
+            deudor: la diferencia es dónde se litiga si hay default.
+          </p>
+        </div>
+      )}
 
       {validacion.mensaje && (
         <div className="rounded-lg border border-amber-900/50 bg-amber-950/20 px-4 py-2.5">
