@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Sparkline from "@/components/Sparkline";
 import { SECTOR_LABEL, SECTORES, type Sector } from "@/lib/equity-sectores";
@@ -49,7 +49,7 @@ const PRESETS: Preset[] = [
   {
     id: "todos",
     label: "Todo el ranking",
-    ayuda: "Las 120 con más momentum del índice, sin filtrar",
+    ayuda: "Las de más momentum de NYSE y Nasdaq, sin filtrar",
   },
   {
     id: "maximos",
@@ -145,6 +145,49 @@ export default function EquityClient({
       })
       .sort((a, b) => (subiendo ? b.promedio - a.promedio : a.promedio - b.promedio));
   }, [agrupar, visibles, periodo, valor, subiendo]);
+
+  /**
+   * Lo que se busca puede no estar en el ranking: son 150 papeles de 2.126.
+   * Se consulta el universo completo por API —no viaja al cliente, pesa 44 KB—
+   * y se ofrecen los que quedaron afuera como enlace directo a su ficha.
+   */
+  const [fueraDelRanking, setFueraDelRanking] = useState<
+    { ticker: string; nombre: string; sector: string; argentino: boolean }[]
+  >([]);
+
+  useEffect(() => {
+    const q = busqueda.trim();
+    const cancelar = new AbortController();
+
+    // Todo el estado se toca dentro del timeout: el compilador de React no
+    // acepta un setState sincrónico en el cuerpo del efecto, y de paso limpiar
+    // recién al vencer el retardo evita que la lista parpadee mientras se tipea
+    const t = setTimeout(async () => {
+      if (q.length < 2) {
+        setFueraDelRanking([]);
+        return;
+      }
+      try {
+        const r = await fetch(`/api/equity/buscar?q=${encodeURIComponent(q)}`, {
+          signal: cancelar.signal,
+        });
+        if (!r.ok) return;
+        const { resultados } = await r.json();
+        setFueraDelRanking(resultados ?? []);
+      } catch {
+        /* búsqueda cancelada o sin red */
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(t);
+      cancelar.abort();
+    };
+  }, [busqueda]);
+
+  // Los que ya están en la tabla no hacen falta repetirlos abajo
+  const enTabla = useMemo(() => new Set(visibles.map((f) => f.ticker)), [visibles]);
+  const sugerencias = fueraDelRanking.filter((r) => !enTabla.has(r.ticker));
 
   const sectoresPresentes = useMemo(
     () => SECTORES.filter((s) => filas.some((f) => f.sector === s)),
@@ -387,6 +430,37 @@ export default function EquityClient({
           </div>
         )}
       </div>
+
+      {sugerencias.length > 0 && (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/20 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
+            Fuera del ranking
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {sugerencias.map((r) => (
+              <Link
+                key={r.ticker}
+                href={`/equity/${r.ticker}`}
+                className="group flex items-baseline gap-2 px-2.5 py-1.5 rounded-md border border-slate-800 hover:border-slate-700 hover:bg-slate-900/60 transition-colors"
+              >
+                <span className="text-[12px] font-medium text-slate-200 group-hover:text-white">
+                  {r.ticker}
+                </span>
+                <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
+                  {r.nombre}
+                </span>
+                {r.argentino && (
+                  <span className="text-[9px] text-sky-500/80">ADR argentino</span>
+                )}
+              </Link>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-600 mt-2">
+            Estos no entraron entre las {filas.length} con más momentum, pero tienen su
+            ficha completa.
+          </p>
+        </div>
+      )}
 
       <p className="text-[10px] text-slate-600 leading-relaxed">
         {visibles.length} de {filas.length} empresas · {activo.ayuda}.{" "}

@@ -186,6 +186,12 @@ Por eso el ranking no calcula retornos exactos para las ~2.100: preselecciona
 150 candidatos con las métricas baratas y sobre esos hace el cálculo fino. El
 sesgo que introduce está documentado en `src/lib/equity.ts`.
 
+> Como la tabla muestra 150 de 2.126, buscar un ticker que hoy no tiene momentum
+> no encontraba nada. El buscador consulta además `/api/equity/buscar`, que
+> recorre el universo entero y ofrece los que quedaron afuera como enlace
+> directo a su ficha. Va por API y no en el cliente porque las 2.126 empresas
+> pesan 44 KB y no tienen por qué viajar al navegador para tipear en un campo.
+
 La composición de los índices sale de `topHoldings` de Yahoo, que da las **diez
 mayores tenencias** de cada fondo, no la cartera completa. Bajarla entera
 implicaría raspar a cada emisor —State Street publica un Excel, Invesco
