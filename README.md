@@ -298,5 +298,14 @@ ningún rubro caen en "Otros".
 
 ## Deploy
 
-El deploy de este proyecto **no sale del push a git**: hay que correr
-`vercel deploy --prod --yes` a mano.
+Vercel **publica solo al pushear a `main`**. Verificado el 2026-08-24: un commit
+llegó a dashboard-productividad-eight.vercel.app sin correr ningún comando de
+deploy. (Este README decía lo contrario; estaba desactualizado.)
+
+Lo que **no** viaja con el push son las variables de entorno. `ANTHROPIC_API_KEY`
+se carga aparte y hasta que esté, la ficha muestra las descripciones en inglés y
+oculta el panel de investigación:
+
+```bash
+vercel env add ANTHROPIC_API_KEY production
+```
