@@ -149,6 +149,10 @@ export interface ExportacionesProvincia {
   interanual: number | null;
   /** Peso de cada rubro dentro del total, en %. Vacío si no se pudo desglosar. */
   composicion: { rubro: Rubro; monto: number; peso: number }[];
+  /** A dónde va, de mayor a menor. Sin "Resto", que no es un destino. */
+  destinos: { pais: string; monto: number; peso: number }[];
+  /** Cuánto del total cubren los destinos listados, en %. */
+  destinosCubren: number;
 }
 
 /**
@@ -223,6 +227,8 @@ export function getExportacionesProvinciales(): Promise<Record<string, Exportaci
           anio: String(ultima?.[0] ?? "").slice(0, 4),
           interanual: Number.isFinite(antes) && antes > 0 ? (monto / antes - 1) * 100 : null,
           composicion: [],
+          destinos: [],
+          destinosCubren: 0,
         };
       });
     }
@@ -257,8 +263,102 @@ export function getExportacionesProvinciales(): Promise<Record<string, Exportaci
       v.composicion.sort((a, b) => b.monto - a.monto);
     }
 
+    // 4. Los destinos: son los que revelan qué hay detrás de cada rubro. San
+    // Juan aparece con 87% en "manufacturas industriales", pero su primer
+    // destino es Suiza — eso es oro doré, no industria. El INDEC clasifica
+    // piedras y metales preciosos dentro de las manufacturas industriales.
+    await cargarDestinos(salida);
+
     return salida;
   });
+}
+
+/** Nombre de provincia dentro de las descripciones del dataset de destinos. */
+const ALIAS_DESTINO: Record<string, string> = { "AR-B": "pba", "AR-C": "caba" };
+
+/** El INDEC escribe algunos países sin acentos ni eñes. */
+const PAIS_LIMPIO: Record<string, string> = {
+  Espania: "España",
+  "Republica de Corea": "Corea del Sur",
+  "Paises Bajos": "Países Bajos",
+  Japon: "Japón",
+  Belgica: "Bélgica",
+  Canada: "Canadá",
+  Mexico: "México",
+  Peru: "Perú",
+  "Reino Unido de Gran Bretania e Irlanda del Norte": "Reino Unido",
+};
+
+async function cargarDestinos(salida: Record<string, ExportacionesProvincia>) {
+  const cat = await fetch(`${API_SERIES}/search/?q=datos+exportaciones&limit=1000`);
+  if (!cat.ok) return;
+
+  const catalogo = (await cat.json()) as {
+    data?: { field?: { id?: string; description?: string } }[];
+  };
+
+  // Cada serie es "Datos exportaciones <Provincia> <País>"
+  const porProvincia = new Map<string, { id: string; pais: string }[]>();
+
+  for (const d of catalogo.data ?? []) {
+    const desc = String(d.field?.description ?? "");
+    const id = d.field?.id;
+    if (!id || !desc.startsWith("Datos exportaciones ")) continue;
+
+    const palabras = desc.slice("Datos exportaciones ".length).trim().split(/\s+/);
+
+    for (const p of PROVINCIAS) {
+      const nombreProv = (ALIAS_DESTINO[p.iso] ?? p.nombre).split(/\s+/);
+      // Se consumen las palabras del nombre de la provincia una por una: cortar
+      // por longitud del texto normalizado no sirve, porque normalizar saca
+      // espacios y acentos y las posiciones dejan de coincidir con el original.
+      const coincide = nombreProv.every(
+        (w, i) => palabras[i] && normalizar(palabras[i]) === normalizar(w)
+      );
+      if (!coincide) continue;
+
+      const pais = palabras.slice(nombreProv.length).join(" ").trim();
+      // "Total <provincia>" es el total, no un destino
+      if (!pais || /^total$/i.test(palabras[nombreProv.length] ?? "")) break;
+
+      const lista = porProvincia.get(p.iso) ?? [];
+      lista.push({ id, pais: PAIS_LIMPIO[pais] ?? pais });
+      porProvincia.set(p.iso, lista);
+      break;
+    }
+  }
+
+  const pedidos = [...porProvincia.entries()].flatMap(([iso, xs]) =>
+    xs.map((x) => ({ iso, ...x }))
+  );
+
+  for (let i = 0; i < pedidos.length; i += 20) {
+    const tanda = pedidos.slice(i, i + 20);
+    const r = await fetch(
+      `${API_SERIES}/series/?ids=${tanda.map((t) => t.id).join(",")}&limit=1&sort=desc&format=json`
+    );
+    if (!r.ok) continue;
+
+    const j = (await r.json()) as { data?: (string | number | null)[][] };
+    const fila = j.data?.[0];
+    if (!fila) continue;
+
+    tanda.forEach((t, col) => {
+      const monto = Number(fila[col + 1]);
+      if (!Number.isFinite(monto) || monto <= 0 || !salida[t.iso]) return;
+      salida[t.iso].destinos.push({ pais: t.pais, monto, peso: 0 });
+    });
+  }
+
+  for (const v of Object.values(salida)) {
+    if (v.monto > 0) for (const d of v.destinos) d.peso = (d.monto / v.monto) * 100;
+    // "Resto" es el agregado de lo que el INDEC no desglosa, no un país
+    v.destinos = v.destinos
+      .filter((d) => !/^resto$/i.test(d.pais))
+      .sort((a, b) => b.monto - a.monto)
+      .slice(0, 4);
+    v.destinosCubren = v.destinos.reduce((s, d) => s + d.peso, 0);
+  }
 }
 
 // ─── Todo junto ─────────────────────────────────────────────────────────────

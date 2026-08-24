@@ -326,11 +326,24 @@ function Lectura({
 
   if (expo?.composicion.length) {
     const top = expo.composicion[0];
+    const destino = expo.destinos[0];
+
     frases.push(
       top.peso >= 60
         ? `Su comercio exterior depende casi por completo de ${RUBRO_LABEL[top.rubro].toLowerCase()}: ${fmt(top.peso, 0)}% del total.`
         : `Lo que más exporta son ${RUBRO_LABEL[top.rubro].toLowerCase()} (${fmt(top.peso, 0)}%), sobre una base más repartida.`
     );
+
+    // El rubro solo puede engañar: el INDEC mete oro y plata dentro de las
+    // manufacturas industriales, así que una provincia minera aparece como
+    // industrial. El destino lo delata — Suiza es refinación de oro.
+    if (top.rubro === "moi" && top.peso >= 60 && /suiza/i.test(destino?.pais ?? "")) {
+      frases.push(
+        `Ojo con ese rubro: su primer destino es ${destino.pais} (${fmt(destino.peso, 0)}%), que compra oro para refinar. El INDEC clasifica los metales preciosos como manufactura industrial, así que acá "industria" es minería.`
+      );
+    } else if (destino) {
+      frases.push(`Su principal destino es ${destino.pais}, con ${fmt(destino.peso, 0)}% del total.`);
+    }
   }
 
   if (empleo?.interanual != null) {
@@ -543,6 +556,28 @@ function Detalle({
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {expo && expo.destinos.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-1.5">
+            A dónde van
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {expo.destinos.map((d) => (
+              <span key={d.pais} className="flex items-baseline gap-1.5">
+                <span className="text-[11px] text-slate-300">{d.pais}</span>
+                <span className="text-[11px] text-slate-500 tabular-nums">{fmt(d.peso, 0)}%</span>
+              </span>
+            ))}
+          </div>
+          {expo.destinosCubren < 50 && (
+            <p className="text-[10px] text-slate-600 mt-1">
+              Estos explican {fmt(expo.destinosCubren, 0)}% del total: el resto se reparte
+              entre países que el INDEC no desglosa.
+            </p>
+          )}
         </div>
       )}
 

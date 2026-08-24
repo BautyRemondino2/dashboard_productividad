@@ -57,6 +57,7 @@ y las que más caen.
 | Gobernador, partido, orientación | Escrito a mano en el generador, mandatos 2023-2027 | se corre a mano al cambiar |
 | Foto del gobernador | Wikipedia en español (`prop=pageimages`), imágenes de Wikimedia Commons | al regenerar |
 | **Composición de exportaciones** | INDEC, desglose por rubro (primarios, agro, industria, energía) | anual |
+| **Destinos de exportación** | INDEC, por país | anual |
 | Población | Censo Nacional 2022 (INDEC) | fija |
 | **Empleo privado registrado** | SSPM vía CSV de datos.gob.ar | mensual |
 | **Exportaciones** | INDEC vía la API de series de datos.gob.ar | anual |
@@ -81,6 +82,13 @@ Commons con licencia libre.
 > esa API corta las consultas anónimas y cada corrida resolvía un subconjunto
 > distinto. Igual el generador acumula —arranca de lo ya guardado y sólo
 > agrega—, así una corrida con la red mal nunca borra lo que ya estaba.
+
+> **Trampa de los rubros del INDEC:** las manufacturas de origen industrial
+> incluyen *piedras y metales preciosos*, así que San Juan aparece con 87% en
+> "industria" cuando en realidad exporta oro. El destino lo delata: su primer
+> comprador es Suiza, que refina. La ficha lo advierte cuando se da ese patrón.
+> Otra: la soja sale del país sobre todo como harina y aceite, no como grano, y
+> eso cae en manufacturas agropecuarias — por eso Santa Fe tiene 80% MOA.
 
 La descripción de cada provincia se arma **con los datos**, no con textos fijos:
 cuánto pesa en población, empleo y exportaciones, de qué rubro salen sus
