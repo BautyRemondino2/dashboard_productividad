@@ -103,9 +103,36 @@ Negro **y** en La Rioja.
 
 ## Renta fija
 
-`/renta-fija` tiene los soberanos hard-dollar (GD29–GD46 ley NY, AL29–AL41 ley
-AR), la curva en pesos y los corporativos. Comparte componente con `/mercado`:
-se le pasa qué secciones renderiza.
+`/renta-fija` muestra la **curva de rendimientos** de los soberanos
+hard-dollar: TIR contra duration, con una serie por ley. La distancia entre las
+dos curvas es lo que el mercado cobra por litigar en Nueva York en vez de en
+Buenos Aires. La tabla de precios queda plegada abajo, para el detalle.
+
+### La TIR se calcula, no se trae
+
+Ninguna fuente pública argentina publica el rendimiento de estos bonos — se
+verificaron data912, argentinadatos, Bolsar, BYMA, IAMC y Yahoo. Así que
+`src/lib/bonos.ts` calcula la TIR por bisección desde el precio y los flujos de
+fondos, y la duration modificada a partir de ahí.
+
+**Los flujos están escritos a mano** desde los prospectos del canje 2020, y son
+el eslabón débil: un cupón o una fecha mal cargados dan una TIR equivocada. Por
+eso hay dos controles automáticos:
+
+1. La curva debería orbitar `UST 10 años + riesgo país`, porque el riesgo país
+   es por definición el spread de estos mismos bonos.
+2. Si un bono se aleja más de 2,5 puntos de la recta que forman los demás, el
+   sospechoso es su flujo y no el mercado: los soberanos de un mismo emisor no
+   cotizan a tasas dispares sin motivo.
+
+El segundo control **ya encontró un problema**: los 2029 y 2030 quedan fuera de
+la curva mientras 2035, 2038, 2041 y 2046 cierran contra el riesgo país. Esos
+cuatro se dibujan en gris punteado y la página lo avisa, en vez de mostrarlos
+como si fueran datos confiables.
+
+> Las curvas en pesos y de ONs no se pueden dibujar todavía: esos grupos no
+> tienen instrumentos cargados en la base. Se agregan desde el panel de la
+> derecha y la curva aparece sola.
 
 ---
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import TortaSectores from "./TortaSectores";
+import GraficoTradingView from "@/components/GraficoTradingView";
 import { SECTOR_LABEL } from "@/lib/equity-sectores";
 import {
   FAMILIAS_ETF, FAMILIA_LABEL, FAMILIA_NOTA, colorRetorno, fmtNivel, fmtNumero, fmtPct, fmtUsd,
@@ -151,6 +152,8 @@ export default function EtfClient({
             </div>
 
           </div>
+
+          <GraficoTradingView ticker={activo.ticker} alto={380} />
 
           {activo.sectores.length > 0 && (
             <div className="rounded-xl border border-slate-800 bg-slate-900/20 overflow-hidden">

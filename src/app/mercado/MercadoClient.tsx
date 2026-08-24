@@ -444,7 +444,7 @@ export default function MercadoClient({
   series: Record<string, MarketSeriesPoint[]>;
   definiciones: Record<string, InstrumentoDef>;
   /** Qué secciones renderiza esta página. */
-  vista?: { tiles: Grupo[]; tablas: Grupo[] };
+  vista?: { tiles: Grupo[]; tablas: Grupo[]; tablasPlegadas?: boolean };
 }) {
   const [openTicker, setOpenTicker] = useState<string | null>(null);
 
@@ -521,9 +521,24 @@ export default function MercadoClient({
           {vista.tablas.map((g) => {
             const rows = byGrupo[g];
             if (rows.length === 0) return null;
-            return (
+
+            const tabla = (
+              <InstrumentTable rows={rows} definiciones={definiciones} onOpen={setOpenTicker} />
+            );
+
+            // Plegada cuando la página ya muestra estos instrumentos de otra
+            // forma: la tabla queda para el detalle, sin ocupar la pantalla
+            return vista.tablasPlegadas ? (
+              <details key={g} className="group">
+                <summary className="cursor-pointer list-none text-[11px] text-slate-500 hover:text-slate-300 transition-colors select-none">
+                  <span className="group-open:hidden">▸ ver la tabla de {GRUPO_LABEL[g].toLowerCase()} ({rows.length})</span>
+                  <span className="hidden group-open:inline">▾ ocultar la tabla</span>
+                </summary>
+                <div className="mt-3">{tabla}</div>
+              </details>
+            ) : (
               <Section key={g} grupo={g} count={rows.length}>
-                <InstrumentTable rows={rows} definiciones={definiciones} onOpen={setOpenTicker} />
+                {tabla}
               </Section>
             );
           })}

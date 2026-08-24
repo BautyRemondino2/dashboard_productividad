@@ -252,9 +252,12 @@ export function formatDelta(delta: DeltaInfo, unidad: Unidad): string {
 export const VISTA_MERCADO = {
   tiles: ["fx", "tasas_ars", "inflacion", "riesgo", "global", "commodities", "acciones"] as Grupo[],
   tablas: [] as Grupo[],
+  tablasPlegadas: false,
 };
 
 export const VISTA_RENTA_FIJA = {
   tiles: [] as Grupo[],
   tablas: ["soberanos", "pesos", "corp"] as Grupo[],
+  // La curva ya muestra estos bonos: la tabla queda plegada para el detalle
+  tablasPlegadas: true,
 };

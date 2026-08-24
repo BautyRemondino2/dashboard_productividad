@@ -16,7 +16,7 @@ import {
   fmtCap, fmtFecha, fmtNumero, fmtPct, fmtUsd,
 } from "@/lib/equity-formato";
 import type { FilaTablero } from "@/lib/equity-formato";
-import GraficoTradingView from "./GraficoTradingView";
+import GraficoTradingView from "@/components/GraficoTradingView";
 import Logo from "./Logo";
 import { PanelInvestigacion, PanelNoticias } from "./Investigacion";
 
