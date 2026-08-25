@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#020617; color:#e2e8f0; font-family:Geist,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#cbd5e1; text-decoration:none; }
+  a:hover { color:#f1f5f9; }
+</style>
+</helmet>
+
+<div style="background:#020617; min-height:100vh; font-family:Geist,system-ui,sans-serif; padding-bottom:64px;">
+
+  <nav style="display:flex; align-items:center; gap:2px; height:48px; padding:0 24px; border-bottom:1px solid #131c2e; background:rgba(2,6,23,0.92); position:sticky; top:0; z-index:20;">
+    <div style="display:flex; align-items:center; gap:9px; margin-right:28px; flex-shrink:0;">
+      <div style="width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#f1f5f9; background:oklch(48% 0.16 258);">b</div>
+      <span style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.14em;">Asesor</span>
+    </div>
+    <a href="Dashboard rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Macro</a>
+    <a href="Renta fija rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Renta fija</a>
+    <a href="Equity rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Equity</a>
+    <a href="ETF rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">ETF</a>
+    <span style="width:1px; height:16px; background:#1e293b; margin:0 10px;"></span>
+    <span style="font-size:13px; font-weight:500; color:#f1f5f9; padding:6px 11px; border-radius:7px; background:#141f33;">Glosario</span>
+    <a href="Efemérides rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px;">Efemérides</a>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; flex-shrink:0;">
+      <span style="font-size:11px; color:#475569; font-variant-numeric:tabular-nums;">{{ total }} términos</span>
+      <button style="font-size:11px; font-weight:500; padding:5px 11px; border-radius:7px; border:1px solid #24344d; background:#0d1526; color:#cbd5e1; cursor:pointer;">+ Término</button>
+    </div>
+  </nav>
+
+  <div style="max-width:1440px; margin:0 auto; padding:26px 24px 0;">
+
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:18px;">
+      <div>
+        <h1 style="margin:0; font-size:26px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">Glosario</h1>
+        <p style="margin:5px 0 0; font-size:13px; color:#64748b;">Definición corta arriba, el desarrollo y la fórmula al abrir · siete categorías</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <input placeholder="buscar término, definición o ticker…" style="background:#0d1526; border:1px solid #24344d; outline:none; border-radius:9px; padding:8px 13px; font-size:13px; color:#cbd5e1; width:280px; font-family:inherit;">
+        <button onClick="{{ toggleFav }}" style="font-size:12px; padding:8px 13px; border-radius:9px; border:1px solid #24344d; cursor:pointer; white-space:nowrap; background:{{ favBg }}; color:{{ favFg }};">★ Favoritos</button>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid #131f33;">
+      <sc-for list="{{ categorias }}" as="c" hint-placeholder-count="8">
+        <button onClick="{{ c.onClick }}" style="display:flex; align-items:center; gap:8px; font-size:12px; padding:6px 12px; border-radius:8px; cursor:pointer; white-space:nowrap; border:1px solid {{ c.borde }}; background:{{ c.bg }}; color:{{ c.fg }};">
+          <span style="width:6px; height:6px; border-radius:9999px; background:{{ c.punto }};"></span>
+          {{ c.label }}
+          <span style="font-size:10px; color:#5b6a80; font-variant-numeric:tabular-nums;">{{ c.n }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:12px;">
+      <sc-for list="{{ terminos }}" as="t" hint-placeholder-count="12">
+        <article style="border-radius:12px; border:1px solid #17233a; background:#080f1c; overflow:hidden; position:relative;">
+          <div style="position:absolute; left:0; top:0; bottom:0; width:3px; background:{{ t.color }};"></div>
+          <button onClick="{{ t.onClick }}" style="display:block; width:100%; text-align:left; border:none; background:transparent; cursor:pointer; padding:13px 16px 13px 19px;">
+            <div style="display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;">
+              <h3 style="margin:0; font-size:15px; font-weight:600; color:#f1f5f9;">{{ t.term }}</h3>
+              <sc-if value="{{ t.ticker }}" hint-placeholder-val="{{ false }}">
+                <a href="Renta fija rediseño.dc.html" style="font-size:10px; font-family:inherit; padding:2px 7px; border-radius:5px; background:rgba(57,135,229,0.14); color:#7ba7f0;">{{ t.ticker }}</a>
+              </sc-if>
+              <span style="margin-left:auto; font-size:14px; color:{{ t.favColor }};">★</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:5px;">
+              <span style="font-size:10px; font-weight:500; padding:2px 7px; border-radius:5px; background:{{ t.soft }}; color:{{ t.chip }};">{{ t.categoria }}</span>
+              <span style="font-size:10px; color:#5b6a80;">{{ t.tipo }}</span>
+            </div>
+            <p style="margin:9px 0 0; font-size:12px; line-height:1.6; color:#94a3b8; text-wrap:pretty;">{{ t.corta }}</p>
+          </button>
+          <sc-if value="{{ t.abierto }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 16px 14px 19px;">
+              <div style="height:1px; background:#131f33; margin-bottom:12px;"></div>
+              <p style="margin:0; font-size:12px; line-height:1.7; color:#cbd5e1; text-wrap:pretty;">{{ t.detalle }}</p>
+              <sc-if value="{{ t.formula }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:12px; padding:11px 14px; border-radius:9px; border:1px solid #17233a; background:#0a1220; font-size:13px; color:#e2e8f0; text-align:center; font-variant-numeric:tabular-nums;">{{ t.formula }}</div>
+              </sc-if>
+              <div style="margin-top:12px; padding-left:11px; border-left:2px solid #24344d;">
+                <p style="margin:0 0 3px; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Ejemplo</p>
+                <p style="margin:0; font-size:12px; line-height:1.65; color:#94a3b8; text-wrap:pretty;">{{ t.ejemplo }}</p>
+              </div>
+              <sc-if value="{{ t.relacionados }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:14px;">
+                  <p style="margin:0 0 7px; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Se entiende junto con</p>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <sc-for list="{{ t.relacionados }}" as="r" hint-placeholder-count="3">
+                      <button onClick="{{ r.onClick }}" style="font-size:11px; padding:4px 10px; border-radius:7px; border:1px solid #24344d; background:transparent; color:#94a3b8; cursor:pointer;">{{ r.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </article>
+      </sc-for>
+    </div>
+
+    <p style="margin:20px 0 0; font-size:11px; color:#475569;">Mostrando {{ visibles }} de {{ total }} términos. La búsqueda mira nombre, definición corta y ticker.</p>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1000}}">
+const CATS = {
+  "Renta Fija": 200, "Renta Variable": 160, "Derivados": 280, "Tasas & Curvas": 230,
+  "Instrumentos AR": 0, "Macro Argentina": 30, "General": 220,
+};
+const color = c => `oklch(65% 0.11 ${CATS[c] ?? 220})`;
+const soft = c => `oklch(28% 0.05 ${CATS[c] ?? 220} / 0.45)`;
+const chip = c => `oklch(82% 0.11 ${CATS[c] ?? 220})`;
+
+// term, categoría, tipo, corta, detalle, ejemplo, ticker, formula, relacionados
+const TERMINOS = [
+  ["Duration","Renta Fija","Métrica",
+   "Sensibilidad del precio de un bono ante cambios en la tasa de interés.",
+   "La Duration de Macaulay es el promedio ponderado de los plazos de los flujos de caja. La Modified Duration expresa el cambio porcentual en precio ante una variación del 1% en la tasa.",
+   "Un bono con Modified Duration 4,5 baja ~4,5% si la TNA sube 100 bps.",
+   null, "MD = D / (1 + y/k)", ["Convexidad","YTM"], true],
+  ["Convexidad","Renta Fija","Métrica",
+   "Curvatura de la relación precio-tasa; corrige el error lineal de la Duration.",
+   "La convexidad mide cuánto se curva la función precio-tasa. Bonos con mayor convexidad ganan más cuando bajan tasas y pierden menos cuando suben.",
+   "Si la tasa baja 200 bps, la suba de precio supera la predicción de la Duration por efecto de la convexidad.",
+   null, "ΔP/P ≈ −MD·Δy + ½·C·Δy²", ["Duration"], false],
+  ["YTM","Renta Fija","Métrica",
+   "Yield To Maturity: tasa interna de retorno de un bono si se mantiene hasta el vencimiento.",
+   "Es la tasa de descuento que iguala el precio sucio del bono con el valor presente de todos sus flujos futuros (cupones + amortización). Asume reinversión de cupones a esa misma tasa.",
+   "AL35 a 64 dólares con pagos semestrales tiene una YTM cercana al 14% anual en USD.",
+   "AL35.BA", "P = Σ Fₜ / (1 + y)^t", ["TIR","Duration"], true],
+  ["TIR","Renta Fija","Métrica",
+   "Tasa Interna de Retorno: tasa que iguala el valor presente de flujos con la inversión inicial.",
+   "En bonos es equivalente al YTM. En proyectos es la tasa que hace el VAN igual a cero. Se usa para comparar alternativas de inversión.",
+   "Un proyecto que requiere $100 hoy y devuelve $121 en 2 años tiene una TIR del 10% anual.",
+   null, "0 = Σ Fₜ / (1 + TIR)^t", ["YTM"], false],
+  ["Precio limpio vs sucio","Renta Fija","Concepto",
+   "El precio sucio incluye el cupón corrido; el precio limpio no.",
+   "Los bonos se cotizan a precio limpio (flat price) pero se liquidan a precio sucio (full price = limpio + cupón corrido). El cupón corrido es la fracción del cupón acumulada desde el último pago.",
+   "Un bono cotiza a 95 (limpio) con 1,5 de cupón corrido: se pagan 96,5 (sucio) al liquidar.",
+   null, "Sucio = Limpio + cupón corrido", null, false],
+  ["Curva spot","Tasas & Curvas","Concepto",
+   "Tasa de descuento de un único flujo en cada plazo (tasa cero cupón).",
+   "Cada punto de la curva spot es la TIR de un bono cero cupón hipotético a ese plazo. Es la curva fundamental para descontar correctamente flujos individuales.",
+   "La tasa spot a 3 años indica a qué tasa anual un peso recibido en 3 años equivale a uno hoy.",
+   null, null, ["Curva par","Curva forward","Bootstrapping"], false],
+  ["Curva forward","Tasas & Curvas","Concepto",
+   "Tasa implícita en la curva spot para un período futuro específico.",
+   "La tasa forward entre t1 y t2 se extrae de las tasas spot. Refleja la expectativa de tasas futuras que ya está incorporada en los precios de hoy.",
+   "Si la spot a 1Y es 5% y a 2Y es 6%, la forward 1Y×2Y es aproximadamente 7%.",
+   null, "(1+s₂)^t₂ = (1+s₁)^t₁ · (1+f₁₂)^(t₂−t₁)", ["Curva spot"], false],
+  ["Bootstrapping","Tasas & Curvas","Concepto",
+   "Técnica para extraer tasas spot a partir de precios de bonos cupón corriente.",
+   "Se parte de la tasa de corto plazo y se avanza iterativamente hacia plazos más largos, eliminando el efecto cupón de cada bono para obtener las tasas cero cupón puras.",
+   "Con un bono a 1 año que paga cupón y otro a 2 años, se obtiene la tasa spot a 2 años despejando de su precio.",
+   null, null, ["Curva spot"], false],
+  ["Curva par","Tasas & Curvas","Concepto",
+   "Tasas a las que un bono con cupón periódico se cotizaría a la par (precio 100).",
+   "Se construye a partir de la curva spot. Si la curva par está por encima de la spot en todos los plazos, la curva es normal (pendiente positiva).",
+   "Una tasa par a 5 años del 8% implica que un bono que paga 8% anual se cotiza a 100.",
+   null, null, ["Curva spot"], false],
+  ["Riesgo país","Macro Argentina","Métrica",
+   "Sobretasa que paga la deuda argentina en dólares por encima del Tesoro de EE.UU.",
+   "El EMBI+ de JP Morgan mide el spread promedio ponderado de los bonos soberanos en dólares contra Treasuries de plazo comparable. Se expresa en puntos básicos: 600 pb son 6 puntos porcentuales.",
+   "Con un UST 10 años en 4,18% y riesgo país de 612 pb, la deuda argentina larga debería rendir cerca del 10,3%.",
+   null, "Riesgo país = TIR soberana − TIR Treasury", ["Duration"], true],
+  ["Brecha cambiaria","Macro Argentina","Métrica",
+   "Diferencia porcentual entre el dólar financiero y el oficial.",
+   "Cuando hay control de cambios el mercado se parte en dos. La brecha mide la distancia entre lo que se paga por un dólar en el mercado libre y el precio oficial. Una brecha alta anticipa devaluación o más controles.",
+   "Con el CCL en $1.574 y el oficial en $1.510, la brecha es de 4,24%.",
+   null, "Brecha = (CCL / oficial − 1) · 100", null, true],
+  ["Contado con liquidación","Instrumentos AR","Instrumento",
+   "Tipo de cambio implícito al comprar un activo local y venderlo en el exterior.",
+   "Se compra un bono o ADR en pesos en Buenos Aires y se vende el mismo papel en dólares en Nueva York. El cociente entre los dos precios es el tipo de cambio al que se giraron los dólares afuera. Es legal y es la referencia del dólar libre para empresas.",
+   "Si GD30 cotiza $130.000 en Buenos Aires y US$82,60 en Nueva York, el CCL sale $1.574.",
+   "GD30", "CCL = precio ARS / precio USD", ["Brecha cambiaria","Dólar MEP"], true],
+  ["Dólar MEP","Instrumentos AR","Instrumento",
+   "Igual que el CCL pero la operación se cierra dentro del país.",
+   "Se compra el bono en pesos y se vende su especie en dólares en el mercado local. Los dólares quedan en una cuenta argentina en vez de girarse afuera, así que suele cotizar levemente por debajo del CCL.",
+   "MEP en $1.520 contra CCL en $1.574: la diferencia es lo que cuesta sacar los dólares del país.",
+   null, null, ["Contado con liquidación"], false],
+  ["Lecap","Instrumentos AR","Instrumento",
+   "Letra del Tesoro en pesos que capitaliza los intereses hasta el vencimiento.",
+   "No paga cupones: se emite bajo la par y se cobra 100 al final, con la tasa ya capitalizada mes a mes. Es el instrumento más usado para posicionarse en tasa fija en pesos a plazos cortos.",
+   "Una Lecap comprada a $890 que paga $1.000 en seis meses rinde 12,4% directo, cerca de 26% TNA.",
+   null, "TEM = (100 / P)^(1/n) − 1", ["TAMAR"], false],
+  ["TAMAR","Macro Argentina","Métrica",
+   "Tasa mayorista de plazos fijos de más de mil millones de pesos en bancos privados.",
+   "Reemplazó a la BADLAR como referencia de tasa en pesos mayorista. La publica el BCRA todos los días hábiles y es la base de buena parte de los instrumentos a tasa variable.",
+   "TAMAR en 22,9% TNA equivale a 1,91% mensual, apenas por encima del IPC de 1,9%.",
+   null, "TEM = TNA / 12", ["Lecap","Tasa real"], true],
+  ["Tasa real","Macro Argentina","Métrica",
+   "Lo que rinde una inversión después de descontar la inflación.",
+   "No basta con restar: la fórmula correcta divide los factores. Con inflación alta la diferencia entre restar y dividir es grande, y una tasa nominal alta puede esconder un rendimiento real negativo.",
+   "Una TEM de 1,91% con inflación de 1,90% deja una tasa real de apenas 0,01% mensual.",
+   null, "r = (1 + i) / (1 + π) − 1", ["TAMAR"], true],
+  ["Beta","Renta Variable","Métrica",
+   "Cuánto se mueve una acción respecto del mercado.",
+   "Es la pendiente de la regresión entre el retorno del papel y el del índice. Beta 1 se mueve igual que el mercado; beta 1,5 amplifica los movimientos un 50%; beta negativo va al revés.",
+   "Un beta de 1,8 implica que si el S&P sube 1%, la acción tiende a subir 1,8%.",
+   null, "β = Cov(rᵢ, rₘ) / Var(rₘ)", ["PER"], false],
+  ["PER","Renta Variable","Métrica",
+   "Precio sobre ganancias: cuántos años de utilidad actual paga el precio de la acción.",
+   "Es el múltiplo más usado y el más fácil de malinterpretar. Un PER alto puede significar que la acción está cara o que el mercado espera fuerte crecimiento; un PER bajo puede ser una oportunidad o una empresa en problemas.",
+   "NVDA con PER 54 contra XOM con PER 15: no son caras y baratas, son negocios distintos.",
+   null, "PER = precio / ganancia por acción", ["Beta"], true],
+  ["Delta","Derivados","Métrica",
+   "Cuánto cambia el precio de una opción ante un cambio de un peso en el subyacente.",
+   "Va de 0 a 1 para calls y de −1 a 0 para puts. También se lee como la probabilidad aproximada de terminar en el dinero, y como la cantidad de subyacente necesaria para cubrir la posición.",
+   "Un call con delta 0,60 sube ~$0,60 si la acción sube $1.",
+   null, "Δ = ∂V / ∂S", ["Gamma","Volatilidad implícita"], false],
+  ["Gamma","Derivados","Métrica",
+   "La velocidad con la que cambia el delta.",
+   "Es la segunda derivada del precio de la opción respecto del subyacente. Es máxima en las opciones at-the-money y cerca del vencimiento: ahí la cobertura hay que rearmarla todo el tiempo.",
+   "Con gamma alto, una posición cubierta a la mañana puede estar descubierta a la tarde.",
+   null, "Γ = ∂²V / ∂S²", ["Delta"], false],
+  ["Volatilidad implícita","Derivados","Métrica",
+   "La volatilidad que hay que meter en el modelo para que dé el precio de mercado.",
+   "No es un pronóstico ni una medición del pasado: es lo que el mercado está cobrando hoy por la incertidumbre. Se despeja de Black-Scholes invirtiendo la fórmula, porque no tiene solución cerrada.",
+   "Una IV del 45% contra una volatilidad histórica del 28% indica que el mercado espera más movimiento del habitual.",
+   null, null, ["Delta"], false],
+  ["VAN","General","Métrica",
+   "Valor Actual Neto: la suma de los flujos futuros descontados, menos la inversión inicial.",
+   "Si el VAN es positivo el proyecto crea valor a la tasa de descuento elegida. Toda la discusión está en esa tasa: cambiarla un punto puede dar vuelta la decisión.",
+   "Con una tasa del 10%, un proyecto de $100 que devuelve $60 por dos años tiene VAN de $4,13.",
+   null, "VAN = −I₀ + Σ Fₜ / (1 + r)^t", ["TIR"], false],
+];
+
+class Component extends DCLogic {
+  state = { cat: null, abierto: "Riesgo país", soloFav: false, favs: TERMINOS.filter(t => t[9]).map(t => t[0]) };
+
+  renderVals() {
+    const { cat, abierto, soloFav, favs } = this.state;
+    const cuenta = {};
+    for (const t of TERMINOS) cuenta[t[1]] = (cuenta[t[1]] || 0) + 1;
+
+    const visibles = TERMINOS.filter(t => (!cat || t[1] === cat) && (!soloFav || favs.includes(t[0])));
+
+    const abrir = nombre => () => this.setState(s => ({
+      abierto: s.abierto === nombre ? null : nombre,
+      cat: null, soloFav: false,
+    }));
+
+    return {
+      total: String(TERMINOS.length),
+      visibles: String(visibles.length),
+      favBg: soloFav ? "#1e293b" : "transparent",
+      favFg: soloFav ? "#fbbf24" : "#7c8ba1",
+      toggleFav: () => this.setState(s => ({ soloFav: !s.soloFav })),
+      categorias: [{ label: "Todas", id: null, n: TERMINOS.length }]
+        .concat(Object.keys(CATS).map(c => ({ label: c, id: c, n: cuenta[c] || 0 })))
+        .map(c => ({
+          label: c.label, n: String(c.n),
+          punto: c.id ? color(c.id) : "#64748b",
+          bg: cat === c.id ? "#141f33" : "transparent",
+          fg: cat === c.id ? "#f1f5f9" : "#94a3b8",
+          borde: cat === c.id ? "#2a3b57" : "#17233a",
+          onClick: () => this.setState({ cat: c.id }),
+        })),
+      terminos: visibles.map(t => ({
+        term: t[0], categoria: t[1], tipo: t[2], corta: t[3], detalle: t[4], ejemplo: t[5],
+        ticker: t[6], formula: t[7],
+        color: color(t[1]), soft: soft(t[1]), chip: chip(t[1]),
+        favColor: favs.includes(t[0]) ? "#fbbf24" : "#1e293b",
+        abierto: abierto === t[0],
+        onClick: abrir(t[0]),
+        relacionados: t[8] ? t[8].map(r => ({ label: r, onClick: abrir(r) })) : null,
+      })),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

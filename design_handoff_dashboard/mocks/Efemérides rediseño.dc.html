@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#020617; color:#e2e8f0; font-family:Geist,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#cbd5e1; text-decoration:none; }
+  a:hover { color:#f1f5f9; }
+</style>
+</helmet>
+
+<div style="background:#020617; min-height:100vh; font-family:Geist,system-ui,sans-serif; padding-bottom:64px;">
+
+  <nav style="display:flex; align-items:center; gap:2px; height:48px; padding:0 24px; border-bottom:1px solid #131c2e; background:rgba(2,6,23,0.92); position:sticky; top:0; z-index:20;">
+    <div style="display:flex; align-items:center; gap:9px; margin-right:28px; flex-shrink:0;">
+      <div style="width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#f1f5f9; background:oklch(48% 0.16 258);">b</div>
+      <span style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.14em;">Asesor</span>
+    </div>
+    <a href="Dashboard rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Macro</a>
+    <a href="Renta fija rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Renta fija</a>
+    <a href="Equity rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Equity</a>
+    <a href="ETF rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">ETF</a>
+    <span style="width:1px; height:16px; background:#1e293b; margin:0 10px;"></span>
+    <a href="Glosario rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px;">Glosario</a>
+    <span style="font-size:13px; font-weight:500; color:#f1f5f9; padding:6px 11px; border-radius:7px; background:#141f33;">Efemérides</span>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; flex-shrink:0;">
+      <span style="font-size:11px; color:#475569; font-variant-numeric:tabular-nums;">lunes 24 de agosto de 2026</span>
+    </div>
+  </nav>
+
+  <div style="max-width:1180px; margin:0 auto; padding:26px 24px 0;">
+
+    <div style="margin-bottom:18px;">
+      <h1 style="margin:0; font-size:26px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">Efemérides y feriados</h1>
+      <p style="margin:5px 0 0; font-size:13px; color:#64748b;">Cuándo no abre el mercado local · el calendario 2026 y 2027</p>
+    </div>
+
+    <section style="border-radius:14px; border:1px solid #1c2c1f; background:linear-gradient(135deg,#0a1a14,#080f1c 65%); padding:22px 24px; margin-bottom:16px;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:32px; flex-wrap:wrap;">
+        <div style="min-width:0; flex:1;">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <span style="width:7px; height:7px; border-radius:9999px; background:#34d399;"></span>
+            <span style="font-size:10px; text-transform:uppercase; letter-spacing:0.13em; color:#5b6a80;">Lo próximo · feriado nacional</span>
+          </div>
+          <h2 style="margin:9px 0 0; font-size:27px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em; text-wrap:pretty;">Día del Respeto a la Diversidad Cultural</h2>
+          <p style="margin:6px 0 0; font-size:13px; color:#94a3b8;">Lunes 12 de octubre <span style="color:#475569;">· mercados cerrados · ★ finde largo</span></p>
+          <p style="margin:14px 0 0; font-size:13px; line-height:1.65; color:#cbd5e1; max-width:640px; text-wrap:pretty;">Anteriormente conocido como Día de la Raza, en 2010 se renombró para promover una reflexión histórica y un diálogo intercultural sobre los derechos de los pueblos originarios. Conmemora el 12 de octubre de 1492, fecha del primer contacto entre europeos y poblaciones americanas con la llegada de Cristóbal Colón. En Argentina se traslada al lunes más cercano para fomentar el finde largo.</p>
+        </div>
+        <div style="text-align:right; flex-shrink:0;">
+          <p style="margin:0; font-size:58px; font-weight:600; color:#34d399; font-variant-numeric:tabular-nums; line-height:0.9; letter-spacing:-0.04em;">49</p>
+          <p style="margin:5px 0 0; font-size:12px; color:#5b6a80;">días</p>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+      <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+        <div style="border-radius:12px; border:1px solid #17233a; background:#080f1c; padding:13px 16px; display:flex; align-items:center; gap:12px;">
+          <span style="width:9px; height:9px; border-radius:9999px; flex-shrink:0; background:{{ s.color }};"></span>
+          <div style="min-width:0;">
+            <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80; white-space:nowrap;">{{ s.label }}</p>
+            <p style="margin:2px 0 0; font-size:21px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; line-height:1;">{{ s.n }}</p>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:2px; padding:3px; border-radius:10px; background:#0a1220; border:1px solid #17233a;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+          <button onClick="{{ t.onClick }}" style="font-size:12px; padding:5px 13px; border-radius:7px; border:none; cursor:pointer; white-space:nowrap; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <sc-for list="{{ filtros }}" as="f" hint-placeholder-count="5">
+          <button onClick="{{ f.onClick }}" style="display:flex; align-items:center; gap:7px; font-size:11px; padding:5px 11px; border-radius:8px; cursor:pointer; white-space:nowrap; border:1px solid {{ f.borde }}; background:{{ f.bg }}; color:{{ f.fg }};">
+            <sc-if value="{{ f.punto }}" hint-placeholder-val="{{ true }}">
+              <span style="width:6px; height:6px; border-radius:9999px; background:{{ f.punto }};"></span>
+            </sc-if>
+            {{ f.label }}
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <sc-for list="{{ meses }}" as="m" hint-placeholder-count="6">
+      <section style="margin-bottom:22px;">
+        <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:9px;">
+          <h3 style="margin:0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.13em; color:#7c8ba1;">{{ m.label }}</h3>
+          <span style="font-size:10px; color:#475569; font-variant-numeric:tabular-nums;">{{ m.n }}</span>
+          <div style="flex:1; height:1px; background:#131f33;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:7px;">
+          <sc-for list="{{ m.items }}" as="e" hint-placeholder-count="3">
+            <article style="border-radius:12px; border:1px solid {{ e.borde }}; background:{{ e.fondo }}; overflow:hidden;">
+              <button onClick="{{ e.onClick }}" style="display:flex; align-items:flex-start; gap:16px; width:100%; text-align:left; border:none; background:transparent; cursor:pointer; padding:13px 18px;">
+                <div style="flex-shrink:0; width:44px; text-align:center;">
+                  <p style="margin:0; font-size:21px; font-weight:600; color:#e2e8f0; font-variant-numeric:tabular-nums; line-height:1;">{{ e.dia }}</p>
+                  <p style="margin:2px 0 0; font-size:10px; color:#5b6a80;">{{ e.dow }}</p>
+                </div>
+                <span style="width:1px; align-self:stretch; background:#131f33; flex-shrink:0;"></span>
+                <div style="min-width:0; flex:1;">
+                  <div style="display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+                    <h4 style="margin:0; font-size:14px; font-weight:600; color:#f1f5f9; text-wrap:pretty;">{{ e.titulo }}</h4>
+                    <span style="font-size:11px; font-variant-numeric:tabular-nums; flex-shrink:0; color:{{ e.diasColor }};">{{ e.dias }}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; margin-top:4px; flex-wrap:wrap;">
+                    <span style="font-size:10px; font-weight:500; padding:2px 7px; border-radius:5px; background:{{ e.tipoSoft }}; color:{{ e.tipoColor }};">{{ e.tipo }}</span>
+                    <span style="font-size:11px; color:#5b6a80;">{{ e.mercado }}</span>
+                    <sc-if value="{{ e.finde }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:11px; color:#fbbf24;">★ finde largo</span>
+                    </sc-if>
+                  </div>
+                </div>
+                <span style="font-size:12px; color:#475569; flex-shrink:0; margin-top:3px;">{{ e.flecha }}</span>
+              </button>
+              <sc-if value="{{ e.abierto }}" hint-placeholder-val="{{ false }}">
+                <p style="margin:0; padding:0 18px 15px 80px; font-size:12px; line-height:1.7; color:#94a3b8; text-wrap:pretty;">{{ e.descripcion }}</p>
+              </sc-if>
+            </article>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+
+    <p style="margin:0; font-size:11px; line-height:1.7; color:#475569; text-wrap:pretty;">Los feriados nacionales cierran el mercado local; las efemérides no. Carnaval, Viernes Santo, San Martín, Diversidad Cultural y Soberanía Nacional son móviles y están cargadas año por año. Los mercados de Estados Unidos siguen su propio calendario.</p>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:1000}}">
+const TIPOS = {
+  feriado: { label: "Feriado nacional", color: "#34d399", soft: "rgba(52,211,153,0.13)", borde: "#1c2c25", fondo: "#08130f", mercado: "mercados cerrados" },
+  "no-laborable": { label: "No laborable", color: "#fbbf24", soft: "rgba(251,191,36,0.13)", borde: "#2a2416", fondo: "#0d1108", mercado: "actividad reducida" },
+  efemeride: { label: "Efeméride", color: "#7c8ba1", soft: "rgba(124,139,161,0.12)", borde: "#17233a", fondo: "#080f1c", mercado: "el mercado opera normal" },
+};
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DOW = ["dom","lun","mar","mié","jue","vie","sáb"];
+
+// Inamovibles: se repiten en el mismo mes y día todos los años.
+// mm-dd, título, tipo, descripción
+const FIJAS = [
+  ["01-01","Año Nuevo","feriado","Primer día del calendario gregoriano. Feriado nacional inamovible en Argentina y en la mayoría de los mercados del mundo."],
+  ["03-24","Día Nacional de la Memoria por la Verdad y la Justicia","feriado","Conmemora el golpe de Estado del 24 de marzo de 1976 que inició la última dictadura militar. Es feriado nacional inamovible desde 2006."],
+  ["04-02","Día del Veterano y de los Caídos en la Guerra de Malvinas","feriado","Recuerda el desembarco argentino en las Islas Malvinas el 2 de abril de 1982 y homenajea a los caídos y veteranos del conflicto con el Reino Unido. Feriado nacional inamovible."],
+  ["05-01","Día del Trabajador","feriado","Conmemora a los Mártires de Chicago, obreros ejecutados tras las huelgas de 1886 por la jornada de ocho horas. Feriado nacional inamovible en Argentina y en gran parte del mundo."],
+  ["05-25","Día de la Revolución de Mayo","feriado","Conmemora la Revolución de Mayo de 1810, cuando el Cabildo de Buenos Aires destituyó al virrey Baltasar Hidalgo de Cisneros y formó la Primera Junta de Gobierno. Es el punto de partida del proceso independentista del Río de la Plata."],
+  ["06-17","Paso a la Inmortalidad del Gral. Martín Miguel de Güemes","feriado","Homenajea al caudillo salteño que defendió la frontera norte del país con la guerra de guerrillas, conteniendo las invasiones realistas desde el Alto Perú entre 1814 y 1821."],
+  ["06-20","Día de la Bandera","feriado","Conmemora el fallecimiento de Manuel Belgrano en 1820, creador de la bandera nacional argentina. Belgrano la izó por primera vez en 1812 en las barrancas del río Paraná, en Rosario."],
+  ["07-09","Día de la Independencia","feriado","El 9 de julio de 1816 el Congreso de Tucumán declaró la independencia de las Provincias Unidas del Río de la Plata respecto de la corona española. Es una de las dos fechas patrias inamovibles del calendario argentino."],
+  ["09-21","Día del Estudiante y de la Primavera","efemeride","El Día del Estudiante coincide en Argentina con el inicio de la primavera austral. Se eligió esta fecha en homenaje al fallecimiento de Domingo Faustino Sarmiento. Tradicionalmente las escuelas y universidades hacen actividades al aire libre."],
+  ["12-08","Inmaculada Concepción de María","feriado","Festividad católica que celebra el dogma de la concepción de la Virgen María sin pecado original, proclamado por Pío IX en 1854. Es feriado nacional inamovible en Argentina."],
+  ["12-25","Navidad","feriado","Celebración del nacimiento de Jesús de Nazaret. Feriado nacional inamovible y uno de los pocos días en que cierran prácticamente todos los mercados del mundo."],
+];
+
+// Móviles: dependen de Pascua o del lunes más cercano, así que van año por año.
+const MOVILES = {
+  2026: [
+    ["2026-02-16","Carnaval","feriado","Festividad de raíces cristianas que precede a la Cuaresma. Originalmente era el último período de excesos antes de los 40 días de ayuno y abstinencia. En Argentina, los carnavales más famosos son los de Gualeguaychú (Entre Ríos) y los del NOA (con la tradicional Diablada de Humahuaca). El lunes y martes de carnaval son feriados nacionales."],
+    ["2026-02-17","Carnaval","feriado","Segundo día del carnaval. En Argentina, los carnavales más famosos son los de Gualeguaychú y los del NOA. El lunes y martes de carnaval son feriados nacionales."],
+    ["2026-04-02","Jueves Santo","no-laborable","Día no laborable para todos los habitantes. Los bancos y el mercado local no operan, aunque no es feriado nacional pleno."],
+    ["2026-04-03","Viernes Santo","feriado","Conmemora la crucifixión y muerte de Jesucristo según la tradición cristiana. Es el día más solemne del Triduo Pascual. Junto con Jueves Santo y Domingo de Pascua forman la Semana Santa, que suele coincidir con el primer finde largo del año."],
+    ["2026-08-17","Paso a la Inmortalidad del Gral. José de San Martín","feriado","Conmemora el fallecimiento de José Francisco de San Martín (1850), Libertador de Argentina, Chile y Perú, considerado el Padre de la Patria. Cruzó los Andes con el Ejército Libertador en 1817 y lideró la campaña que liberó al cono sur del dominio español. Murió en el exilio en Boulogne-sur-Mer. El feriado se celebra el tercer lunes de agosto."],
+    ["2026-10-12","Día del Respeto a la Diversidad Cultural","feriado","Anteriormente conocido como Día de la Raza, en 2010 se renombró para promover una reflexión histórica y un diálogo intercultural sobre los derechos de los pueblos originarios. Conmemora el 12 de octubre de 1492, fecha del primer contacto entre europeos y poblaciones americanas con la llegada de Cristóbal Colón. En Argentina se traslada al lunes más cercano para fomentar el finde largo."],
+    ["2026-11-23","Día de la Soberanía Nacional","feriado","Recuerda la Batalla de Vuelta de Obligado (20 de noviembre de 1845), cuando tropas argentinas comandadas por Lucio Mansilla resistieron la invasión de una flota anglo-francesa sobre el río Paraná. Aunque militarmente fue una derrota, marcó un hito simbólico de la defensa de la soberanía nacional. Es feriado nacional desde 1974 y desde 2010 se traslada al lunes más cercano."],
+  ],
+  2027: [
+    ["2027-02-08","Carnaval","feriado","Lunes de carnaval. Lunes y martes anteriores al miércoles de ceniza."],
+    ["2027-02-09","Carnaval","feriado","Martes de carnaval."],
+    ["2027-03-25","Jueves Santo","no-laborable","Día no laborable para todos los habitantes. Los bancos y el mercado local no operan, aunque no es feriado nacional pleno."],
+    ["2027-03-26","Viernes Santo","feriado","Crucifixión y muerte de Jesucristo. Parte del Triduo Pascual."],
+    ["2027-08-16","Paso a la Inmortalidad del Gral. José de San Martín","feriado","Fallecimiento del Libertador José de San Martín (1850). Trasladado al 3er lunes de agosto."],
+    ["2027-10-11","Día del Respeto a la Diversidad Cultural","feriado","Conmemora el 12 de octubre de 1492 con un enfoque de diálogo intercultural sobre los pueblos originarios."],
+    ["2027-11-22","Día de la Soberanía Nacional","feriado","Batalla de Vuelta de Obligado (1845). Trasladado al lunes más cercano."],
+  ],
+};
+
+/** Finde largo: un feriado pegado al fin de semana, o dos feriados consecutivos. */
+function esFindeLargo(e, todos) {
+  if (e[2] !== "feriado") return false;
+  const d = new Date(e[0] + "T12:00:00");
+  const dow = d.getDay();
+  if (dow >= 1 && dow <= 5 && dow !== 3) return true;
+  return todos.some(o => o[0] !== e[0] && o[2] === "feriado" &&
+    Math.abs(new Date(o[0] + "T12:00:00") - d) <= 86400000);
+}
+
+/** Calendario completo de un año: inamovibles + móviles, ordenado por fecha. */
+function calendario(anio) {
+  const base = FIJAS.map(([md, titulo, tipo, desc]) => [`${anio}-${md}`, titulo, tipo, desc])
+    .concat(MOVILES[anio] || [])
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  return base.map(e => [e[0], e[1], e[2], esFindeLargo(e, base), e[3]]);
+}
+
+const CAL_2026 = calendario(2026);
+const CAL_2027 = calendario(2027);
+const CAL = CAL_2026;
+
+const HOY = "2026-08-24";
+const dias = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 86400000);
+
+class Component extends DCLogic {
+  state = { tab: "this", filtro: "all", abierto: "2026-10-12" };
+
+  renderVals() {
+    const { tab, filtro, abierto } = this.state;
+
+    let lista = tab === "next" ? CAL_2027.slice()
+      : tab === "this" ? CAL_2026.slice()
+      : CAL_2026.concat(CAL_2027).filter(e => e[0] >= HOY).slice(0, 8);
+    if (filtro === "long") lista = lista.filter(e => e[3]);
+    else if (filtro !== "all") lista = lista.filter(e => e[2] === filtro);
+
+    const grupos = new Map();
+    for (const e of lista) {
+      const mes = Number(e[0].slice(5, 7));
+      if (!grupos.has(mes)) grupos.set(mes, []);
+      const d = new Date(e[0] + "T12:00:00");
+      const dd = dias(HOY, e[0]);
+      const t = TIPOS[e[2]];
+      grupos.get(mes).push({
+        dia: String(d.getDate()), dow: DOW[d.getDay()],
+        titulo: e[1], tipo: t.label, tipoColor: t.color, tipoSoft: t.soft,
+        borde: t.borde, fondo: t.fondo, mercado: t.mercado,
+        finde: e[3], descripcion: e[4],
+        dias: dd === 0 ? "hoy" : dd === 1 ? "mañana" : dd < 0 ? `hace ${Math.abs(dd)} días` : `en ${dd} días`,
+        diasColor: dd === 0 ? "#34d399" : dd < 0 ? "#334155" : dd <= 7 ? "#34d399" : "#5b6a80",
+        abierto: abierto === e[0] + e[1],
+        flecha: abierto === e[0] + e[1] ? "▾" : "▸",
+        onClick: () => this.setState(s => ({ abierto: s.abierto === e[0] + e[1] ? null : e[0] + e[1] })),
+      });
+    }
+
+    const pill = (id, label, key, val) => ({
+      label, bg: this.state[key] === val ? "#1e293b" : "transparent",
+      fg: this.state[key] === val ? "#f1f5f9" : "#7c8ba1",
+      onClick: () => this.setState({ [key]: val }),
+    });
+
+    return {
+      stats: (() => {
+        const anio = tab === "next" ? CAL_2027 : CAL_2026;
+        const suf = tab === "next" ? " 2027" : " 2026";
+        return [
+          { label: "Feriados" + suf, n: String(anio.filter(e => e[2] === "feriado").length), color: "#34d399" },
+          { label: "No laborables", n: String(anio.filter(e => e[2] === "no-laborable").length), color: "#fbbf24" },
+          { label: "Efemérides", n: String(anio.filter(e => e[2] === "efemeride").length), color: "#64748b" },
+          { label: "Findes largos", n: String(new Set(anio.filter(e => e[3]).map(e => e[0].slice(0, 7))).size), color: "#fcd34d" },
+        ];
+      })(),
+      tabs: [pill(0, "Próximas", "tab", "upcoming"), pill(1, "2026", "tab", "this"), pill(2, "2027", "tab", "next")],
+      filtros: [
+        Object.assign(pill(0, "Todo", "filtro", "all"), { punto: null, borde: filtro === "all" ? "#2a3b57" : "#17233a" }),
+        Object.assign(pill(1, "Feriados", "filtro", "feriado"), { punto: "#34d399", borde: filtro === "feriado" ? "#2a3b57" : "#17233a" }),
+        Object.assign(pill(2, "No lab.", "filtro", "no-laborable"), { punto: "#fbbf24", borde: filtro === "no-laborable" ? "#2a3b57" : "#17233a" }),
+        Object.assign(pill(3, "Efemérides", "filtro", "efemeride"), { punto: "#64748b", borde: filtro === "efemeride" ? "#2a3b57" : "#17233a" }),
+        Object.assign(pill(4, "★ Findes largos", "filtro", "long"), { punto: null, borde: filtro === "long" ? "#2a3b57" : "#17233a" }),
+      ],
+      meses: [...grupos.entries()].map(([mes, items]) => ({
+        label: MESES[mes - 1], n: String(items.length), items,
+      })),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

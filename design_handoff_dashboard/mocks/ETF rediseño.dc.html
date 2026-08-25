@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#020617; color:#e2e8f0; font-family:Geist,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#cbd5e1; text-decoration:none; }
+  a:hover { color:#f1f5f9; }
+</style>
+</helmet>
+
+<div style="background:#020617; min-height:100vh; font-family:Geist,system-ui,sans-serif; padding-bottom:64px;">
+
+  <nav style="display:flex; align-items:center; gap:2px; height:48px; padding:0 24px; border-bottom:1px solid #131c2e; background:rgba(2,6,23,0.92); position:sticky; top:0; z-index:20;">
+    <div style="display:flex; align-items:center; gap:9px; margin-right:28px; flex-shrink:0;">
+      <div style="width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#f1f5f9; background:oklch(48% 0.16 258);">b</div>
+      <span style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.14em;">Asesor</span>
+    </div>
+    <a href="Dashboard rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Macro</a>
+    <a href="Renta fija rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Renta fija</a>
+    <a href="Equity rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Equity</a>
+    <span style="font-size:13px; font-weight:500; color:#f1f5f9; padding:6px 11px; border-radius:7px; background:#141f33;">ETF</span>
+    <span style="width:1px; height:16px; background:#1e293b; margin:0 10px;"></span>
+    <a href="Glosario rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px;">Glosario</a>
+    <a href="Efemérides rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px;">Efemérides</a>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; flex-shrink:0;">
+      <span style="font-size:11px; color:#475569;">53 fondos · 8 familias</span>
+      <button style="font-size:11px; font-weight:500; padding:5px 11px; border-radius:7px; border:1px solid #24344d; background:#0d1526; color:#cbd5e1; cursor:pointer;">↻</button>
+    </div>
+  </nav>
+
+  <div style="max-width:1500px; margin:0 auto; padding:26px 24px 0;">
+
+    <div style="margin-bottom:20px;">
+      <h1 style="margin:0; font-size:26px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">ETF</h1>
+      <p style="margin:5px 0 0; font-size:13px; color:#64748b;">53 fondos de referencia agrupados en ocho familias · composición sectorial, mayores tenencias y comisión anual</p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:330px 1fr; gap:20px; align-items:start;">
+
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <sc-for list="{{ familias }}" as="fam" hint-placeholder-count="8">
+          <section>
+            <h2 style="margin:0; font-size:11px; font-weight:600; color:#cbd5e1;">{{ fam.label }}</h2>
+            <p style="margin:2px 0 8px; font-size:10px; color:#5b6a80;">{{ fam.nota }}</p>
+            <div style="border:1px solid #17233a; border-radius:12px; overflow:hidden; background:#080f1c;">
+              <sc-for list="{{ fam.items }}" as="e" hint-placeholder-count="6">
+                <button onClick="{{ e.onClick }}" style="display:flex; align-items:baseline; gap:9px; width:100%; text-align:left; padding:8px 12px; border:none; border-bottom:1px solid #101a2b; cursor:pointer; background:{{ e.bg }};">
+                  <span style="font-size:12px; font-weight:500; color:#f1f5f9; width:46px; flex-shrink:0;">{{ e.ticker }}</span>
+                  <span style="font-size:11px; color:#94a3b8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ e.nombre }}</span>
+                  <span style="margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; color:{{ e.color }};">{{ e.pct }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+
+        <section style="border-radius:14px; border:1px solid #17233a; background:linear-gradient(180deg,#0b1322,#080f1c); padding:22px;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:28px; flex-wrap:wrap;">
+            <div style="min-width:0;">
+              <h2 style="margin:0; font-size:30px; font-weight:600; color:#f1f5f9; letter-spacing:-0.025em;">{{ sel.ticker }}</h2>
+              <p style="margin:3px 0 0; font-size:14px; color:#94a3b8;">{{ sel.nombre }}</p>
+              <p style="margin:2px 0 0; font-size:11px; color:#5b6a80;">{{ sel.detalle }}</p>
+            </div>
+            <div style="text-align:right;">
+              <p style="margin:0; font-size:30px; font-weight:600; color:#f8fafc; font-variant-numeric:tabular-nums; letter-spacing:-0.025em;">{{ sel.precio }}</p>
+              <p style="margin:3px 0 0; font-size:13px; font-variant-numeric:tabular-nums; color:{{ sel.colorDia }};">{{ sel.dia }} hoy</p>
+              <p style="margin:1px 0 0; font-size:11px; font-variant-numeric:tabular-nums; color:{{ sel.colorAnio }};">{{ sel.anio }} en 12 meses</p>
+            </div>
+          </div>
+
+          <p style="margin:18px 0 0; font-size:13px; line-height:1.65; color:#cbd5e1; text-wrap:pretty;">{{ sel.descripcion }}</p>
+
+          <div style="display:flex; flex-wrap:wrap; gap:28px; margin-top:18px; padding-top:16px; border-top:1px solid #17233a;">
+            <div>
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Mercado local</p>
+              <p style="margin:3px 0 0; font-size:14px; color:#e2e8f0; font-variant-numeric:tabular-nums;">{{ sel.indice }} <span style="font-size:11px; color:#34d399;">{{ sel.indiceDia }}</span></p>
+              <p style="margin:1px 0 0; font-size:10px; color:#5b6a80;">{{ sel.indiceNombre }}</p>
+            </div>
+            <div>
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Gestora</p>
+              <p style="margin:3px 0 0; font-size:14px; color:#e2e8f0;">{{ sel.gestora }}</p>
+            </div>
+            <div>
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Comisión anual</p>
+              <p style="margin:3px 0 0; font-size:14px; color:#e2e8f0; font-variant-numeric:tabular-nums;">{{ sel.comision }}</p>
+            </div>
+            <div>
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Patrimonio</p>
+              <p style="margin:3px 0 0; font-size:14px; color:#e2e8f0; font-variant-numeric:tabular-nums;">{{ sel.patrimonio }}</p>
+            </div>
+          </div>
+        </section>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+            <header style="padding:13px 18px; border-bottom:1px solid #131f33;">
+              <h3 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Composición sectorial</h3>
+              <p style="margin:3px 0 0; font-size:10px; color:#5b6a80;">seis mayores sectores, el resto agrupado</p>
+            </header>
+            <div style="display:flex; align-items:center; gap:20px; padding:18px;">
+              <svg viewBox="0 0 120 120" style="width:132px; height:132px; flex-shrink:0;">
+                <sc-for list="{{ torta }}" as="t" hint-placeholder-count="7">
+                  <circle cx="60" cy="60" r="42" fill="none" stroke="{{ t.color }}" stroke-width="20" stroke-dasharray="{{ t.dash }}" stroke-dashoffset="{{ t.offset }}" transform="rotate(-90 60 60)"></circle>
+                </sc-for>
+              </svg>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:7px;">
+                <sc-for list="{{ torta }}" as="t" hint-placeholder-count="7">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <span style="width:9px; height:9px; border-radius:3px; flex-shrink:0; background:{{ t.color }};"></span>
+                    <span style="font-size:11px; color:#94a3b8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ t.label }}</span>
+                    <span style="margin-left:auto; font-size:11px; color:#cbd5e1; font-variant-numeric:tabular-nums;">{{ t.pct }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+
+          <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+            <header style="padding:13px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+              <h3 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Mayores tenencias</h3>
+              <span style="font-size:10px; color:#5b6a80;">las diez que publica el fondo</span>
+            </header>
+            <sc-for list="{{ tenencias }}" as="h" hint-placeholder-count="10">
+              <div style="display:flex; align-items:center; gap:11px; padding:7px 18px; border-bottom:1px solid #101a2b;">
+                <a href="Equity rediseño.dc.html" style="font-size:12px; font-weight:500; color:#cbd5e1; width:56px; flex-shrink:0;">{{ h.ticker }}</a>
+                <span style="font-size:11px; color:#5b6a80; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ h.nombre }}</span>
+                <div style="margin-left:auto; display:flex; align-items:center; gap:9px; flex-shrink:0;">
+                  <div style="width:56px; height:4px; border-radius:9999px; background:#131f33; overflow:hidden;">
+                    <div style="height:100%; border-radius:9999px; background:#3987e5; width:{{ h.ancho }};"></div>
+                  </div>
+                  <span style="font-size:11px; color:#cbd5e1; font-variant-numeric:tabular-nums; width:38px; text-align:right;">{{ h.peso }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </section>
+        </div>
+
+        <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; padding:16px 18px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.11em; padding:3px 7px; border-radius:5px; background:rgba(59,130,246,0.13); color:#7ba7f0;">propuesto</span>
+            <h3 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8;">Comparar con</h3>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <sc-for list="{{ comparar }}" as="c" hint-placeholder-count="4">
+              <div style="flex:1; min-width:150px; border:1px solid #17233a; border-radius:10px; padding:11px 14px;">
+                <div style="display:flex; align-items:baseline; gap:8px;">
+                  <span style="font-size:13px; font-weight:600; color:#f1f5f9;">{{ c.ticker }}</span>
+                  <span style="margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; color:{{ c.color }};">{{ c.pct }}</span>
+                </div>
+                <div style="font-size:10px; color:#5b6a80; margin-top:3px;">{{ c.nota }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1500,&quot;height&quot;:1100}}">
+const GREEN = "#34d399", RED = "#f87171";
+const fpct = (v, d) => (v > 0 ? "+" : "") + v.toLocaleString("es-AR", { minimumFractionDigits: d ?? 2, maximumFractionDigits: d ?? 2 }) + "%";
+const cpct = v => v > 0 ? GREEN : v < 0 ? RED : "#94a3b8";
+
+const FAMILIAS = [
+  ["amplios", "Índices amplios", "El mercado estadounidense entero, con distintos cortes"],
+  ["sectoriales", "Sectoriales de EE.UU.", "Los once sectores del S&P por separado"],
+  ["paises", "Países", "Un solo mercado por fondo — Argentina incluida"],
+  ["internacionales", "Regiones", "Canastas de varios países en un solo papel"],
+  ["renta_fija", "Renta fija", "Bonos: no son acciones, sirven de contrapeso"],
+  ["materias_primas", "Materias primas", "Oro, plata y petróleo"],
+  ["estrategias", "Estrategias y factores", "El mismo mercado, filtrado por otro criterio"],
+  ["tematicos", "Temáticos", "Apuestas concentradas en una industria"],
+];
+
+const ETFS = [
+  ["SPY","S&P 500","las 500 grandes de EE.UU.","amplios",641.20,0.42],
+  ["QQQ","Nasdaq 100","las 100 mayores del Nasdaq","amplios",589.45,0.71],
+  ["DIA","Dow Jones","las 30 industriales","amplios",452.80,0.18],
+  ["IWM","Russell 2000","small caps de EE.UU.","amplios",238.64,-0.24],
+  ["VTI","Total Market","todo el mercado de EE.UU.","amplios",318.92,0.39],
+  ["VOO","S&P 500 Vanguard","mismo índice, menos comisión","amplios",589.10,0.42],
+  ["XLK","Tecnología","sector tecnológico del S&P","sectoriales",268.40,1.24],
+  ["XLF","Financiero","bancos y aseguradoras","sectoriales",54.16,0.42],
+  ["XLV","Salud","farma, seguros y equipamiento","sectoriales",142.85,0.18],
+  ["XLY","Consumo discrecional","lo que se compra si sobra","sectoriales",229.70,0.04],
+  ["XLP","Consumo básico","lo que se compra igual","sectoriales",79.32,-0.35],
+  ["XLE","Energía","petróleo y gas","sectoriales",88.94,-0.94],
+  ["XLI","Industrial","maquinaria, transporte y defensa","sectoriales",152.18,0.61],
+  ["XLB","Materiales","químicos, metales y envases","sectoriales",92.05,-0.12],
+  ["XLRE","Inmobiliario","REITs de EE.UU.","sectoriales",42.68,-0.28],
+  ["XLU","Servicios públicos","energía eléctrica y agua","sectoriales",84.52,-0.51],
+  ["XLC","Comunicaciones","medios, telecom e internet","sectoriales",112.36,0.86],
+  ["ARGT","Argentina","el riesgo argentino en un papel","paises",78.44,2.16],
+  ["EWZ","Brasil","el vecino grande","paises",31.28,0.94],
+  ["EWW","México","atado al ciclo de EE.UU.","paises",62.10,0.35],
+  ["MCHI","China","incluye Hong Kong y ADR","paises",58.72,-0.62],
+  ["INDA","India","el emergente de moda","paises",56.40,0.28],
+  ["ILF","Latinoamérica 40","la región sin elegir país","paises",27.86,0.72],
+  ["VEA","Desarrollados ex-EE.UU.","Europa, Japón y Australia","internacionales",56.18,0.24],
+  ["VWO","Emergentes","China, India, Brasil y otros","internacionales",49.62,-0.18],
+  ["VGK","Europa","todos los tamaños","internacionales",72.44,0.31],
+  ["AGG","Bonos EE.UU.","renta fija de grado inversor","renta_fija",99.84,0.08],
+  ["TLT","Treasuries largos","bonos del Tesoro a 20+ años","renta_fija",88.26,0.34],
+  ["LQD","Corporativos grado inversor","crédito de calidad en USD","renta_fija",110.52,0.12],
+  ["HYG","Alto rendimiento","bonos basura","renta_fija",80.14,-0.06],
+  ["EMB","Deuda emergente","soberanos en dólares","renta_fija",93.70,0.21],
+  ["GLD","Oro","lingotes en custodia","materias_primas",314.28,0.87],
+  ["SLV","Plata","lingotes en custodia","materias_primas",36.94,1.42],
+  ["USO","Petróleo","futuros, no crudo físico","materias_primas",72.16,-1.10],
+  ["RSP","S&P 500 equiponderado","todas pesan igual","estrategias",184.62,0.16],
+  ["SCHD","Dividendos","pagadores consistentes","estrategias",28.94,-0.09],
+  ["MTUM","Momentum","las que vienen subiendo","estrategias",228.50,0.94],
+  ["QUAL","Calidad","balances sólidos","estrategias",186.32,0.38],
+  ["SMH","Semiconductores","el corazón de la ola de IA","tematicos",312.84,1.86],
+  ["IBIT","Bitcoin","cripto en cuenta de valores","tematicos",64.28,-1.24],
+  ["XBI","Biotecnología","pesos parejos","tematicos",96.40,0.52],
+  ["ITA","Aeroespacial y defensa","presupuesto militar","tematicos",188.72,0.44],
+];
+
+const DETALLE = {
+  SPY: {
+    descripcion: "Replica el S&P 500, el índice de las 500 mayores empresas cotizantes de Estados Unidos ponderadas por capitalización ajustada por free float. Es el fondo cotizado más antiguo y más operado del mundo: sirve tanto de vehículo de inversión como de referencia para medir cualquier otra cosa. Su cartera concentra hoy más de un tercio en tecnología, así que comprar SPY no es comprar la economía estadounidense en partes iguales.",
+    gestora: "State Street Global Advisors", comision: "0,09%", patrimonio: "US$625 mil M",
+    indice: "6.412", indiceDia: "+0,42%", indiceNombre: "S&P 500 · USD",
+    anio: 17.62,
+    torta: [
+      ["Tecnología", 33.8, "#3987e5"], ["Financieras", 13.4, "#199e70"],
+      ["Consumo discrecional", 10.6, "#c98500"], ["Salud", 9.8, "#a78bfa"],
+      ["Comunicaciones", 9.4, "#d95926"], ["Industriales", 8.1, "#64748b"],
+      ["Otros cinco sectores", 14.9, "#334155"],
+    ],
+    tenencias: [
+      ["NVDA","NVIDIA Corporation",7.84],["MSFT","Microsoft Corporation",6.42],
+      ["AAPL","Apple Inc.",5.90],["AMZN","Amazon.com, Inc.",3.96],
+      ["META","Meta Platforms",2.84],["AVGO","Broadcom Inc.",2.46],
+      ["GOOGL","Alphabet Inc. Class A",2.12],["GOOG","Alphabet Inc. Class C",1.76],
+      ["TSLA","Tesla, Inc.",1.68],["BRK.B","Berkshire Hathaway",1.54],
+    ],
+    comparar: [["VOO","misma cartera, 0,03%",0.42],["RSP","equiponderado",0.16],["QQQ","sólo Nasdaq 100",0.71],["VTI","mercado completo",0.39]],
+  },
+};
+
+class Component extends DCLogic {
+  state = { sel: "SPY" };
+
+  renderVals() {
+    const cur = ETFS.find(e => e[0] === this.state.sel) || ETFS[0];
+    const d = DETALLE[cur[0]] || DETALLE.SPY;
+
+    let acc = 0;
+    const circ = 2 * Math.PI * 42;
+    const torta = d.torta.map(([label, pct, color]) => {
+      const len = (pct / 100) * circ;
+      const seg = { label, pct: pct.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%", color,
+        dash: len.toFixed(2) + " " + (circ - len).toFixed(2), offset: (-acc).toFixed(2) };
+      acc += len;
+      return seg;
+    });
+
+    return {
+      familias: FAMILIAS.map(([id, label, nota]) => ({
+        label, nota,
+        items: ETFS.filter(e => e[3] === id).map(e => ({
+          ticker: e[0], nombre: e[1], pct: fpct(e[5]), color: cpct(e[5]),
+          bg: e[0] === this.state.sel ? "rgba(30,41,59,0.6)" : "transparent",
+          onClick: () => this.setState({ sel: e[0] }),
+        })),
+      })),
+      sel: {
+        ticker: cur[0], nombre: cur[1], detalle: cur[2],
+        precio: "US$" + cur[4].toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        dia: fpct(cur[5]), colorDia: cpct(cur[5]),
+        anio: fpct(d.anio, 1), colorAnio: cpct(d.anio),
+        descripcion: d.descripcion, gestora: d.gestora, comision: d.comision, patrimonio: d.patrimonio,
+        indice: d.indice, indiceDia: d.indiceDia, indiceNombre: d.indiceNombre,
+      },
+      torta,
+      tenencias: d.tenencias.map(([ticker, nombre, peso]) => ({
+        ticker, nombre, peso: peso.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%",
+        ancho: Math.min(100, (peso / 8) * 100) + "%",
+      })),
+      comparar: d.comparar.map(([ticker, nota, v]) => ({ ticker, nota, pct: fpct(v), color: cpct(v) })),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -4,60 +4,116 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import EfemerideWidget from "@/components/EfemerideWidget";
 
-export default function TopNav({ ephemeral = false }: { ephemeral?: boolean }) {
+/**
+ * Barra de navegación, 48px y fija arriba de todo.
+ *
+ * El orden de las secciones sigue la frecuencia con que se usan, no el orden en
+ * que se fueron construyendo: primero las cuatro de mercado, después un
+ * separador, y del otro lado las dos de consulta —glosario y efemérides— que se
+ * abren de vez en cuando. El separador es el que hace legible esa diferencia.
+ */
+
+const PRIMARIAS = [
+  { href: "/mercado", label: "Macro" },
+  { href: "/renta-fija", label: "Renta fija" },
+  { href: "/equity", label: "Equity" },
+  { href: "/etf", label: "ETF" },
+];
+
+const SECUNDARIAS = [
+  { href: "/glossary", label: "Glosario" },
+  { href: "/efemerides", label: "Efemérides" },
+];
+
+function horaDe(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+export default function TopNav({
+  ephemeral = false,
+  actualizado = null,
+}: {
+  ephemeral?: boolean;
+  /** ISO del último dato automático. Se muestra como sello a la derecha. */
+  actualizado?: string | null;
+}) {
   const pathname = usePathname();
 
-  function isActive(href: string) {
-    if (href === "/mercado") return pathname === "/" || pathname === "/mercado" || pathname.startsWith("/mercado/");
+  function activo(href: string) {
+    // La raíz muestra el panel macro, así que cuenta como /mercado
+    if (href === "/mercado") {
+      return pathname === "/" || pathname === "/mercado" || pathname.startsWith("/mercado/");
+    }
     return pathname === href || pathname.startsWith(href + "/");
   }
 
   return (
-    // En celular no entran todas las secciones: se desplaza en horizontal en vez
-    // de recortar las últimas.
-    <nav className="shrink-0 border-b border-slate-800/70 bg-slate-950/80 backdrop-blur-sm flex items-center px-4 sm:px-5 gap-4 sm:gap-6 h-10 overflow-x-auto">
-      {/* Brand */}
-      <div className="flex items-center gap-2 mr-1 sm:mr-2 shrink-0">
+    // En pantalla angosta no entran las seis secciones: se desplaza en
+    // horizontal en vez de recortar las últimas
+    <nav className="sticky top-0 z-20 shrink-0 h-12 flex items-center gap-[2px] px-6 border-b border-borde-nav sup-nav overflow-x-auto">
+      <div className="flex items-center gap-[9px] mr-7 shrink-0">
         <div
-          className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-slate-100"
-          style={{ background: "oklch(45% 0.15 255)" }}
+          className="w-[22px] h-[22px] rounded-badge flex items-center justify-center text-[11px] font-bold text-titulo"
+          style={{ background: "var(--color-marca)" }}
         >
           b
         </div>
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+        <span className="text-[11px] font-semibold text-meta uppercase tracking-[0.14em]">
           Asesor
         </span>
       </div>
 
-      <NavLink href="/mercado"    label="Macro"       active={isActive("/mercado")} />
-      <NavLink href="/renta-fija" label="Renta fija"  active={isActive("/renta-fija")} />
-      <NavLink href="/equity"     label="Equity"      active={isActive("/equity")} />
-      <NavLink href="/etf"        label="ETF"         active={isActive("/etf")} />
-      <NavLink href="/glossary"   label="Glosario"    active={isActive("/glossary")} />
-      <NavLink href="/efemerides" label="Efemérides"  active={isActive("/efemerides")} />
+      {PRIMARIAS.map((s) => (
+        <ItemNav key={s.href} href={s.href} label={s.label} activo={activo(s.href)} />
+      ))}
 
-      {/* Right side: Argentine ephemeris widget */}
-      <div className="ml-auto flex items-center gap-3 shrink-0">
+      <span className="w-px h-4 bg-separador mx-[10px] shrink-0" />
+
+      {SECUNDARIAS.map((s) => (
+        <ItemNav key={s.href} href={s.href} label={s.label} activo={activo(s.href)} secundaria />
+      ))}
+
+      <div className="ml-auto flex items-center gap-3.5 shrink-0">
         {ephemeral && (
           <span
             title="El deploy corre sobre una copia temporal de la base: lo que cargues acá se pierde en el próximo arranque en frío. Para datos permanentes, usá el dashboard local."
-            className="text-[10px] px-1.5 py-0.5 rounded border border-amber-900/60 text-amber-500/90 whitespace-nowrap"
+            className="text-[10px] px-1.5 py-0.5 rounded-badge border border-amber-900/60 text-amber-500/90 whitespace-nowrap"
           >
             datos temporales
           </span>
         )}
         <EfemerideWidget />
+        {actualizado && (
+          <span className="text-[11px] text-meta-suave tabular-nums whitespace-nowrap">
+            actualizado {horaDe(actualizado)}
+          </span>
+        )}
       </div>
     </nav>
   );
 }
 
-function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+function ItemNav({
+  href,
+  label,
+  activo,
+  secundaria = false,
+}: {
+  href: string;
+  label: string;
+  activo: boolean;
+  secundaria?: boolean;
+}) {
   return (
     <Link
       href={href}
-      className={`text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
-        active ? "text-slate-100" : "text-slate-500 hover:text-slate-300"
+      className={`text-[13px] shrink-0 whitespace-nowrap px-[11px] py-1.5 rounded-chip transition-colors duration-[120ms] ${
+        activo
+          ? "font-medium text-titulo bg-chip"
+          : secundaria
+            ? "text-tenue hover:bg-divisor-fino hover:text-[#cbd5e1]"
+            : "font-medium text-label hover:bg-divisor-fino hover:text-[#cbd5e1]"
       }`}
     >
       {label}

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#020617; color:#e2e8f0; font-family:Geist,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#cbd5e1; text-decoration:none; }
+  a:hover { color:#f1f5f9; }
+</style>
+</helmet>
+
+<div style="background:#020617; min-height:100vh; font-family:Geist,system-ui,sans-serif; padding-bottom:64px;">
+
+  <nav style="display:flex; align-items:center; gap:2px; height:48px; padding:0 24px; border-bottom:1px solid #131c2e; background:rgba(2,6,23,0.92); position:sticky; top:0; z-index:20;">
+    <div style="display:flex; align-items:center; gap:9px; margin-right:28px; flex-shrink:0;">
+      <div style="width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#f1f5f9; background:oklch(48% 0.16 258);">b</div>
+      <span style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.14em;">Asesor</span>
+    </div>
+    <a href="Dashboard rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">Macro</a>
+    <a href="Renta fija rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">Renta fija</a>
+    <span style="font-size:13px; font-weight:500; color:#f1f5f9; padding:6px 11px; border-radius:7px; background:#141f33; white-space:nowrap;">Equity</span>
+    <a href="ETF rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">ETF</a>
+    <span style="width:1px; height:16px; background:#1e293b; margin:0 10px;"></span>
+    <a href="Glosario rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px; white-space:nowrap;">Glosario</a>
+    <a href="Efemérides rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px; white-space:nowrap;">Efemérides</a>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; flex-shrink:0;">
+      <span style="font-size:11px; color:#475569;">rueda abierta · 11:24 ET</span>
+      <a href="#" style="font-size:11px; padding:5px 11px; border-radius:7px; border:1px solid #24344d; color:#94a3b8;">calendario de earnings →</a>
+      <button style="font-size:11px; font-weight:500; padding:5px 11px; border-radius:7px; border:1px solid #24344d; background:#0d1526; color:#cbd5e1; cursor:pointer;">↻</button>
+    </div>
+  </nav>
+
+  <div style="position:sticky; top:48px; z-index:19; border-bottom:1px solid #131c2e; background:linear-gradient(180deg,#070d1a,#050a14); display:flex; align-items:stretch;">
+    <div style="padding:11px 22px; border-right:1px solid #101a2b; flex-shrink:0;">
+      <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">S&amp;P 500</div>
+      <div style="display:flex; align-items:baseline; gap:9px; margin-top:3px;">
+        <span style="font-size:19px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; letter-spacing:-0.01em;">6.412</span>
+        <span style="font-size:12px; font-weight:500; color:#34d399; font-variant-numeric:tabular-nums;">+0,42%</span>
+      </div>
+    </div>
+    <div style="flex:1; min-width:0; display:flex; align-items:center; gap:0; overflow-x:auto;">
+      <sc-for list="{{ sectores }}" as="s" hint-placeholder-count="11">
+        <div style="flex:1 1 0; min-width:78px; box-sizing:border-box; padding:11px 12px; border-right:1px solid #101a2b;">
+          <div style="font-size:10px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ s.nombre }}</div>
+          <div style="display:flex; align-items:center; gap:7px; margin-top:4px;">
+            <span style="font-size:13px; font-variant-numeric:tabular-nums; color:{{ s.color }};">{{ s.pct }}</span>
+            <div style="flex:1; height:3px; border-radius:9999px; background:#131f33; overflow:hidden; min-width:14px;">
+              <div style="height:100%; border-radius:9999px; background:{{ s.color }}; width:{{ s.ancho }};"></div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="max-width:1600px; margin:0 auto; padding:24px 24px 0;">
+
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:18px;">
+      <div>
+        <h1 style="margin:0; font-size:26px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">Equity</h1>
+        <p style="margin:5px 0 0; font-size:13px; color:#64748b;">NYSE + Nasdaq · 2.126 empresas · 150 en el ranking del día</p>
+      </div>
+      <div style="display:flex; align-items:stretch; gap:0; border:1px solid #17233a; border-radius:12px; overflow:hidden; background:#080f1c;">
+        <sc-for list="{{ etfs }}" as="e" hint-placeholder-count="4">
+          <div style="padding:9px 18px; border-right:1px solid #131f33; min-width:112px;">
+            <div style="display:flex; align-items:baseline; gap:8px;">
+              <span style="font-size:13px; font-weight:600; color:#f1f5f9;">{{ e.ticker }}</span>
+              <span style="font-size:11px; font-variant-numeric:tabular-nums; margin-left:auto; color:{{ e.color }};">{{ e.pct }}</span>
+            </div>
+            <div style="font-size:11px; color:#64748b; font-variant-numeric:tabular-nums; margin-top:2px;">{{ e.precio }}</div>
+          </div>
+        </sc-for>
+        <a href="#" style="padding:9px 16px; display:flex; align-items:center; font-size:11px; color:#64748b; white-space:nowrap;">ver los 53 ETF →</a>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:2px; padding:3px; border-radius:10px; background:#0a1220; border:1px solid #17233a;">
+        <sc-for list="{{ periodos }}" as="p" hint-placeholder-count="7">
+          <button onClick="{{ p.onClick }}" style="font-size:12px; padding:5px 11px; border-radius:7px; border:none; cursor:pointer; white-space:nowrap; background:{{ p.bg }}; color:{{ p.fg }};">{{ p.label }}</button>
+        </sc-for>
+      </div>
+      <button onClick="{{ toggleOrden }}" style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid #24344d; background:transparent; color:#94a3b8; cursor:pointer; white-space:nowrap;">{{ ordenLabel }}</button>
+      <button onClick="{{ toggleIndice }}" style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid #24344d; cursor:pointer; white-space:nowrap; background:{{ indiceBg }}; color:{{ indiceFg }};">{{ indiceLabel }}</button>
+
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:2px;">
+          <sc-for list="{{ presets }}" as="p" hint-placeholder-count="5">
+            <button onClick="{{ p.onClick }}" title="{{ p.ayuda }}" style="font-size:12px; padding:6px 11px; border-radius:8px; border:1px solid transparent; cursor:pointer; white-space:nowrap; background:{{ p.bg }}; color:{{ p.fg }};">{{ p.label }}</button>
+          </sc-for>
+        </div>
+        <input placeholder="ticker o empresa…" style="background:#0d1526; border:1px solid #24344d; outline:none; border-radius:8px; padding:6px 11px; font-size:12px; color:#cbd5e1; width:160px; font-family:inherit;">
+      </div>
+    </div>
+
+    <p style="margin:0 0 14px; font-size:12px; color:#5b6a80;">{{ ayudaActiva }}</p>
+
+    <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+      <div style="display:grid; grid-template-columns:42px 250px 92px repeat(7,1fr) 100px 74px 110px 96px; align-items:center; gap:0 10px; padding:10px 18px; background:#0a1220; border-bottom:1px solid #131f33; font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:#5b6a80;">
+        <div>#</div>
+        <div>Empresa</div>
+        <div style="text-align:right;">Precio</div>
+        <sc-for list="{{ colPeriodos }}" as="p" hint-placeholder-count="7">
+          <div style="text-align:right; white-space:nowrap; color:{{ p.fg }};">{{ p.label }}</div>
+        </sc-for>
+        <div style="text-align:right;">Tendencia 6m</div>
+        <div style="text-align:right;">PER</div>
+        <div style="text-align:right;">Cap.</div>
+        <div style="text-align:right;">Earnings</div>
+      </div>
+
+      <sc-for list="{{ filas }}" as="f" hint-placeholder-count="14">
+        <div style="display:grid; grid-template-columns:42px 250px 92px repeat(7,1fr) 100px 74px 110px 96px; align-items:center; gap:0 10px; padding:9px 18px; border-bottom:1px solid #101a2b;">
+          <div style="font-size:11px; color:#475569; font-variant-numeric:tabular-nums;">{{ f.n }}</div>
+          <div style="display:flex; align-items:center; gap:11px; min-width:0;">
+            <span style="width:3px; height:28px; border-radius:2px; flex-shrink:0; background:{{ f.sectorColor }};"></span>
+            <a href="Equity ticker rediseño.dc.html" style="min-width:0; display:block;">
+              <span style="display:block; font-size:13px; font-weight:500; color:#f1f5f9;">{{ f.ticker }}</span>
+              <span style="display:block; font-size:10px; color:#5b6a80; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:190px;">{{ f.nombre }}</span>
+            </a>
+          </div>
+          <div style="text-align:right; font-size:12px; color:#cbd5e1; font-variant-numeric:tabular-nums;">{{ f.precio }}</div>
+          <sc-for list="{{ f.celdas }}" as="c" hint-placeholder-count="7">
+            <div style="text-align:right; font-size:12px; font-variant-numeric:tabular-nums; padding:4px 6px; border-radius:5px; color:{{ c.color }}; background:{{ c.bg }}; font-weight:{{ c.peso }};">{{ c.txt }}</div>
+          </sc-for>
+          <div style="display:flex; justify-content:flex-end;">
+            <svg width="84" height="24" viewBox="0 0 84 24">
+              <path d="{{ f.spark }}" stroke="{{ f.sparkColor }}" stroke-width="1.3" fill="none" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <div style="text-align:right; font-size:11px; color:#94a3b8; font-variant-numeric:tabular-nums;">{{ f.per }}</div>
+          <div style="text-align:right; font-size:11px; color:#94a3b8; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ f.cap }}</div>
+          <div style="text-align:right; font-size:11px; color:#94a3b8; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ f.earnings }}</div>
+        </div>
+      </sc-for>
+
+      <div style="padding:11px 18px; display:flex; align-items:center; gap:12px; background:#0a1220;">
+        <span style="font-size:11px; color:#5b6a80;">Mostrando 14 de 150 · el ranking preselecciona con métricas baratas y calcula los retornos exactos sobre los candidatos</span>
+        <button style="margin-left:auto; font-size:12px; padding:5px 12px; border-radius:7px; border:1px solid #24344d; background:transparent; color:#94a3b8; cursor:pointer;">ver todo el ranking</button>
+      </div>
+    </section>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+      <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+        <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.11em; padding:3px 7px; border-radius:5px; background:rgba(59,130,246,0.13); color:#7ba7f0;">propuesto</span>
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8;">ADR argentinos</h2>
+          <span style="margin-left:auto; font-size:11px; color:#475569;">lo que te van a preguntar hoy</span>
+        </header>
+        <sc-for list="{{ adrs }}" as="a" hint-placeholder-count="6">
+          <div style="display:flex; align-items:center; gap:12px; padding:10px 18px; border-bottom:1px solid #101a2b;">
+            <a href="Equity ticker rediseño.dc.html" style="font-size:13px; font-weight:500; color:#f1f5f9; width:62px; flex-shrink:0;">{{ a.ticker }}</a>
+            <span style="font-size:11px; color:#5b6a80; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ a.nombre }}</span>
+            <span style="margin-left:auto; font-size:13px; color:#cbd5e1; font-variant-numeric:tabular-nums;">{{ a.precio }}</span>
+            <span style="width:66px; text-align:right; font-size:12px; font-weight:500; font-variant-numeric:tabular-nums; color:{{ a.color }};">{{ a.pct }}</span>
+          </div>
+        </sc-for>
+      </section>
+
+      <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+        <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:10px;">
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8;">Balances de esta semana</h2>
+          <a href="#" style="margin-left:auto; font-size:11px; color:#64748b;">calendario completo →</a>
+        </header>
+        <sc-for list="{{ earnings }}" as="e" hint-placeholder-count="5">
+          <div style="display:flex; align-items:center; gap:14px; padding:10px 18px; border-bottom:1px solid #101a2b;">
+            <span style="font-size:11px; color:#5b6a80; width:56px; flex-shrink:0; font-variant-numeric:tabular-nums;">{{ e.fecha }}</span>
+            <span style="font-size:13px; font-weight:500; color:#f1f5f9; width:62px; flex-shrink:0;">{{ e.ticker }}</span>
+            <span style="font-size:11px; color:#5b6a80; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ e.nombre }}</span>
+            <span style="margin-left:auto; font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid #17233a; color:#64748b; white-space:nowrap;">{{ e.estado }}</span>
+          </div>
+        </sc-for>
+      </section>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1100}}">
+const GREEN = "#34d399", RED = "#f87171";
+const SECTOR_HUE = {
+  "Communication Services":320, "Consumer Discretionary":30, "Consumer Staples":90,
+  Energy:60, Financials:230, "Health Care":170, Industrials:250,
+  "Information Technology":200, Materials:120, "Real Estate":350, Utilities:280,
+};
+const sectorColor = s => `oklch(65% 0.11 ${SECTOR_HUE[s] ?? 0})`;
+
+const PERIODOS = [["dia","Hoy"],["semana","1 semana"],["mes","1 mes"],["tres","3 meses"],["seis","6 meses"],["ytd","En el año"],["doce","12 meses"]];
+
+const PRESETS = [
+  ["todos","Todo el ranking","Las de más momentum de NYSE y Nasdaq, sin filtrar"],
+  ["maximos","Cerca de máximos","A menos de 5% de su máximo de 52 semanas: tendencia intacta"],
+  ["vuelta","Se dieron vuelta","Vienen mal en 12 meses pero el último mes cambió: posible piso"],
+  ["castigados","Castigados con ganancias","Más de 25% abajo del máximo pero con PER positivo: ganan plata igual"],
+  ["acelerando","Acelerando","El último mes le está ganando a su propio ritmo de seis meses"],
+];
+
+// ticker, nombre, sector, precio, per, cap (USD), earnings
+const FILAS = [
+  ["NVDA","NVIDIA Corporation","Information Technology",182.44,54.2,4.43e12,"26 ago"],
+  ["VST","Vistra Corp.","Utilities",198.60,31.7,6.74e10,"7 nov"],
+  ["PLTR","Palantir Technologies","Information Technology",157.20,241.5,3.72e11,"3 nov"],
+  ["LLY","Eli Lilly and Company","Health Care",812.35,62.8,7.71e11,"29 oct"],
+  ["GEV","GE Vernova Inc.","Industrials",614.90,68.4,1.68e11,"22 oct"],
+  ["AMD","Advanced Micro Devices","Information Technology",173.05,89.1,2.80e11,"4 nov"],
+  ["YPF","YPF Sociedad Anónima","Energy",38.62,9.4,1.52e10,"6 nov"],
+  ["VIST","Vista Energy","Energy",52.18,7.8,5.10e9,"5 nov"],
+  ["GGAL","Grupo Financiero Galicia","Financials",61.44,11.2,9.20e9,"18 nov"],
+  ["META","Meta Platforms","Communication Services",742.10,28.6,1.87e12,"29 oct"],
+  ["XOM","Exxon Mobil Corporation","Energy",118.72,14.9,5.11e11,"31 oct"],
+  ["JPM","JPMorgan Chase & Co.","Financials",302.55,15.1,8.40e11,"14 oct"],
+  ["CAT","Caterpillar Inc.","Industrials",428.90,20.3,2.02e11,"29 oct"],
+  ["NEM","Newmont Corporation","Materials",68.35,13.6,7.70e10,"23 oct"],
+];
+
+const ADRS = [
+  ["GGAL","Grupo Financiero Galicia",61.44,3.82],
+  ["YPF","YPF Sociedad Anónima",38.62,2.14],
+  ["BMA","Banco Macro",92.10,3.05],
+  ["PAM","Pampa Energía",78.44,1.62],
+  ["SUPV","Grupo Supervielle",14.28,-0.91],
+  ["CRESY","Cresud",12.66,0.48],
+];
+
+const EARNINGS = [
+  ["26 ago","NVDA","NVIDIA Corporation","confirmada"],
+  ["27 ago","CRM","Salesforce, Inc.","confirmada"],
+  ["28 ago","DELL","Dell Technologies","confirmada"],
+  ["28 ago","MRVL","Marvell Technology","estimada"],
+  ["29 ago","LULU","Lululemon Athletica","estimada"],
+];
+
+const SECTORES_DIA = [
+  ["Tecnología",1.24],["Servicios de comunicación",0.86],["Industriales",0.61],
+  ["Financieras",0.42],["Salud",0.18],["Consumo discrecional",0.04],
+  ["Materiales",-0.12],["Inmobiliario",-0.28],["Consumo básico",-0.35],
+  ["Servicios públicos",-0.51],["Energía",-0.94],
+];
+
+const ETFS = [["SPY","US$641,20",0.42],["QQQ","US$589,45",0.71],["DIA","US$452,80",0.18],["IWM","US$238,64",-0.24]];
+
+function rng(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }; }
+function spark(seed, w, h) {
+  const r = rng(seed), d = []; let v = 100;
+  for (let i = 0; i < 48; i++) { d.push(v); v = v * (1 + (r() - 0.46) * 0.035); }
+  const min = Math.min(...d), max = Math.max(...d), range = (max - min) || 1;
+  const sx = w / (d.length - 1);
+  const pts = d.map((x, i) => [(i * sx).toFixed(1), (h - 2 - ((x - min) / range) * (h - 4)).toFixed(1)]);
+  return { path: pts.map(([x, y], i) => (i ? "L" : "M") + x + "," + y).join(" "), up: d[d.length - 1] >= d[0] };
+}
+const fpct = (v, d) => (v > 0 ? "+" : "") + v.toLocaleString("es-AR", { minimumFractionDigits: d ?? 1, maximumFractionDigits: d ?? 1 }) + "%";
+const cpct = v => v == null ? "#475569" : v > 0 ? GREEN : v < 0 ? RED : "#94a3b8";
+function fcap(v) {
+  if (v >= 1e12) return "US$" + (v / 1e12).toLocaleString("es-AR", { maximumFractionDigits: 2 }) + " bill.";
+  if (v >= 1e9) return "US$" + (v / 1e9).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " mil M";
+  return "US$" + (v / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 0 }) + " M";
+}
+
+class Component extends DCLogic {
+  state = { periodo: "mes", subiendo: true, contraIndice: false, preset: "todos" };
+
+  renderVals() {
+    const { periodo, subiendo, contraIndice, preset } = this.state;
+    const indice = { dia: 0.42, semana: 1.18, mes: 2.64, tres: 6.12, seis: 9.85, ytd: 12.40, doce: 17.62 };
+
+    const filas = FILAS.map((f, i) => {
+      const r = rng(i * 29 + 11);
+      const base = {};
+      let acc = (r() - 0.35) * 4;
+      base.dia = Number(((r() - 0.4) * 5).toFixed(2));
+      base.semana = Number((base.dia + (r() - 0.4) * 7).toFixed(2));
+      base.mes = Number((base.semana + (r() - 0.35) * 14).toFixed(2));
+      base.tres = Number((base.mes + (r() - 0.35) * 22).toFixed(2));
+      base.seis = Number((base.tres + (r() - 0.32) * 30).toFixed(2));
+      base.ytd = Number((base.tres + (r() - 0.3) * 26).toFixed(2));
+      base.doce = Number((base.seis + (r() - 0.3) * 38).toFixed(2));
+      return { f, base, acc };
+    });
+
+    const valor = (b, p) => contraIndice ? b[p] - indice[p] : b[p];
+
+    const filtro = {
+      todos: () => true,
+      maximos: (x) => x.base.doce > 20,
+      vuelta: (x) => x.base.doce < 0 && x.base.mes > 5,
+      castigados: (x) => x.base.doce < 0 && x.f[4] > 0,
+      acelerando: (x) => x.base.mes > x.base.seis / 6,
+    }[preset];
+
+    const visibles = filas.filter(filtro).sort((a, b) => {
+      const va = valor(a.base, periodo), vb = valor(b.base, periodo);
+      return subiendo ? vb - va : va - vb;
+    });
+
+    const out = visibles.map((x, i) => {
+      const sp = spark(i * 17 + 3, 84, 24);
+      return {
+        n: String(i + 1), ticker: x.f[0], nombre: x.f[1],
+        sectorColor: sectorColor(x.f[2]),
+        precio: "US$" + x.f[3].toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        per: x.f[4].toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        cap: fcap(x.f[5]), earnings: x.f[6],
+        spark: sp.path, sparkColor: sp.up ? GREEN : RED,
+        celdas: PERIODOS.map(([id]) => {
+          const v = valor(x.base, id);
+          return { txt: fpct(v), color: cpct(v), bg: periodo === id ? "rgba(30,41,59,0.55)" : "transparent", peso: periodo === id ? "600" : "400" };
+        }),
+      };
+    });
+
+    const activo = PRESETS.find(p => p[0] === preset);
+
+    return {
+      sectores: SECTORES_DIA.map(([nombre, v]) => ({
+        nombre, pct: fpct(v, 2), color: cpct(v),
+        ancho: Math.min(100, Math.abs(v) / 1.3 * 100) + "%",
+      })),
+      etfs: ETFS.map(([ticker, precio, v]) => ({ ticker, precio, pct: fpct(v, 2), color: cpct(v) })),
+      periodos: PERIODOS.map(([id, label]) => ({
+        label, bg: periodo === id ? "#1e293b" : "transparent", fg: periodo === id ? "#f1f5f9" : "#7c8ba1",
+        onClick: () => this.setState({ periodo: id }),
+      })),
+      colPeriodos: PERIODOS.map(([id, label]) => ({ label, fg: periodo === id ? "#cbd5e1" : "#5b6a80" })),
+      presets: PRESETS.map(([id, label, ayuda]) => ({
+        label, ayuda, bg: preset === id ? "#1e293b" : "transparent", fg: preset === id ? "#f1f5f9" : "#7c8ba1",
+        onClick: () => this.setState({ preset: id }),
+      })),
+      ayudaActiva: activo[2],
+      ordenLabel: subiendo ? "↑ los que más subieron" : "↓ los que más bajaron",
+      toggleOrden: () => this.setState(s => ({ subiendo: !s.subiendo })),
+      indiceLabel: contraIndice ? "vs. S&P 500" : "retorno absoluto",
+      indiceBg: contraIndice ? "#1e293b" : "transparent",
+      indiceFg: contraIndice ? "#f1f5f9" : "#94a3b8",
+      toggleIndice: () => this.setState(s => ({ contraIndice: !s.contraIndice })),
+      filas: out,
+      adrs: ADRS.map(([ticker, nombre, precio, v]) => ({
+        ticker, nombre, precio: "US$" + precio.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        pct: fpct(v, 2), color: cpct(v),
+      })),
+      earnings: EARNINGS.map(([fecha, ticker, nombre, estado]) => ({ fecha, ticker, nombre, estado })),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

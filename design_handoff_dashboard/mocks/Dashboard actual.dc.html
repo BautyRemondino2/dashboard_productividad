@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#020617; color:#e2e8f0; font-family:Geist,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#cbd5e1; text-decoration:none; }
+  a:hover { color:#f1f5f9; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px);} to {opacity:1; transform:translateY(0);} }
+</style>
+</helmet>
+
+<div style="background:#020617; min-height:100vh; font-family:Geist,system-ui,sans-serif;">
+
+  <nav style="display:flex; align-items:center; gap:24px; height:40px; padding:0 20px; border-bottom:1px solid rgba(30,41,59,0.7); background:rgba(2,6,23,0.8); overflow-x:auto;">
+    <div style="display:flex; align-items:center; gap:8px; margin-right:8px; flex-shrink:0;">
+      <div style="width:20px; height:20px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#f1f5f9; background:oklch(45% 0.15 255);">b</div>
+      <span style="font-size:10px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.1em;">Asesor</span>
+    </div>
+    <span style="font-size:12px; font-weight:500; color:#f1f5f9; white-space:nowrap;">Macro</span>
+    <span style="font-size:12px; font-weight:500; color:#64748b; white-space:nowrap;">Renta fija</span>
+    <span style="font-size:12px; font-weight:500; color:#64748b; white-space:nowrap;">Equity</span>
+    <span style="font-size:12px; font-weight:500; color:#64748b; white-space:nowrap;">ETF</span>
+    <span style="font-size:12px; font-weight:500; color:#64748b; white-space:nowrap;">Glosario</span>
+    <span style="font-size:12px; font-weight:500; color:#64748b; white-space:nowrap;">Efemérides</span>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:4px; font-size:11px; color:#64748b; flex-shrink:0;">
+      <span style="width:6px; height:6px; border-radius:9999px; background:#34d399;"></span>
+      <span style="color:#cbd5e1; white-space:nowrap;">Día de la Independencia</span>
+      <span style="color:#475569;">·</span>
+      <span style="font-variant-numeric:tabular-nums; color:#64748b;">09/07</span>
+    </div>
+  </nav>
+
+  <div style="padding:28px 32px; max-width:1400px;">
+
+    <div style="margin-bottom:24px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div>
+        <p style="margin:0 0 4px; font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:#475569;">Dashboard</p>
+        <h1 style="margin:0; font-size:30px; line-height:1.15; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">Macro Argentina</h1>
+        <p style="margin:2px 0 0; font-size:14px; color:#64748b;">Dólar, tasas, inflación y actividad · 24 indicadores · 23 con datos</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span style="font-size:11px; color:#475569;">datos hace 12 min</span>
+        <button style="font-size:11px; font-weight:500; padding:4px 10px; border-radius:6px; border:1px solid #334155; background:transparent; color:#cbd5e1; cursor:pointer; white-space:nowrap;">↻ Actualizar</button>
+      </div>
+    </div>
+
+    <div style="display:grid; gap:24px; grid-template-columns:1fr 340px; align-items:start;">
+
+      <div style="display:flex; flex-direction:column; gap:28px; min-width:0;">
+        <sc-for list="{{ secciones }}" as="sec" hint-placeholder-count="4">
+          <div>
+            <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:12px;">
+              <span style="width:6px; height:6px; border-radius:9999px; flex-shrink:0; background:{{ sec.color }};"></span>
+              <h3 style="margin:0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:#94a3b8;">{{ sec.label }}</h3>
+              <span style="font-size:10px; color:#475569;">{{ sec.nota }}</span>
+              <span style="font-size:10px; color:#334155; font-variant-numeric:tabular-nums;">{{ sec.count }}</span>
+              <div style="flex:1; height:1px; background:#0f172a;"></div>
+            </div>
+            <div style="display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr));">
+              <sc-for list="{{ sec.tiles }}" as="t" hint-placeholder-count="3">
+                <div style="position:relative; border-radius:12px; border:1px solid rgba(30,41,59,0.8); background:rgba(15,23,42,0.4); overflow:hidden;">
+                  <div style="position:absolute; left:0; top:0; bottom:0; width:3px; background:{{ t.color }};"></div>
+                  <div style="padding:12px 14px 12px 16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">
+                      <span style="font-size:12px; font-weight:500; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ t.nombre }}</span>
+                      <span style="font-size:10px; font-weight:500; padding:2px 6px; border-radius:4px; white-space:nowrap; background:{{ t.soft }}; color:{{ t.chip }};">{{ t.ticker }}</span>
+                    </div>
+                    <sc-if value="{{ t.tiene }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:8px;">
+                        <div>
+                          <div style="font-size:20px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; line-height:1.15;">{{ t.valor }}</div>
+                          <div style="font-size:10px; color:#475569; margin-top:2px;">al {{ t.fecha }}</div>
+                        </div>
+                        <svg width="72" height="24" viewBox="0 0 72 24" style="overflow:visible;">
+                          <path d="{{ t.area }}" fill="{{ t.fill }}"></path>
+                          <path d="{{ t.path }}" stroke="{{ t.trend }}" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+                          <circle cx="{{ t.lx }}" cy="{{ t.ly }}" r="2" fill="{{ t.trend }}"></circle>
+                        </svg>
+                      </div>
+                      <div style="margin-top:8px; padding-top:8px; border-top:1px solid #0f172a; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <sc-for list="{{ t.deltas }}" as="d" hint-placeholder-count="3">
+                          <span style="font-size:10px; font-variant-numeric:tabular-nums; font-weight:500; white-space:nowrap; color:{{ d.color }};"><span style="color:#475569; font-weight:400;">{{ d.label }}</span> {{ d.text }}</span>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ t.vacio }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:12px; color:#475569; font-style:italic; padding:6px 0;">sin datos — cargalo en el panel →</div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px; position:sticky; top:24px;">
+        <div style="border-radius:12px; border:1px solid #1e293b; background:rgba(15,23,42,0.3); overflow:hidden;">
+          <div style="padding:12px 16px; border-bottom:1px solid rgba(30,41,59,0.8); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+              <h3 style="margin:0; font-size:13px; font-weight:600; color:#f1f5f9;">Carga manual</h3>
+              <p style="margin:2px 0 0; font-size:10px; color:#475569;">para lo que no trae ninguna fuente</p>
+            </div>
+            <div style="background:#0f172a; border:1px solid #334155; border-radius:6px; padding:4px 8px; font-size:11px; color:#cbd5e1; font-variant-numeric:tabular-nums;">2026-08-24</div>
+          </div>
+          <div style="padding:12px 16px; display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="min-width:0; flex:1;">
+                <span style="font-size:12px; font-weight:500; color:#cbd5e1;">CAUCION1</span>
+                <span style="font-size:10px; color:#475569; margin-left:6px;">Caución 1 día · tna</span>
+              </div>
+              <div style="width:112px; flex-shrink:0; background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:4px 8px; font-size:12px; text-align:right; color:#334155; font-variant-numeric:tabular-nums;">—</div>
+            </div>
+          </div>
+          <div style="padding:12px 16px; border-top:1px solid rgba(30,41,59,0.8); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <p style="margin:0; font-size:11px; color:#475569; font-variant-numeric:tabular-nums;">0 para guardar</p>
+            <button style="font-size:12px; font-weight:500; padding:6px 12px; border-radius:8px; background:#1e293b; color:#475569; border:none; cursor:not-allowed;">Guardar</button>
+          </div>
+        </div>
+        <button style="width:100%; border-radius:12px; border:1px dashed #1e293b; background:rgba(15,23,42,0.1); padding:10px 16px; font-size:12px; color:#475569; text-align:left; cursor:pointer;">+ Nuevo instrumento <span style="color:#334155;">(Lecap, CER, ON…)</span></button>
+      </div>
+
+    </div>
+
+    <div style="margin-top:28px; display:flex; flex-direction:column; gap:20px;">
+      <div style="height:120px; border-radius:12px; border:1px dashed #1e293b; background:rgba(15,23,42,0.2); display:flex; align-items:center; justify-content:center; font-size:12px; color:#475569;">Gobierno — no recreado en este mockup</div>
+      <div style="height:420px; border-radius:12px; border:1px dashed #1e293b; background:rgba(15,23,42,0.2); display:flex; align-items:center; justify-content:center; font-size:12px; color:#475569;">Mapa de provincias — no recreado en este mockup</div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const HUE = { fx:150, tasas_ars:230, inflacion:300, riesgo:30, global:210, commodities:90, acciones:60 };
+const LABEL = { fx:"Dólar", tasas_ars:"Tasas en pesos", inflacion:"Inflación", riesgo:"Riesgo & reservas", global:"Global", commodities:"Commodities", acciones:"Acciones Argentina" };
+const NOTA = { tasas_ars:"· TNA en pesos", inflacion:"· en pesos", global:"· en dólares", commodities:"· en dólares" };
+const LOWER = new Set(["RIESGO_PAIS","IPC","BRECHA"]);
+
+const DATA = [
+  ["fx", [
+    ["OFICIAL","Dólar oficial","ARS",1510],
+    ["MAYORISTA","Dólar mayorista","ARS",1488],
+    ["MEP","Dólar MEP","ARS",1520],
+    ["CCL","Dólar CCL","ARS",1574],
+    ["BLUE","Dólar blue","ARS",1560],
+    ["BRECHA","Brecha CCL/oficial","%",4.24],
+  ]],
+  ["tasas_ars", [
+    ["TAMAR","TAMAR bancos privados","%",22.9],
+    ["BADLAR","BADLAR bancos privados","%",19.5],
+    ["PLAZOFIJO","Plazo fijo minorista","%",19.0],
+    ["CAUCION1","Caución 1 día","%",null],
+  ]],
+  ["inflacion", [
+    ["IPC","IPC mensual","%",1.9],
+    ["IPC_IA","IPC interanual","%",28.4],
+    ["UVA","UVA","idx",1842.15],
+  ]],
+  ["riesgo", [
+    ["RIESGO_PAIS","Riesgo país (EMBI)","pb",612],
+    ["RESERVAS","Reservas BCRA","musd",41230],
+    ["BASE_MON","Base monetaria","mars",34500000],
+  ]],
+  ["global", [
+    ["UST10Y","UST 10 años","%",4.18],
+    ["SPX","S&P 500","idx",6412],
+    ["DXY","Índice dólar DXY","idx",97.4],
+    ["BRL","Real brasileño","idx",5.42],
+  ]],
+  ["commodities", [
+    ["SOJA","Soja (bushel)","USD",10.62],
+    ["PETROLEO","Petróleo Brent","USD",68.40],
+    ["ORO","Oro (onza)","USD",3412.00],
+  ]],
+  ["acciones", [
+    ["MERVAL","Merval","idx",2847500],
+    ["MERVAL_USD","Merval en USD","idx",1809.1],
+  ]],
+];
+
+function fmtValor(v, u) {
+  const n = (x, o) => x.toLocaleString("es-AR", o);
+  switch (u) {
+    case "ARS": return "$" + n(v, { maximumFractionDigits: v >= 100 ? 0 : 2 });
+    case "USD": return "US$" + n(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    case "pb": return n(v, { maximumFractionDigits: 0 }) + " pb";
+    case "%": return n(v, { maximumFractionDigits: 2 }) + "%";
+    case "musd": return "US$" + n(v, { maximumFractionDigits: 0 }) + " M";
+    case "mars": return v >= 1e6 ? "$" + n(v / 1e6, { maximumFractionDigits: 1 }) + " bill." : "$" + n(v, { maximumFractionDigits: 0 }) + " M";
+    case "idx": return n(v, { maximumFractionDigits: v >= 1000 ? 0 : 2 });
+  }
+}
+function fmtDelta(abs, pct, u) {
+  const n = (x, o) => Math.abs(x).toLocaleString("es-AR", o);
+  if (u === "%") return n(abs, { maximumFractionDigits: 2 }) + " pp";
+  if (u === "pb") return n(abs, { maximumFractionDigits: 0 }) + " pb";
+  if (u === "musd") return "US$" + n(abs, { maximumFractionDigits: 0 }) + " M";
+  if (pct == null) return "—";
+  return n(pct, { maximumFractionDigits: 2 }) + "%";
+}
+
+function rng(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }; }
+
+function serie(seed, last, vol) {
+  const r = rng(seed), out = [];
+  let v = last;
+  for (let i = 0; i < 90; i++) { out.unshift(v); v = v / (1 + (r() - 0.48) * vol); }
+  out[out.length - 1] = last;
+  return out;
+}
+
+function sparkPaths(data, w, h) {
+  const min = Math.min(...data), max = Math.max(...data), range = (max - min) || 1;
+  const stepX = w / (data.length - 1);
+  const pts = data.map((v, i) => [(i * stepX).toFixed(1), (h - 2 - ((v - min) / range) * (h - 4)).toFixed(1)]);
+  const d = pts.map(([x, y], i) => (i ? "L" : "M") + x + "," + y).join(" ");
+  const [lx, ly] = pts[pts.length - 1];
+  return { path: d, area: d + " L" + lx + "," + h + " L0," + h + " Z", lx, ly };
+}
+
+class Component extends DCLogic {
+  renderVals() {
+    const secciones = DATA.map(([g, items], gi) => {
+      const color = `oklch(70% 0.11 ${HUE[g]})`;
+      const tiles = items.map(([ticker, nombre, unidad, last], i) => {
+        const base = {
+          ticker, nombre,
+          color, soft: `oklch(28% 0.05 ${HUE[g]} / 0.35)`, chip: `oklch(80% 0.11 ${HUE[g]})`,
+          tiene: last != null, vacio: last == null,
+        };
+        if (last == null) return base;
+        const s = serie(gi * 97 + i * 31 + 7, last, unidad === "%" || unidad === "pb" ? 0.05 : 0.02);
+        const sp = sparkPaths(s, 72, 24);
+        const lower = LOWER.has(ticker);
+        const up = s[89] >= s[0];
+        const trend = (lower ? !up : up) ? "rgb(52,211,153)" : "rgb(248,113,113)";
+        const mk = (label, ref) => {
+          const abs = last - ref, pct = ref !== 0 ? (last / ref - 1) * 100 : null;
+          const flat = Math.abs(abs) < 1e-9, u = abs > 0;
+          const good = lower ? !u : u;
+          return {
+            label,
+            text: (flat ? "=" : u ? "▲" : "▼") + " " + fmtDelta(abs, pct, unidad),
+            color: flat ? "#64748b" : good ? "#34d399" : "#f87171",
+          };
+        };
+        return Object.assign(base, {
+          valor: fmtValor(last, unidad), fecha: "22/08",
+          path: sp.path, area: sp.area, lx: sp.lx, ly: sp.ly,
+          trend, fill: "transparent",
+          deltas: [mk("ant", s[88]), mk("30d", s[59]), mk("90d", s[0])],
+        });
+      });
+      return { label: LABEL[g], nota: NOTA[g] || "", count: String(items.length), color, tiles };
+    });
+    return { secciones };
+  }
+}
+
+</script>
+</body>
+</html>

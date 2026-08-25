@@ -22,8 +22,13 @@ export interface PanelDatos {
 }
 
 /**
- * Combina dos series por fecha. Se usa para indicadores derivados que no se
- * guardan en la DB porque se recalculan solos cuando llegan datos nuevos.
+ * Combina dos series por fecha, arrastrando el último valor conocido de `b`.
+ *
+ * Exigir que las dos tengan exactamente la misma fecha rompe los derivados: el
+ * Merval y el CCL no cotizan todos los mismos días, así que la intersección
+ * estricta dejaba huecos de semanas y el "contra el dato anterior" terminaba
+ * comparando contra hace veinte días. Con el arrastre, cada fecha del Merval usa
+ * el CCL vigente ese día, que es como se calcula de verdad.
  */
 function derivarSeries(
   a: MarketSeriesPoint[] | undefined,
@@ -31,11 +36,18 @@ function derivarSeries(
   fn: (a: number, b: number) => number
 ): MarketSeriesPoint[] {
   if (!a?.length || !b?.length) return [];
-  const bByFecha = new Map(b.map((p) => [p.fecha, p.valor]));
+
   const out: MarketSeriesPoint[] = [];
+  let i = 0;
+  let vigente: number | null = null;
+
   for (const p of a) {
-    const vb = bByFecha.get(p.fecha);
-    if (vb && vb > 0) out.push({ fecha: p.fecha, valor: fn(p.valor, vb) });
+    // Avanza `b` hasta el último punto con fecha <= la de `a`
+    while (i < b.length && b[i].fecha <= p.fecha) {
+      vigente = b[i].valor;
+      i++;
+    }
+    if (vigente && vigente > 0) out.push({ fecha: p.fecha, valor: fn(p.valor, vigente) });
   }
   return out;
 }

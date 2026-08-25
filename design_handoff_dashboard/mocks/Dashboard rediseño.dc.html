@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#020617; color:#e2e8f0; font-family:Geist,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#cbd5e1; text-decoration:none; }
+  a:hover { color:#f1f5f9; }
+</style>
+</helmet>
+
+<div style="background:#020617; min-height:100vh; font-family:Geist,system-ui,sans-serif; padding-bottom:64px;">
+
+  <nav style="display:flex; align-items:center; gap:2px; height:48px; padding:0 24px; border-bottom:1px solid #131c2e; background:rgba(2,6,23,0.92); position:sticky; top:0; z-index:20;">
+    <div style="display:flex; align-items:center; gap:9px; margin-right:28px; flex-shrink:0;">
+      <div style="width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#f1f5f9; background:oklch(48% 0.16 258);">b</div>
+      <span style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.14em;">Asesor</span>
+    </div>
+
+    <span style="font-size:13px; font-weight:500; color:#f1f5f9; padding:6px 11px; border-radius:7px; background:#141f33; white-space:nowrap;">Macro</span>
+    <a href="Renta fija rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">Renta fija</a>
+    <a href="Equity rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">Equity</a>
+    <a href="ETF rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">ETF</a>
+    <span style="width:1px; height:16px; background:#1e293b; margin:0 10px;"></span>
+    <a href="Glosario rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px; white-space:nowrap;">Glosario</a>
+    <a href="Efemérides rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px; white-space:nowrap;">Efemérides</a>
+
+    <div style="margin-left:auto; display:flex; align-items:center; gap:14px; flex-shrink:0;">
+      <span style="display:flex; align-items:center; gap:7px; font-size:11px; color:#64748b;">
+        <span style="width:6px; height:6px; border-radius:9999px; background:#34d399;"></span>
+        <span style="color:#94a3b8;">Feriado 09/07</span>
+        <span>· en 5 días</span>
+      </span>
+      <span style="font-size:11px; color:#475569; font-variant-numeric:tabular-nums;">actualizado 08:41</span>
+      <button style="font-size:11px; font-weight:500; padding:5px 11px; border-radius:7px; border:1px solid #24344d; background:#0d1526; color:#cbd5e1; cursor:pointer;">↻</button>
+    </div>
+  </nav>
+
+  <div style="position:sticky; top:48px; z-index:19; border-bottom:1px solid #131c2e; background:linear-gradient(180deg,#070d1a,#050a14); display:flex; align-items:stretch; overflow-x:auto;">
+    <sc-for list="{{ cinta }}" as="c" hint-placeholder-count="6">
+      <div style="flex:1 1 0; min-width:118px; box-sizing:border-box; padding:11px 20px; border-right:1px solid #101a2b; display:flex; flex-direction:column; gap:3px;">
+        <span style="font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80; white-space:nowrap;">{{ c.label }}</span>
+        <div style="display:flex; align-items:baseline; gap:8px;">
+          <span style="font-size:17px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; letter-spacing:-0.01em;">{{ c.valor }}</span>
+          <span style="font-size:11px; font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; color:{{ c.color }};">{{ c.delta }}</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="max-width:1440px; margin:0 auto; padding:26px 24px 0;">
+
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:20px;">
+      <div>
+        <h1 style="margin:0; font-size:26px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">Macro Argentina</h1>
+        <p style="margin:5px 0 0; font-size:13px; color:#64748b;">Lunes 24 de agosto · 23 de 24 indicadores con dato de hoy</p>
+      </div>
+      <p style="margin:0; max-width:420px; font-size:13px; line-height:1.55; color:#94a3b8; text-wrap:pretty;">
+        {{ resumen }}
+      </p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1.55fr 1fr; gap:16px; align-items:stretch;">
+
+      <section style="border-radius:14px; border:1px solid #17233a; background:linear-gradient(180deg,#0b1322,#080f1c); overflow:hidden;">
+        <header style="padding:14px 20px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+          <span style="width:6px; height:6px; border-radius:9999px; background:oklch(70% 0.11 150);"></span>
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Dólar</h2>
+          <span style="font-size:11px; color:#475569;">en pesos</span>
+          <span style="margin-left:auto; font-size:11px; color:#475569;">al 22/08</span>
+        </header>
+
+        <div style="display:flex; align-items:flex-start; gap:28px; padding:20px 20px 8px;">
+          <div>
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:#5b6a80; margin-bottom:6px;">Contado con liqui</div>
+            <div style="display:flex; align-items:baseline; gap:12px;">
+              <span style="font-size:46px; font-weight:600; color:#f8fafc; font-variant-numeric:tabular-nums; letter-spacing:-0.03em; line-height:1;">$1.574</span>
+              <span style="font-size:14px; font-weight:500; color:#f87171; font-variant-numeric:tabular-nums;">▼ 0,19%</span>
+            </div>
+            <div style="display:flex; gap:18px; margin-top:12px;">
+              <div>
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:#5b6a80;">30 días</div>
+                <div style="font-size:13px; font-weight:500; color:#34d399; font-variant-numeric:tabular-nums; margin-top:2px;">▲ 1,15%</div>
+              </div>
+              <div>
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:#5b6a80;">90 días</div>
+                <div style="font-size:13px; font-weight:500; color:#f87171; font-variant-numeric:tabular-nums; margin-top:2px;">▼ 0,70%</div>
+              </div>
+              <div style="padding-left:18px; border-left:1px solid #17233a;">
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:#5b6a80;">Brecha vs. oficial</div>
+                <div style="display:flex; align-items:baseline; gap:7px; margin-top:2px;">
+                  <span style="font-size:13px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums;">4,24%</span>
+                  <span style="font-size:11px; color:#34d399; font-variant-numeric:tabular-nums;">▼ 0,05 pp</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <svg viewBox="0 0 320 92" preserveAspectRatio="none" style="flex:1; height:92px; min-width:0;">
+            <defs>
+              <linearGradient id="gCcl" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="oklch(70% 0.11 150)" stop-opacity="0.26"></stop>
+                <stop offset="100%" stop-color="oklch(70% 0.11 150)" stop-opacity="0"></stop>
+              </linearGradient>
+            </defs>
+            <path d="{{ cclArea }}" fill="url(#gCcl)"></path>
+            <path d="{{ cclPath }}" stroke="oklch(72% 0.11 150)" stroke-width="1.6" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+          </svg>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid #131f33;">
+          <sc-for list="{{ dolares }}" as="d" hint-placeholder-count="4">
+            <div style="padding:13px 16px; border-right:1px solid #131f33; display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:11px; color:#7c8ba1;">{{ d.nombre }}</span>
+              <span style="font-size:19px; font-weight:600; color:#e2e8f0; font-variant-numeric:tabular-nums; letter-spacing:-0.01em;">{{ d.valor }}</span>
+              <div style="display:flex; align-items:center; gap:7px; white-space:nowrap;">
+                <span style="font-size:11px; font-variant-numeric:tabular-nums; color:{{ d.color }};">{{ d.delta }}</span>
+                <svg width="52" height="16" viewBox="0 0 52 16" style="margin-left:auto;">
+                  <path d="{{ d.path }}" stroke="{{ d.stroke }}" stroke-width="1.3" fill="none" stroke-linejoin="round"></path>
+                </svg>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="border-radius:14px; border:1px solid #17233a; background:linear-gradient(180deg,#0b1322,#080f1c); overflow:hidden; display:flex; flex-direction:column;">
+        <header style="padding:14px 20px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+          <span style="width:6px; height:6px; border-radius:9999px; background:oklch(70% 0.11 30);"></span>
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Riesgo & reservas</h2>
+          <span style="margin-left:auto; font-size:11px; color:#475569;">al 22/08</span>
+        </header>
+
+        <div style="padding:20px 20px 16px;">
+          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:#5b6a80; margin-bottom:6px;">Riesgo país (EMBI)</div>
+          <div style="display:flex; align-items:baseline; gap:12px;">
+            <span style="font-size:46px; font-weight:600; color:#f8fafc; font-variant-numeric:tabular-nums; letter-spacing:-0.03em; line-height:1;">612</span>
+            <span style="font-size:14px; color:#5b6a80;">pb</span>
+            <span style="font-size:14px; font-weight:500; color:#34d399; font-variant-numeric:tabular-nums; margin-left:auto;">▼ 18 pb</span>
+          </div>
+          <svg viewBox="0 0 300 56" preserveAspectRatio="none" style="width:100%; height:56px; margin-top:12px;">
+            <defs>
+              <linearGradient id="gRp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#34d399" stop-opacity="0.22"></stop>
+                <stop offset="100%" stop-color="#34d399" stop-opacity="0"></stop>
+              </linearGradient>
+            </defs>
+            <path d="{{ rpArea }}" fill="url(#gRp)"></path>
+            <path d="{{ rpPath }}" stroke="#34d399" stroke-width="1.6" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+          </svg>
+        </div>
+
+        <div style="margin-top:auto; display:grid; grid-template-columns:1fr 1fr; border-top:1px solid #131f33;">
+          <div style="padding:13px 20px; border-right:1px solid #131f33;">
+            <div style="font-size:11px; color:#7c8ba1;">Reservas BCRA</div>
+            <div style="font-size:19px; font-weight:600; color:#e2e8f0; font-variant-numeric:tabular-nums; margin-top:3px;">US$41.230 M</div>
+            <div style="font-size:11px; color:#34d399; font-variant-numeric:tabular-nums; margin-top:3px;">▲ US$310 M</div>
+          </div>
+          <div style="padding:13px 20px;">
+            <div style="font-size:11px; color:#7c8ba1;">Base monetaria</div>
+            <div style="font-size:19px; font-weight:600; color:#e2e8f0; font-variant-numeric:tabular-nums; margin-top:3px;">$34,5 bill.</div>
+            <div style="font-size:11px; color:#f87171; font-variant-numeric:tabular-nums; margin-top:3px;">▲ 0,42%</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1.15fr 1fr; gap:16px; margin-top:16px;">
+
+      <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+        <header style="padding:13px 20px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+          <span style="width:6px; height:6px; border-radius:9999px; background:oklch(70% 0.11 230);"></span>
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Tasas en pesos</h2>
+          <span style="font-size:11px; color:#475569;">TNA en pesos</span>
+        </header>
+        <div>
+          <sc-for list="{{ tasas }}" as="t" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:16px; padding:11px 20px; border-bottom:1px solid #101a2b;">
+              <span style="font-size:13px; color:#cbd5e1; width:150px; flex-shrink:0;">{{ t.nombre }}</span>
+              <span style="font-size:17px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; width:78px; text-align:right;">{{ t.valor }}</span>
+              <svg width="86" height="20" viewBox="0 0 86 20" style="flex-shrink:0;">
+                <path d="{{ t.path }}" stroke="{{ t.stroke }}" stroke-width="1.3" fill="none" stroke-linejoin="round"></path>
+              </svg>
+              <span style="margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; color:{{ t.color }}; white-space:nowrap;">{{ t.delta }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:13px 20px; display:flex; align-items:center; gap:12px; background:#0a1220;">
+          <span style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.11em; padding:3px 7px; border-radius:5px; background:rgba(59,130,246,0.13); color:#7ba7f0;">propuesto</span>
+          <span style="font-size:12px; color:#94a3b8;">Tasa real mensual — TAMAR 1,91% contra IPC 1,90%</span>
+          <span style="margin-left:auto; font-size:15px; font-weight:600; color:#34d399; font-variant-numeric:tabular-nums;">+0,01 pp</span>
+        </div>
+      </section>
+
+      <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+        <header style="padding:13px 20px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+          <span style="width:6px; height:6px; border-radius:9999px; background:oklch(70% 0.11 300);"></span>
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Inflación</h2>
+          <span style="font-size:11px; color:#475569;">en pesos</span>
+        </header>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr;">
+          <sc-for list="{{ inflacion }}" as="i" hint-placeholder-count="3">
+            <div style="padding:16px 18px; border-right:1px solid #131f33;">
+              <div style="font-size:11px; color:#7c8ba1;">{{ i.nombre }}</div>
+              <div style="font-size:24px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; letter-spacing:-0.02em; margin-top:6px;">{{ i.valor }}</div>
+              <div style="font-size:11px; font-variant-numeric:tabular-nums; margin-top:4px; color:{{ i.color }};">{{ i.delta }}</div>
+              <svg width="100%" height="22" viewBox="0 0 100 22" preserveAspectRatio="none" style="margin-top:8px;">
+                <path d="{{ i.path }}" stroke="{{ i.stroke }}" stroke-width="1.4" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:13px 20px; border-top:1px solid #131f33; display:flex; align-items:center; justify-content:space-between; gap:12px; background:#0a1220;">
+          <span style="font-size:12px; color:#7c8ba1;">Merval</span>
+          <span style="font-size:15px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums;">2.847.500</span>
+          <span style="font-size:11px; color:#334155;">·</span>
+          <span style="font-size:12px; color:#7c8ba1;">en USD</span>
+          <span style="font-size:15px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums;">1.809</span>
+          <span style="font-size:11px; color:#34d399; font-variant-numeric:tabular-nums;">▲ 1,34%</span>
+        </div>
+      </section>
+    </div>
+
+    <section style="margin-top:16px; border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+      <header style="padding:12px 20px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+        <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8;">Contexto</h2>
+        <span style="font-size:11px; color:#475569;">global y commodities · en dólares</span>
+      </header>
+      <div style="display:grid; grid-template-columns:repeat(7,1fr);">
+        <sc-for list="{{ contexto }}" as="c" hint-placeholder-count="7">
+          <div style="padding:13px 16px; border-right:1px solid #131f33; display:flex; flex-direction:column; gap:3px;">
+            <span style="font-size:11px; color:#7c8ba1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.nombre }}</span>
+            <span style="font-size:17px; font-weight:600; color:#e2e8f0; font-variant-numeric:tabular-nums; letter-spacing:-0.01em;">{{ c.valor }}</span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:11px; font-variant-numeric:tabular-nums; color:{{ c.color }};">{{ c.delta }}</span>
+              <svg width="44" height="14" viewBox="0 0 44 14" style="margin-left:auto;">
+                <path d="{{ c.path }}" stroke="{{ c.stroke }}" stroke-width="1.2" fill="none" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+      <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+        <header style="padding:12px 20px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.11em; padding:3px 7px; border-radius:5px; background:rgba(59,130,246,0.13); color:#7ba7f0;">propuesto</span>
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8;">Lo que más se movió hoy</h2>
+        </header>
+        <sc-for list="{{ movimientos }}" as="m" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:14px; padding:11px 20px; border-bottom:1px solid #101a2b;">
+            <span style="width:3px; height:26px; border-radius:2px; flex-shrink:0; background:{{ m.acento }};"></span>
+            <div style="min-width:0;">
+              <div style="font-size:13px; color:#e2e8f0;">{{ m.nombre }}</div>
+              <div style="font-size:10px; color:#5b6a80;">{{ m.seccion }}</div>
+            </div>
+            <span style="margin-left:auto; font-size:14px; font-weight:600; color:#e2e8f0; font-variant-numeric:tabular-nums;">{{ m.valor }}</span>
+            <span style="width:76px; text-align:right; font-size:12px; font-weight:500; font-variant-numeric:tabular-nums; color:{{ m.color }};">{{ m.delta }}</span>
+          </div>
+        </sc-for>
+      </section>
+
+      <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+        <header style="padding:12px 20px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:10px;">
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8;">Fuentes y carga</h2>
+          <span style="margin-left:auto; font-size:11px; color:#475569;">12 fuentes · 1 sin dato</span>
+        </header>
+        <div style="padding:14px 20px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="width:6px; height:6px; border-radius:9999px; background:#f59e0b; flex-shrink:0;"></span>
+            <span style="font-size:13px; color:#cbd5e1;">Caución 1 día</span>
+            <span style="font-size:11px; color:#5b6a80;">ninguna fuente lo publica</span>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+              <div style="width:104px; background:#0d1526; border:1px solid #24344d; border-radius:7px; padding:5px 9px; font-size:12px; text-align:right; color:#475569;">TNA %</div>
+              <button style="font-size:12px; font-weight:500; padding:6px 12px; border-radius:7px; background:#e2e8f0; color:#0f172a; border:none; cursor:pointer;">Guardar</button>
+            </div>
+          </div>
+          <div style="height:1px; background:#101a2b;"></div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <sc-for list="{{ fuentes }}" as="f" hint-placeholder-count="6">
+              <span style="display:flex; align-items:center; gap:6px; font-size:11px; color:#7c8ba1; padding:4px 9px; border-radius:6px; border:1px solid #17233a;">
+                <span style="width:5px; height:5px; border-radius:9999px; background:{{ f.color }};"></span>
+                {{ f.nombre }}
+              </span>
+            </sc-for>
+          </div>
+          <button style="width:100%; margin-top:2px; border-radius:9px; border:1px dashed #24344d; background:transparent; padding:9px; font-size:12px; color:#5b6a80; cursor:pointer;">+ Nuevo instrumento (Lecap, CER, ON…)</button>
+        </div>
+      </section>
+    </div>
+
+    <section style="margin-top:16px; border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+      <header style="padding:13px 20px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+        <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Quién gobierna</h2>
+        <span style="font-size:11px; color:#475569;">Ejecutivo nacional y las 24 jurisdicciones</span>
+      </header>
+      <div style="display:grid; grid-template-columns:250px 1fr; gap:32px; padding:20px;">
+        <div>
+          <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Presidente</p>
+          <p style="margin:3px 0 0; font-size:18px; font-weight:600; color:#f1f5f9;">Javier Milei</p>
+          <p style="margin:2px 0 0; font-size:12px; color:#94a3b8;">La Libertad Avanza</p>
+          <p style="margin:6px 0 0; font-size:11px; color:#5b6a80;">Mandato 2023 – 2027</p>
+          <span style="display:inline-block; margin-top:10px; font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid #24344d; color:#94a3b8;">Derecha liberal</span>
+          <p style="margin:14px 0 0; font-size:11px; line-height:1.6; color:#5b6a80;">Sin gobernación propia: La Libertad Avanza no ganó ninguna provincia en 2023, así que gobierna con acuerdos.</p>
+        </div>
+        <div>
+          <p style="margin:0 0 10px; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Las 24 jurisdicciones, por espacio</p>
+          <div style="display:flex; flex-direction:column; gap:9px;">
+            <sc-for list="{{ bloques }}" as="b" hint-placeholder-count="5">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:12px; color:#cbd5e1; width:88px; flex-shrink:0;">{{ b.nombre }}</span>
+                <span style="font-size:11px; color:#5b6a80; font-variant-numeric:tabular-nums; width:24px; flex-shrink:0;">{{ b.n }}</span>
+                <div style="height:4px; flex:1; background:#131f33; border-radius:9999px; overflow:hidden;">
+                  <div style="height:100%; border-radius:9999px; background:#64748b; width:{{ b.pct }};"></div>
+                </div>
+                <span style="font-size:12px; color:#cbd5e1; font-variant-numeric:tabular-nums; width:96px; text-align:right; flex-shrink:0;">{{ b.hab }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin:14px 0 0; font-size:11px; line-height:1.6; color:#5b6a80; text-wrap:pretty;">La barra es población, no cantidad de provincias: Formosa y Buenos Aires pesan un voto cada una en el Senado pero cuarenta y cinco veces distinto en la economía.</p>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top:16px; border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+      <header style="padding:13px 20px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Las provincias</h2>
+        <span style="font-size:11px; color:#475569;">{{ metricaNota }}</span>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:4px;">
+          <sc-for list="{{ metricas }}" as="m" hint-placeholder-count="4">
+            <button onClick="{{ m.onClick }}" style="font-size:11px; padding:5px 10px; border-radius:7px; border:none; cursor:pointer; white-space:nowrap; background:{{ m.bg }}; color:{{ m.fg }};">{{ m.label }}</button>
+          </sc-for>
+        </div>
+      </header>
+
+      <div style="display:grid; grid-template-columns:270px 1fr; gap:28px; padding:20px; align-items:start;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:14px;">
+          <svg viewBox="0 0 460 981" style="width:100%; max-width:250px; height:auto;" onMouseLeave="{{ salir }}">
+            <sc-for list="{{ provincias }}" as="p" hint-placeholder-count="24">
+              <path d="{{ p.d }}" fill="{{ p.fill }}" stroke="{{ p.stroke }}" stroke-width="{{ p.sw }}" opacity="{{ p.op }}" style="cursor:pointer; transition:stroke 0.12s, opacity 0.12s;" onMouseEnter="{{ p.onEnter }}" onClick="{{ p.onClick }}"></path>
+            </sc-for>
+          </svg>
+
+          <div style="width:100%; max-width:250px;">
+            <sc-if value="{{ leyendaRampa }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; height:8px; border-radius:3px; overflow:hidden;">
+                <sc-for list="{{ rampa }}" as="c" hint-placeholder-count="7">
+                  <div style="flex:1; background:{{ c.color }};"></div>
+                </sc-for>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:5px;">
+                <span style="font-size:10px; color:#5b6a80; font-variant-numeric:tabular-nums;">{{ rampaMin }}</span>
+                <span style="font-size:10px; color:#5b6a80; font-variant-numeric:tabular-nums;">{{ rampaMax }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ leyendaCat }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <sc-for list="{{ categorias }}" as="c" hint-placeholder-count="5">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <span style="width:12px; height:12px; border-radius:3px; flex-shrink:0; background:{{ c.color }};"></span>
+                    <span style="font-size:11px; color:#7c8ba1; text-transform:capitalize;">{{ c.label }}</span>
+                    <span style="margin-left:auto; font-size:11px; color:#475569; font-variant-numeric:tabular-nums;">{{ c.n }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ leyendaVacia }}" hint-placeholder-val="{{ false }}">
+              <p style="margin:0; font-size:11px; line-height:1.6; color:#5b6a80; text-wrap:pretty;">Esta métrica se pide en runtime a datos.gob.ar y al INDEC. En el mockup no hay serie cargada, así que el mapa queda en gris en vez de inventar valores.</p>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="min-width:0;">
+          <div style="display:flex; align-items:flex-start; gap:14px;">
+            <div style="width:54px; height:54px; border-radius:10px; border:1px solid #17233a; background:#0d1526; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#64748b;">{{ sel.iniciales }}</div>
+            <div style="min-width:0;">
+              <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                <h3 style="margin:0; font-size:21px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">{{ sel.nombre }}</h3>
+                <span style="font-size:10px; color:#5b6a80;">{{ sel.hint }}</span>
+              </div>
+              <p style="margin:5px 0 0; font-size:13px; color:#cbd5e1;">{{ sel.gobernador }}</p>
+              <div style="display:flex; align-items:center; gap:8px; margin-top:7px; flex-wrap:wrap;">
+                <span style="font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid #24344d; color:#94a3b8;">{{ sel.partido }}</span>
+                <span style="font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid #17233a; color:#64748b;">{{ sel.bloque }}</span>
+                <span style="font-size:10px; color:#5b6a80; text-transform:capitalize;">{{ sel.orientacion }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:22px;">
+            <div>
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Población</p>
+              <p style="margin:3px 0 0; font-size:16px; color:#e2e8f0; font-variant-numeric:tabular-nums;">{{ sel.poblacion }}</p>
+              <p style="margin:1px 0 0; font-size:10px; color:#475569;">Censo 2022</p>
+            </div>
+            <div>
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Empleo privado</p>
+              <p style="margin:3px 0 0; font-size:16px; color:#475569; font-variant-numeric:tabular-nums;">—</p>
+              <p style="margin:1px 0 0; font-size:10px; color:#475569;">SSPM, mensual</p>
+            </div>
+            <div>
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Exportaciones</p>
+              <p style="margin:3px 0 0; font-size:16px; color:#475569; font-variant-numeric:tabular-nums;">—</p>
+              <p style="margin:1px 0 0; font-size:10px; color:#475569;">INDEC, último año cerrado</p>
+            </div>
+          </div>
+
+          <p style="margin:18px 0 0; font-size:12px; line-height:1.65; color:#94a3b8; text-wrap:pretty;">{{ sel.lectura }}</p>
+
+          <sc-if value="{{ hayRanking }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:22px; padding-top:18px; border-top:1px solid #131f33; display:grid; grid-template-columns:1fr 1fr; gap:0 32px;">
+              <div>
+                <p style="margin:0 0 10px; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">{{ rankingTitulo }}</p>
+                <sc-for list="{{ ranking }}" as="r" hint-placeholder-count="6">
+                  <button onClick="{{ r.onClick }}" style="display:flex; align-items:center; gap:10px; padding:6px 8px; margin:0 -8px; border:none; background:{{ r.bg }}; border-radius:7px; cursor:pointer; text-align:left; width:calc(100% + 16px);">
+                    <span style="width:9px; height:9px; border-radius:3px; flex-shrink:0; background:{{ r.color }};"></span>
+                    <span style="font-size:12px; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.nombre }}</span>
+                    <span style="margin-left:auto; font-size:12px; color:#94a3b8; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ r.valor }}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <div>
+                <p style="margin:0 0 10px; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">{{ rankingColaTitulo }}</p>
+                <sc-for list="{{ rankingCola }}" as="r" hint-placeholder-count="6">
+                  <button onClick="{{ r.onClick }}" style="display:flex; align-items:center; gap:10px; padding:6px 8px; margin:0 -8px; border:none; background:{{ r.bg }}; border-radius:7px; cursor:pointer; text-align:left; width:calc(100% + 16px);">
+                    <span style="width:9px; height:9px; border-radius:3px; flex-shrink:0; background:{{ r.color }};"></span>
+                    <span style="font-size:12px; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.nombre }}</span>
+                    <span style="margin-left:auto; font-size:12px; color:#94a3b8; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ r.valor }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <p style="margin:0; padding:0 20px 18px; font-size:10px; line-height:1.7; color:#475569; text-wrap:pretty;">
+        Empleo: asalariados registrados del sector privado (SSPM), mensual. Exportaciones: INDEC, último año cerrado. Población: Censo Nacional 2022.<br>
+        No hay producto bruto geográfico ni empleo público por provincia: Argentina no los publica de forma regular ni comparable entre jurisdicciones, y estimarlos sería inventarlos.
+      </p>
+    </section>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1180}}">
+function rng(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }; }
+function serie(seed, last, vol, n) {
+  const r = rng(seed), out = []; let v = last;
+  for (let i = 0; i < (n || 90); i++) { out.unshift(v); v = v / (1 + (r() - 0.48) * vol); }
+  out[out.length - 1] = last; return out;
+}
+function paths(data, w, h) {
+  const min = Math.min(...data), max = Math.max(...data), range = (max - min) || 1;
+  const sx = w / (data.length - 1);
+  const pts = data.map((v, i) => [(i * sx).toFixed(1), (h - 2 - ((v - min) / range) * (h - 4)).toFixed(1)]);
+  const d = pts.map(([x, y], i) => (i ? "L" : "M") + x + "," + y).join(" ");
+  const [lx, ly] = pts[pts.length - 1];
+  return { path: d, area: d + " L" + lx + "," + h + " L0," + h + " Z", lx, ly };
+}
+const GREEN = "#34d399", RED = "#f87171";
+const pct = (v) => Math.abs(v).toLocaleString("es-AR", { maximumFractionDigits: 2 }) + "%";
+function delta(v, lower) {
+  const up = v > 0, good = lower ? !up : up;
+  return { text: (up ? "▲ " : "▼ ") + pct(v), color: good ? GREEN : RED };
+}
+
+const AZUL = ["#0d366b","#184f95","#256abf","#3987e5","#5598e7","#86b6ef","#cde2fb"];
+const SIN_DATO = "#1e293b";
+const ORIENTACION = { izquierda:"#7c3aed", centroizquierda:"#a78bfa", centro:"#64748b", centroderecha:"#fbbf24", derecha:"#d97706" };
+const ORDEN_O = ["izquierda","centroizquierda","centro","centroderecha","derecha"];
+const METRICAS = [
+  { id:"empleo", label:"Empleo privado", nota:"variación interanual de asalariados registrados" },
+  { id:"exportaciones", label:"Exportaciones", nota:"millones de dólares del último año cerrado" },
+  { id:"poblacion", label:"Población", nota:"Censo Nacional 2022" },
+  { id:"orientacion", label:"Orientación", nota:"del gobierno provincial, en el eje izquierda-derecha" },
+];
+const nfmt = (v, d) => v.toLocaleString("es-AR", { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+
+class Component extends DCLogic {
+  state = { provincias: [], metrica: "poblacion", activa: null, fijada: null };
+
+  componentDidMount() {
+    fetch("data/provincias.json").then(r => r.json())
+      .then(provincias => this.setState({ provincias }))
+      .catch(() => {});
+  }
+
+  mapa() {
+    const { provincias, metrica, activa, fijada } = this.state;
+    if (!provincias.length) return { provincias: [], bloques: [], ranking: [], categorias: [], rampa: [], sel: {}, metricas: [] };
+
+    const sel = provincias.find(p => p.iso === (fijada ?? activa)) || provincias.find(p => p.iso === "AR-B");
+    const seleccionada = fijada ?? activa;
+    const poblacionTotal = provincias.reduce((s, p) => s + (p.poblacion || 0), 0);
+
+    // Bloques políticos
+    const acc = {};
+    for (const p of provincias) {
+      const b = acc[p.bloque] || (acc[p.bloque] = { n: 0, pob: 0 });
+      b.n++; b.pob += p.poblacion || 0;
+    }
+    const bloques = Object.entries(acc).sort((a, b) => b[1].pob - a[1].pob).map(([nombre, b]) => ({
+      nombre, n: String(b.n),
+      pct: ((b.pob / poblacionTotal) * 100).toFixed(1) + "%",
+      hab: nfmt(b.pob / 1e6, 1) + " M hab.",
+    }));
+
+    // Color por métrica
+    const colorDe = (p) => {
+      if (metrica === "orientacion") return ORIENTACION[p.orientacion];
+      if (metrica !== "poblacion") return SIN_DATO;
+      const log = x => Math.log10(Math.max(x, 1));
+      const nums = provincias.map(q => log(q.poblacion || 1));
+      const min = Math.min(...nums), max = Math.max(...nums);
+      const t = (log(p.poblacion || 1) - min) / ((max - min) || 1);
+      return AZUL[Math.min(AZUL.length - 1, Math.floor(t * AZUL.length))];
+    };
+
+    const paths = provincias.map(p => {
+      const esta = seleccionada === p.iso;
+      return {
+        d: p.d, fill: colorDe(p),
+        stroke: esta ? "#e2e8f0" : "#020617",
+        sw: esta ? 1.6 : 0.7,
+        op: seleccionada && !esta ? 0.55 : 1,
+        onEnter: () => this.setState({ activa: p.iso }),
+        onClick: () => this.setState({ fijada: fijada === p.iso ? null : p.iso }),
+      };
+    });
+
+    const conValor = metrica === "poblacion" || metrica === "orientacion";
+    const valorDe = p => metrica === "poblacion" ? p.poblacion : ORDEN_O.indexOf(p.orientacion);
+    const etiqueta = p => metrica === "poblacion" ? nfmt(p.poblacion / 1e6, 2) + " M" : p.orientacion;
+    const orden = conValor ? [...provincias].sort((a, b) => valorDe(b) - valorDe(a)) : [];
+    const fila = p => ({
+      nombre: p.nombre, valor: etiqueta(p), color: colorDe(p),
+      bg: p.iso === sel.iso ? "#141f33" : "transparent",
+      onClick: () => this.setState({ fijada: p.iso }),
+    });
+    const ranking = orden.slice(0, 6).map(fila);
+    const rankingCola = orden.slice(-6).reverse().map(fila);
+
+    const pobPct = sel.poblacion ? ((sel.poblacion / poblacionTotal) * 100).toFixed(1) : null;
+    const lectura = pobPct
+      ? `Concentra el ${nfmt(Number(pobPct), 1)}% de la población del país. La gobierna ${sel.gobernador} por ${sel.partido}, dentro del bloque ${sel.bloque}. Empleo privado y exportaciones se piden a las APIs del Estado y no están cargados en este mockup.`
+      : "";
+
+    return {
+      provincias: paths, bloques, ranking, rankingCola, sel: {
+        nombre: sel.nombre, gobernador: sel.gobernador, partido: sel.partido,
+        bloque: sel.bloque, orientacion: sel.orientacion,
+        poblacion: sel.poblacion ? nfmt(sel.poblacion) : "—",
+        iniciales: sel.gobernador.split(" ").map(w => w[0]).slice(0, 2).join(""),
+        hint: fijada === sel.iso ? "fijada · clic para soltar" : (seleccionada ? "" : "pasá el mouse por el mapa · clic para fijar"),
+        lectura,
+      },
+      categorias: ORDEN_O.map(o => ({ color: ORIENTACION[o], label: o, n: String(provincias.filter(p => p.orientacion === o).length) })),
+      rampa: AZUL.map(c => ({ color: c })),
+      rampaMin: provincias.length ? nfmt(Math.min(...provincias.map(p => p.poblacion || 0)) / 1e6, 2) + " M" : "",
+      rampaMax: provincias.length ? nfmt(Math.max(...provincias.map(p => p.poblacion || 0)) / 1e6, 1) + " M" : "",
+      rankingTitulo: metrica === "poblacion" ? "Las seis más pobladas" : metrica === "orientacion" ? "Las seis más a la derecha" : "Sin datos para rankear",
+      rankingColaTitulo: metrica === "poblacion" ? "Las seis menos pobladas" : metrica === "orientacion" ? "Las seis más a la izquierda" : "",
+      hayRanking: conValor,
+    };
+  }
+
+  renderVals() {
+    const m = this.mapa();
+    const metricaActual = METRICAS.find(x => x.id === this.state.metrica);
+    const extras = {
+      metricas: METRICAS.map(x => ({
+        label: x.label,
+        bg: x.id === this.state.metrica ? "#1e293b" : "transparent",
+        fg: x.id === this.state.metrica ? "#f1f5f9" : "#64748b",
+        onClick: () => this.setState({ metrica: x.id }),
+      })),
+      metricaNota: metricaActual.nota,
+      salir: () => this.setState({ activa: null }),
+      leyendaRampa: this.state.metrica === "poblacion",
+      leyendaCat: this.state.metrica === "orientacion",
+      leyendaVacia: this.state.metrica === "empleo" || this.state.metrica === "exportaciones",
+    };
+    return Object.assign(this.base(), m, extras);
+  }
+
+  base() {
+    const ccl = serie(11, 1574, 0.014);
+    const rpr = rng(23), rp = [];
+    for (let i = 0, v = 760; i < 90; i++) { rp.push(v); v = v * (1 + (rpr() - 0.56) * 0.035); }
+    rp[89] = 612;
+    const c = paths(ccl, 320, 92), r = paths(rp, 300, 56);
+
+    const mini = (seed, last, vol, w, h, lower) => {
+      const s = serie(seed, last, vol);
+      const p = paths(s, w, h);
+      const up = s[s.length - 1] >= s[0];
+      return { path: p.path, stroke: (lower ? !up : up) ? GREEN : RED };
+    };
+
+    const row = (nombre, valor, d, seed, last, vol, w, h, lower) =>
+      Object.assign({ nombre, valor, delta: delta(d, lower).text, color: delta(d, lower).color }, mini(seed, last, vol, w, h, lower));
+
+    return {
+      cclPath: c.path, cclArea: c.area, rpPath: r.path, rpArea: r.area,
+
+      resumen: "El riesgo país cede 18 pb y las reservas suman US$310 M; el CCL cae 0,19% y la brecha se achica a 4,24%. Afuera, el S&P renueva máximos y el Brent cede 1,1%.",
+
+      cinta: [
+        { label: "Dólar CCL", valor: "$1.574", delta: "▼ 0,19%", color: RED },
+        { label: "Brecha", valor: "4,24%", delta: "▼ 0,05 pp", color: GREEN },
+        { label: "Riesgo país", valor: "612 pb", delta: "▼ 18 pb", color: GREEN },
+        { label: "TAMAR", valor: "22,90%", delta: "▲ 0,15 pp", color: GREEN },
+        { label: "Merval USD", valor: "1.809", delta: "▲ 1,34%", color: GREEN },
+        { label: "S&P 500", valor: "6.412", delta: "▲ 0,42%", color: GREEN },
+      ],
+
+      dolares: [
+        row("Oficial", "$1.510", 0.23, 31, 1510, 0.012, 52, 16),
+        row("Mayorista", "$1.488", 0.09, 37, 1488, 0.012, 52, 16),
+        row("MEP", "$1.520", -0.05, 41, 1520, 0.013, 52, 16),
+        row("Blue", "$1.560", -0.33, 43, 1560, 0.016, 52, 16),
+      ],
+
+      tasas: [
+        row("TAMAR bancos privados", "22,90%", 0.66, 51, 22.9, 0.02, 86, 20),
+        row("BADLAR bancos privados", "19,50%", 0.51, 53, 19.5, 0.02, 86, 20),
+        row("Plazo fijo minorista", "19,00%", 0.0, 59, 19.0, 0.015, 86, 20),
+        { nombre: "Caución 1 día", valor: "—", delta: "sin dato", color: "#475569", path: "", stroke: "transparent" },
+      ],
+
+      inflacion: [
+        row("IPC mensual", "1,9%", -0.1, 61, 1.9, 0.05, 100, 22, true),
+        row("IPC interanual", "28,4%", -1.2, 67, 28.4, 0.03, 100, 22, true),
+        row("UVA", "1.842,15", 0.11, 71, 1842.15, 0.006, 100, 22),
+      ],
+
+      contexto: [
+        row("UST 10 años", "4,18%", -0.02, 73, 4.18, 0.02, 44, 14),
+        row("S&P 500", "6.412", 0.42, 79, 6412, 0.012, 44, 14),
+        row("DXY", "97,4", -0.18, 83, 97.4, 0.008, 44, 14),
+        row("Real brasileño", "5,42", 0.24, 89, 5.42, 0.01, 44, 14),
+        row("Soja (bushel)", "US$10,62", 0.66, 97, 10.62, 0.014, 44, 14),
+        row("Petróleo Brent", "US$68,40", -1.1, 101, 68.4, 0.02, 44, 14),
+        row("Oro (onza)", "US$3.412,00", 0.87, 103, 3412, 0.011, 44, 14),
+      ],
+
+      movimientos: [
+        { nombre: "Riesgo país (EMBI)", seccion: "Riesgo & reservas", valor: "612 pb", delta: "▼ 18 pb", color: GREEN, acento: "oklch(70% 0.11 30)" },
+        { nombre: "Merval en USD", seccion: "Acciones Argentina", valor: "1.809", delta: "▲ 1,34%", color: GREEN, acento: "oklch(70% 0.11 60)" },
+        { nombre: "Petróleo Brent", seccion: "Commodities", valor: "US$68,40", delta: "▼ 1,10%", color: RED, acento: "oklch(70% 0.11 90)" },
+        { nombre: "Oro (onza)", seccion: "Commodities", valor: "US$3.412,00", delta: "▲ 0,87%", color: GREEN, acento: "oklch(70% 0.11 90)" },
+      ],
+
+      fuentes: [
+        { nombre: "BCRA", color: GREEN }, { nombre: "data912", color: GREEN },
+        { nombre: "INDEC", color: GREEN }, { nombre: "Yahoo Finance", color: GREEN },
+        { nombre: "datos.gob.ar", color: GREEN }, { nombre: "Caución", color: "#f59e0b" },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

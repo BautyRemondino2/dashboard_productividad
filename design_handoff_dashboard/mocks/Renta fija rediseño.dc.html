@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#020617; color:#e2e8f0; font-family:Geist,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#cbd5e1; text-decoration:none; }
+  a:hover { color:#f1f5f9; }
+</style>
+</helmet>
+
+<div style="background:#020617; min-height:100vh; font-family:Geist,system-ui,sans-serif; padding-bottom:64px;">
+
+  <nav style="display:flex; align-items:center; gap:2px; height:48px; padding:0 24px; border-bottom:1px solid #131c2e; background:rgba(2,6,23,0.92); position:sticky; top:0; z-index:20;">
+    <div style="display:flex; align-items:center; gap:9px; margin-right:28px; flex-shrink:0;">
+      <div style="width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#f1f5f9; background:oklch(48% 0.16 258);">b</div>
+      <span style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.14em;">Asesor</span>
+    </div>
+    <a href="Dashboard rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">Macro</a>
+    <span style="font-size:13px; font-weight:500; color:#f1f5f9; padding:6px 11px; border-radius:7px; background:#141f33; white-space:nowrap;">Renta fija</span>
+    <a href="Equity rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">Equity</a>
+    <a href="ETF rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px; white-space:nowrap;">ETF</a>
+    <span style="width:1px; height:16px; background:#1e293b; margin:0 10px;"></span>
+    <a href="Glosario rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px; white-space:nowrap;">Glosario</a>
+    <a href="Efemérides rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px; white-space:nowrap;">Efemérides</a>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:14px; flex-shrink:0;">
+      <span style="font-size:11px; color:#475569; font-variant-numeric:tabular-nums;">precios 08:41</span>
+      <button style="font-size:11px; font-weight:500; padding:5px 11px; border-radius:7px; border:1px solid #24344d; background:#0d1526; color:#cbd5e1; cursor:pointer;">↻</button>
+    </div>
+  </nav>
+
+  <div style="position:sticky; top:48px; z-index:19; border-bottom:1px solid #131c2e; background:linear-gradient(180deg,#070d1a,#050a14); display:flex; align-items:stretch; overflow-x:auto;">
+    <sc-for list="{{ cinta }}" as="c" hint-placeholder-count="6">
+      <div style="flex:1 1 0; min-width:118px; box-sizing:border-box; padding:11px 20px; border-right:1px solid #101a2b; display:flex; flex-direction:column; gap:3px;">
+        <span style="font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80; white-space:nowrap;">{{ c.label }}</span>
+        <div style="display:flex; align-items:baseline; gap:8px;">
+          <span style="font-size:17px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; letter-spacing:-0.01em;">{{ c.valor }}</span>
+          <span style="font-size:11px; font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; color:{{ c.color }};">{{ c.delta }}</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="max-width:1440px; margin:0 auto; padding:26px 24px 0;">
+
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:20px;">
+      <div>
+        <h1 style="margin:0; font-size:26px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">Renta fija</h1>
+        <p style="margin:5px 0 0; font-size:13px; color:#64748b;">Soberanos hard-dollar, curva en pesos y corporativos · 11 soberanos · 45 ONs</p>
+      </div>
+      <p style="margin:0; max-width:440px; font-size:13px; line-height:1.55; color:#94a3b8; text-wrap:pretty;">
+        La ley argentina cotiza 96 pb por encima de la extranjera en el tramo corto y 71 pb en el largo. El riesgo país de 612 pb implica una TIR de 10,3% para la parte media de la curva.
+      </p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start;">
+      <section style="border-radius:14px; border:1px solid #17233a; background:linear-gradient(180deg,#0b1322,#080f1c); overflow:hidden;">
+        <header style="padding:14px 20px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Curva de soberanos</h2>
+          <span style="font-size:11px; color:#475569;">TIR contra duration · capitalización semestral, base 30/360</span>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:16px;">
+            <span style="display:flex; align-items:center; gap:7px;">
+              <span style="width:14px; height:3px; border-radius:9999px; background:#3987e5;"></span>
+              <span style="font-size:11px; color:#94a3b8;">Ley Nueva York</span>
+              <span style="font-size:10px; color:#475569;">6</span>
+            </span>
+            <span style="display:flex; align-items:center; gap:7px;">
+              <span style="width:14px; height:3px; border-radius:9999px; background:#d95926;"></span>
+              <span style="font-size:11px; color:#94a3b8;">Ley argentina</span>
+              <span style="font-size:10px; color:#475569;">5</span>
+            </span>
+          </div>
+        </header>
+
+        <div style="padding:18px 20px 8px;">
+          <svg viewBox="0 0 720 430" style="width:100%; height:auto;">
+            <sc-for list="{{ gridY }}" as="g" hint-placeholder-count="6">
+              <g>
+                <line x1="56" y1="{{ g.y }}" x2="710" y2="{{ g.y }}" stroke="#152036" stroke-dasharray="2 4" stroke-width="1"></line>
+                <text x="48" y="{{ g.ty }}" text-anchor="end" fill="#7c8ba1" font-size="13" font-family="Geist,sans-serif">{{ g.label }}</text>
+              </g>
+            </sc-for>
+            <sc-for list="{{ gridX }}" as="g" hint-placeholder-count="6">
+              <text x="{{ g.x }}" y="422" text-anchor="middle" fill="#7c8ba1" font-size="13" font-family="Geist,sans-serif">{{ g.label }}</text>
+            </sc-for>
+            <line x1="56" y1="398" x2="710" y2="398" stroke="#1e293b" stroke-width="1"></line>
+            <path d="{{ lineaNY }}" stroke="#3987e5" stroke-width="2" fill="none" stroke-linejoin="round"></path>
+            <path d="{{ lineaAR }}" stroke="#d95926" stroke-width="2" fill="none" stroke-linejoin="round"></path>
+            <sc-for list="{{ puntos }}" as="p" hint-placeholder-count="11">
+              <g style="cursor:pointer;" onMouseEnter="{{ p.onEnter }}" onMouseLeave="{{ salir }}">
+                <circle cx="{{ p.x }}" cy="{{ p.y }}" r="14" fill="transparent"></circle>
+                <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ p.r }}" fill="{{ p.fill }}" stroke="#020617" stroke-width="2"></circle>
+                <text x="{{ p.x }}" y="{{ p.ty }}" text-anchor="middle" fill="{{ p.tc }}" font-size="13" font-weight="500" font-family="Geist,sans-serif">{{ p.ticker }}</text>
+              </g>
+            </sc-for>
+          </svg>
+        </div>
+
+        <div style="padding:0 20px 16px;">
+          <p style="margin:0; font-size:11px; color:#475569;">{{ pie }}</p>
+        </div>
+      </section>
+
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+          <header style="padding:13px 18px; border-bottom:1px solid #131f33;">
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Precio de la ley</h2>
+            <p style="margin:4px 0 0; font-size:11px; line-height:1.5; color:#5b6a80;">Lo que cobra el mercado por litigar en Buenos Aires en vez de Nueva York.</p>
+          </header>
+          <sc-for list="{{ spreads }}" as="s" hint-placeholder-count="4">
+            <div style="padding:12px 18px; border-bottom:1px solid #101a2b;">
+              <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">
+                <span style="font-size:12px; color:#cbd5e1;">{{ s.par }}</span>
+                <span style="font-size:18px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums;">{{ s.pb }}</span>
+              </div>
+              <div style="margin-top:7px; height:4px; border-radius:9999px; background:#131f33; overflow:hidden;">
+                <div style="height:100%; border-radius:9999px; background:#d95926; width:{{ s.ancho }};"></div>
+              </div>
+              <div style="margin-top:5px; font-size:10px; color:#5b6a80; font-variant-numeric:tabular-nums;">{{ s.detalle }}</div>
+            </div>
+          </sc-for>
+        </section>
+
+        <section style="border-radius:14px; border:1px solid #17233a; background:#080f1c; padding:14px 18px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.11em; padding:3px 7px; border-radius:5px; background:rgba(59,130,246,0.13); color:#7ba7f0;">propuesto</span>
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#94a3b8;">Validación</h2>
+          </div>
+          <p style="margin:10px 0 0; font-size:12px; line-height:1.6; color:#94a3b8; text-wrap:pretty;">El riesgo país de 612 pb sobre un UST 10 años de 4,18% implica 10,30%. La curva ley NY promedia 10,12%: cierra dentro de 18 pb.</p>
+          <div style="margin-top:12px; display:flex; align-items:center; gap:10px;">
+            <span style="width:7px; height:7px; border-radius:9999px; background:#34d399;"></span>
+            <span style="font-size:12px; color:#cbd5e1;">Ningún bono sospechoso</span>
+          </div>
+          <p style="margin:8px 0 0; font-size:11px; line-height:1.55; color:#5b6a80;">Los bonos a menos de seis meses se dibujan en gris punteado: ahí un peso de precio mueve la TIR varios puntos.</p>
+        </section>
+      </div>
+    </div>
+
+    <section style="margin-top:16px; border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+      <header style="padding:13px 20px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Obligaciones negociables</h2>
+        <span style="font-size:11px; color:#475569;">corporativas en dólares · lo que rinden por encima del soberano es el riesgo de la empresa</span>
+      </header>
+      <div style="display:grid; grid-template-columns:1fr 320px; gap:0;">
+        <div style="padding:18px 20px;">
+          <svg viewBox="0 0 620 280" style="width:100%; height:auto;">
+            <sc-for list="{{ onGridY }}" as="g" hint-placeholder-count="5">
+              <g>
+                <line x1="46" y1="{{ g.y }}" x2="612" y2="{{ g.y }}" stroke="#152036" stroke-dasharray="2 4" stroke-width="1"></line>
+                <text x="38" y="{{ g.ty }}" text-anchor="end" fill="#7c8ba1" font-size="12" font-family="Geist,sans-serif">{{ g.label }}</text>
+              </g>
+            </sc-for>
+            <sc-for list="{{ onGridX }}" as="g" hint-placeholder-count="5">
+              <text x="{{ g.x }}" y="272" text-anchor="middle" fill="#7c8ba1" font-size="12" font-family="Geist,sans-serif">{{ g.label }}</text>
+            </sc-for>
+            <line x1="46" y1="250" x2="612" y2="250" stroke="#1e293b" stroke-width="1"></line>
+            <path d="{{ onSoberana }}" stroke="#3987e5" stroke-width="2" fill="none" stroke-dasharray="5 4"></path>
+            <sc-for list="{{ ons }}" as="o" hint-placeholder-count="45">
+              <circle cx="{{ o.x }}" cy="{{ o.y }}" r="4" fill="#199e70" fill-opacity="0.75" stroke="#020617" stroke-width="1"></circle>
+            </sc-for>
+          </svg>
+        </div>
+        <div style="border-left:1px solid #131f33; padding:18px 20px;">
+          <p style="margin:0 0 12px; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Las que más rinden</p>
+          <sc-for list="{{ onTop }}" as="o" hint-placeholder-count="6">
+            <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #101a2b;">
+              <span style="font-size:12px; font-weight:500; color:#e2e8f0; width:74px; flex-shrink:0;">{{ o.ticker }}</span>
+              <span style="font-size:11px; color:#5b6a80; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ o.emisor }}</span>
+              <span style="margin-left:auto; font-size:12px; color:#cbd5e1; font-variant-numeric:tabular-nums;">{{ o.tir }}</span>
+            </div>
+          </sc-for>
+          <p style="margin:14px 0 0; font-size:11px; line-height:1.6; color:#5b6a80; text-wrap:pretty;">Que una ON rinda por debajo del soberano es habitual acá: el Estado tiene historial de default y las buenas empresas no.</p>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top:16px; border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+      <header style="padding:13px 20px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:12px;">
+        <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Soberanos hard-dollar</h2>
+        <span style="font-size:11px; color:#475569;">precio en USD</span>
+      </header>
+      <div style="display:grid; grid-template-columns:150px repeat(6,1fr) 96px; gap:0 16px; padding:9px 20px; background:#0a1220; border-bottom:1px solid #131f33; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">
+        <div>Instrumento</div>
+        <div style="text-align:right;">Precio</div>
+        <div style="text-align:right;">TIR</div>
+        <div style="text-align:right;">Duration</div>
+        <div style="text-align:right;">vs. ant</div>
+        <div style="text-align:right;">30d</div>
+        <div style="text-align:right;">90d</div>
+        <div></div>
+      </div>
+      <sc-for list="{{ tabla }}" as="r" hint-placeholder-count="11">
+        <div style="position:relative; display:grid; grid-template-columns:150px repeat(6,1fr) 96px; gap:0 16px; align-items:center; padding:11px 20px; border-bottom:1px solid #101a2b;">
+          <div style="position:absolute; left:0; top:0; bottom:0; width:3px; background:{{ r.ley }};"></div>
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span style="font-size:13px; font-weight:500; color:#f1f5f9;">{{ r.ticker }}</span>
+            <span style="font-size:9px; font-weight:500; padding:2px 6px; border-radius:5px; white-space:nowrap; background:{{ r.leySoft }}; color:{{ r.ley }};">{{ r.leyLabel }}</span>
+          </div>
+          <div style="text-align:right; font-size:13px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums;">{{ r.precio }}</div>
+          <div style="text-align:right; font-size:13px; color:#e2e8f0; font-variant-numeric:tabular-nums;">{{ r.tir }}</div>
+          <div style="text-align:right; font-size:12px; color:#94a3b8; font-variant-numeric:tabular-nums;">{{ r.duration }}</div>
+          <div style="text-align:right; font-size:12px; font-variant-numeric:tabular-nums; color:{{ r.c1 }};">{{ r.d1 }}</div>
+          <div style="text-align:right; font-size:12px; font-variant-numeric:tabular-nums; color:{{ r.c2 }};">{{ r.d2 }}</div>
+          <div style="text-align:right; font-size:12px; font-variant-numeric:tabular-nums; color:{{ r.c3 }};">{{ r.d3 }}</div>
+          <div style="display:flex; justify-content:flex-end;">
+            <svg width="86" height="20" viewBox="0 0 86 20">
+              <path d="{{ r.spark }}" stroke="{{ r.sparkColor }}" stroke-width="1.3" fill="none" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1200}}">
+const GREEN = "#34d399", RED = "#f87171";
+const NY = "#3987e5", AR = "#d95926";
+const n2 = v => v.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const BONOS = [
+  ["GD29","NY", 1.9, 10.85, 92.40],
+  ["GD30","NY", 2.6, 10.42, 88.15],
+  ["GD35","NY", 6.9,  9.86, 71.30],
+  ["GD38","NY", 5.4, 10.05, 82.55],
+  ["GD41","NY", 6.6,  9.74, 68.90],
+  ["GD46","NY", 7.8,  9.62, 70.20],
+  ["AL29","AR", 1.9, 11.81, 90.10],
+  ["AL30","AR", 2.6, 11.38, 86.05],
+  ["AL35","AR", 6.9, 10.52, 68.40],
+  ["AE38","AR", 5.4, 10.79, 79.60],
+  ["AL41","AR", 6.6, 10.45, 66.35],
+];
+
+const ONS = [
+  ["YPFDAR","YPF 2031", 8.94],["PAMPAR","Pampa Energía 2029", 7.62],
+  ["TLC1O","Telecom 2031", 8.15],["VISTA","Vista Energy 2035", 8.48],
+  ["CGC","Cía. Gral. de Combustibles", 9.72],["MSU","MSU Energy 2030", 10.14],
+];
+
+function rng(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }; }
+function sparkPath(seed, w, h) {
+  const r = rng(seed), d = [];
+  let v = 100;
+  for (let i = 0; i < 40; i++) { d.push(v); v = v * (1 + (r() - 0.48) * 0.02); }
+  const min = Math.min(...d), max = Math.max(...d), range = (max - min) || 1;
+  const sx = w / (d.length - 1);
+  const pts = d.map((x, i) => [(i * sx).toFixed(1), (h - 2 - ((x - min) / range) * (h - 4)).toFixed(1)]);
+  return { path: pts.map(([x, y], i) => (i ? "L" : "M") + x + "," + y).join(" "), up: d[d.length - 1] >= d[0] };
+}
+
+class Component extends DCLogic {
+  state = { activo: null };
+
+  renderVals() {
+    // Escalas del scatter: duration 0-9 años, TIR 9-12,5%
+    const X0 = 56, X1 = 710, Y0 = 36, Y1 = 398;
+    const dMax = 9, tMin = 9, tMax = 12.5;
+    const px = d => X0 + (d / dMax) * (X1 - X0);
+    const py = t => Y1 - ((t - tMin) / (tMax - tMin)) * (Y1 - Y0);
+
+    const gridY = [];
+    for (let t = tMin; t <= tMax; t += 0.5) gridY.push({ y: py(t).toFixed(1), ty: (py(t) + 4).toFixed(1), label: n2(t).replace(",00", "") + "%" });
+    const gridX = [];
+    for (let d = 0; d <= dMax; d += 1.5) gridX.push({ x: px(d).toFixed(1), label: d.toLocaleString("es-AR", { maximumFractionDigits: 1 }) + "a" });
+
+    const linea = ley => "M" + BONOS.filter(b => b[1] === ley).sort((a, b) => a[2] - b[2])
+      .map(b => px(b[2]).toFixed(1) + "," + py(b[3]).toFixed(1)).join("L");
+
+    const puntos = BONOS.map(b => {
+      const esta = this.state.activo === b[0];
+      return {
+        ticker: b[0], x: px(b[2]).toFixed(1), y: py(b[3]).toFixed(1),
+        r: esta ? 7 : 5, fill: b[1] === "NY" ? NY : AR,
+        ty: (py(b[3]) - 12).toFixed(1), tc: esta ? "#e2e8f0" : "#64748b",
+        onEnter: () => this.setState({ activo: b[0] }),
+      };
+    });
+
+    const act = BONOS.find(b => b[0] === this.state.activo);
+    const pie = act
+      ? `${act[0]} · ley ${act[1] === "NY" ? "Nueva York" : "argentina"} · TIR ${n2(act[3])}% · duration ${n2(act[2])} años · precio US$${n2(act[4])}`
+      : "Pasá el mouse por un punto para ver precio, TIR y duration.";
+
+    const pares = [["AL29 / GD29", 11.81, 10.85], ["AL30 / GD30", 11.38, 10.42], ["AE38 / GD38", 10.79, 10.05], ["AL41 / GD41", 10.45, 9.74]];
+    const spreads = pares.map(([par, a, g]) => {
+      const pb = Math.round((a - g) * 100);
+      return { par, pb: pb + " pb", ancho: Math.min(100, pb / 1.2) + "%", detalle: `${n2(a)}% contra ${n2(g)}%` };
+    });
+
+    // Nube de ONs
+    const ox0 = 46, ox1 = 612, oy0 = 30, oy1 = 250;
+    const odMax = 7, otMin = 6, otMax = 12;
+    const opx = d => ox0 + (d / odMax) * (ox1 - ox0);
+    const opy = t => oy1 - ((t - otMin) / (otMax - otMin)) * (oy1 - oy0);
+    const onGridY = [];
+    for (let t = otMin; t <= otMax; t += 1.5) onGridY.push({ y: opy(t).toFixed(1), ty: (opy(t) + 4).toFixed(1), label: t.toLocaleString("es-AR", { maximumFractionDigits: 1 }) + "%" });
+    const onGridX = [];
+    for (let d = 0; d <= odMax; d += 1.75) onGridX.push({ x: opx(d).toFixed(1), label: d.toLocaleString("es-AR", { maximumFractionDigits: 1 }) + "a" });
+
+    const r = rng(41), ons = [];
+    for (let i = 0; i < 45; i++) {
+      const d = 0.4 + r() * 6.2;
+      const t = 6.6 + Math.log10(d + 1) * 2.6 + (r() - 0.5) * 2.2;
+      ons.push({ x: opx(d).toFixed(1), y: opy(Math.max(otMin + 0.2, Math.min(otMax - 0.2, t))).toFixed(1) });
+    }
+    const onSoberana = "M" + BONOS.filter(b => b[1] === "NY").sort((a, b) => a[2] - b[2])
+      .map(b => opx(Math.min(b[2], odMax)).toFixed(1) + "," + opy(b[3]).toFixed(1)).join("L");
+
+    const tabla = BONOS.map((b, i) => {
+      const sp = sparkPath(i * 13 + 5, 86, 20);
+      const d1 = (rng(i * 7 + 3)() - 0.45) * 1.4;
+      const d2 = (rng(i * 11 + 9)() - 0.4) * 4;
+      const d3 = (rng(i * 17 + 2)() - 0.35) * 9;
+      const c = v => v >= 0 ? GREEN : RED;
+      const f = v => (v >= 0 ? "▲ " : "▼ ") + n2(Math.abs(v)) + "%";
+      return {
+        ticker: b[0], leyLabel: b[1] === "NY" ? "Ley NY" : "Ley AR",
+        ley: b[1] === "NY" ? NY : AR,
+        leySoft: b[1] === "NY" ? "rgba(57,135,229,0.14)" : "rgba(217,89,38,0.14)",
+        precio: "US$" + n2(b[4]), tir: n2(b[3]) + "%", duration: n2(b[2]) + " a",
+        d1: f(d1), c1: c(d1), d2: f(d2), c2: c(d2), d3: f(d3), c3: c(d3),
+        spark: sp.path, sparkColor: sp.up ? GREEN : RED,
+      };
+    });
+
+    return {
+      cinta: [
+        { label: "Riesgo país", valor: "612 pb", delta: "▼ 18 pb", color: GREEN },
+        { label: "UST 10 años", valor: "4,18%", delta: "▼ 0,02 pp", color: GREEN },
+        { label: "TIR ley NY", valor: "10,12%", delta: "▼ 0,14 pp", color: GREEN },
+        { label: "TIR ley AR", valor: "10,99%", delta: "▼ 0,11 pp", color: GREEN },
+        { label: "Spread AL30/GD30", valor: "96 pb", delta: "▲ 3 pb", color: RED },
+        { label: "Dólar CCL", valor: "$1.574", delta: "▼ 0,19%", color: RED },
+      ],
+      gridY, gridX, puntos, pie, spreads,
+      lineaNY: linea("NY"), lineaAR: linea("AR"),
+      onGridY, onGridX, ons, onSoberana,
+      onTop: ONS.map(o => ({ ticker: o[0], emisor: o[1], tir: n2(o[2]) + "%" })),
+      tabla,
+      salir: () => this.setState({ activo: null }),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

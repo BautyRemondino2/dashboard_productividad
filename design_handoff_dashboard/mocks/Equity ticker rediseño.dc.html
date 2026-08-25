@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#020617; color:#e2e8f0; font-family:Geist,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#cbd5e1; text-decoration:none; }
+  a:hover { color:#f1f5f9; }
+</style>
+</helmet>
+
+<div style="background:#020617; min-height:100vh; font-family:Geist,system-ui,sans-serif; padding-bottom:64px;">
+
+  <nav style="display:flex; align-items:center; gap:2px; height:48px; padding:0 24px; border-bottom:1px solid #131c2e; background:rgba(2,6,23,0.92); position:sticky; top:0; z-index:22;">
+    <div style="display:flex; align-items:center; gap:9px; margin-right:28px; flex-shrink:0;">
+      <div style="width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#f1f5f9; background:oklch(48% 0.16 258);">b</div>
+      <span style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.14em;">Asesor</span>
+    </div>
+    <a href="Dashboard rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Macro</a>
+    <a href="Renta fija rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">Renta fija</a>
+    <a href="Equity rediseño.dc.html" style="font-size:13px; font-weight:500; color:#f1f5f9; padding:6px 11px; border-radius:7px; background:#141f33;">Equity</a>
+    <a href="ETF rediseño.dc.html" style="font-size:13px; font-weight:500; color:#7c8ba1; padding:6px 11px; border-radius:7px;">ETF</a>
+    <span style="width:1px; height:16px; background:#1e293b; margin:0 10px;"></span>
+    <a href="Glosario rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px;">Glosario</a>
+    <a href="Efemérides rediseño.dc.html" style="font-size:13px; color:#5b6a80; padding:6px 11px; border-radius:7px;">Efemérides</a>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px; flex-shrink:0;">
+      <span style="font-size:11px; color:#475569;">rueda abierta · 11:24 ET</span>
+    </div>
+  </nav>
+
+  <!-- Barra del papel: te sigue todo el scroll, que en esta página es largo -->
+  <div style="position:sticky; top:48px; z-index:21; border-bottom:1px solid #131c2e; background:rgba(6,12,24,0.96); display:flex; align-items:center; gap:18px; padding:9px 24px;">
+    <a href="Equity rediseño.dc.html" style="font-size:11px; color:#5b6a80; flex-shrink:0;">← Equity</a>
+    <span style="width:1px; height:16px; background:#1e293b; flex-shrink:0;"></span>
+    <span style="font-size:14px; font-weight:600; color:#f1f5f9; flex-shrink:0;">NVDA</span>
+    <span style="font-size:12px; color:#5b6a80; flex-shrink:0;">NVIDIA Corporation</span>
+    <span style="font-size:14px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; margin-left:auto; flex-shrink:0;">US$182,44</span>
+    <span style="font-size:12px; font-weight:500; color:#34d399; font-variant-numeric:tabular-nums; flex-shrink:0;">+2,14% hoy</span>
+    <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
+      <sc-for list="{{ anclas }}" as="a" hint-placeholder-count="6">
+        <a href="{{ a.href }}" style="font-size:11px; color:#5b6a80; padding:4px 9px; border-radius:6px; white-space:nowrap;">{{ a.label }}</a>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="max-width:1600px; margin:0 auto; padding:24px 24px 0;">
+
+    <!-- ── Encabezado: quién es, cuánto vale, dónde lo ve el consenso ── -->
+    <section style="border-radius:16px; border:1px solid #17233a; background:linear-gradient(135deg,#0c1526,#080f1c 60%); padding:24px; margin-bottom:16px;">
+      <div style="display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:36px; align-items:start;">
+
+        <div style="min-width:0;">
+          <div style="display:flex; align-items:flex-start; gap:16px;">
+            <div style="width:52px; height:52px; border-radius:12px; background:#0f172a; border:1px solid #1e293b; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;">
+              <img src="https://www.google.com/s2/favicons?domain=nvidia.com&amp;sz=128" alt="Logo de NVDA" width="40" height="40" loading="lazy" style="object-fit:contain;">
+            </div>
+            <div style="min-width:0;">
+              <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                <h1 style="margin:0; font-size:34px; font-weight:600; color:#f8fafc; letter-spacing:-0.03em; line-height:1;">NVDA</h1>
+                <span style="font-size:15px; color:#94a3b8;">NVIDIA Corporation</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; margin-top:9px; flex-wrap:wrap;">
+                <span style="font-size:10px; font-weight:500; padding:3px 8px; border-radius:6px; background:oklch(28% 0.05 200 / 0.5); color:oklch(82% 0.11 200);">Tecnología</span>
+                <span style="font-size:11px; color:#7c8ba1;">Semiconductores</span>
+                <span style="font-size:11px; color:#334155;">·</span>
+                <span style="font-size:11px; color:#7c8ba1; font-variant-numeric:tabular-nums;">36.000 empleados</span>
+                <span style="font-size:11px; color:#334155;">·</span>
+                <span style="font-size:11px; color:#7c8ba1;">Santa Clara, California</span>
+                <span style="font-size:11px; color:#334155;">·</span>
+                <a href="#" style="font-size:11px; color:#7ba7f0;">nvidia.com</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Retornos con forma, no sólo números -->
+          <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:0; margin-top:22px; border-top:1px solid #17233a; padding-top:16px;">
+            <sc-for list="{{ retornos }}" as="r" hint-placeholder-count="6">
+              <div style="padding-right:14px;">
+                <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80; white-space:nowrap;">{{ r.label }}</p>
+                <p style="margin:4px 0 0; font-size:19px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; color:{{ r.color }};">{{ r.pct }}</p>
+                <div style="margin-top:7px; height:3px; background:#131f33; border-radius:9999px; position:relative; overflow:hidden;">
+                  <div style="position:absolute; top:0; bottom:0; border-radius:9999px; background:{{ r.color }}; left:{{ r.left }}; width:{{ r.ancho }};"></div>
+                </div>
+                <p style="margin:5px 0 0; font-size:10px; color:#475569; font-variant-numeric:tabular-nums; white-space:nowrap;">S&amp;P {{ r.indice }}</p>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="border-left:1px solid #17233a; padding-left:28px;">
+          <p style="margin:0; font-size:44px; font-weight:600; color:#f8fafc; font-variant-numeric:tabular-nums; letter-spacing:-0.03em; line-height:1;">US$182,44</p>
+          <p style="margin:7px 0 0; font-size:14px; font-weight:500; color:#34d399; font-variant-numeric:tabular-nums;">▲ 2,14% hoy <span style="color:#475569; font-weight:400;">· US$3,82</span></p>
+
+          <!-- Rango de precio objetivo: la mejora más grande sobre la página actual -->
+          <div style="margin-top:22px; padding-top:18px; border-top:1px solid #17233a;">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Precio objetivo</p>
+              <p style="margin:0; font-size:11px; color:#5b6a80; font-variant-numeric:tabular-nums;">62 analistas</p>
+            </div>
+            <div style="display:flex; align-items:baseline; gap:10px; margin-top:6px;">
+              <span style="font-size:24px; font-weight:600; color:#f1f5f9; font-variant-numeric:tabular-nums; letter-spacing:-0.02em;">US$215,00</span>
+              <span style="font-size:13px; font-weight:500; color:#34d399; font-variant-numeric:tabular-nums;">+17,85%</span>
+            </div>
+
+            <div style="margin-top:16px; position:relative; height:34px;">
+              <div style="position:absolute; left:0; right:0; top:14px; height:4px; border-radius:9999px; background:linear-gradient(90deg,#1e293b,#24344d);"></div>
+              <div style="position:absolute; top:14px; height:4px; border-radius:9999px; background:rgba(52,211,153,0.32); left:{{ objLeft }}; width:{{ objAncho }};"></div>
+              <div style="position:absolute; top:8px; width:2px; height:16px; border-radius:1px; background:#e2e8f0; left:{{ precioX }};"></div>
+              <div style="position:absolute; top:6px; width:3px; height:20px; border-radius:2px; background:#34d399; left:{{ objetivoX }};"></div>
+              <span style="position:absolute; top:0; left:0; font-size:10px; color:#475569; font-variant-numeric:tabular-nums;">US$140</span>
+              <span style="position:absolute; top:0; right:0; font-size:10px; color:#475569; font-variant-numeric:tabular-nums;">US$275</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:16px; margin-top:2px;">
+              <span style="display:flex; align-items:center; gap:6px; font-size:10px; color:#7c8ba1;"><span style="width:2px; height:9px; background:#e2e8f0;"></span> precio hoy</span>
+              <span style="display:flex; align-items:center; gap:6px; font-size:10px; color:#7c8ba1;"><span style="width:3px; height:9px; background:#34d399;"></span> consenso</span>
+            </div>
+            <p style="margin:12px 0 0; font-size:11px; line-height:1.55; color:#5b6a80; text-wrap:pretty;">Todo el rango de objetivos está por encima del precio actual. Ninguno de los 62 analistas ve caída.</p>
+          </div>
+
+          <div style="margin-top:18px; padding-top:16px; border-top:1px solid #17233a; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Consenso</p>
+              <p style="margin:3px 0 0; font-size:15px; font-weight:500; color:#34d399;">Compra fuerte</p>
+            </div>
+            <div style="text-align:right;">
+              <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Institucional</p>
+              <p style="margin:3px 0 0; font-size:15px; color:#e2e8f0; font-variant-numeric:tabular-nums;">67,4%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:grid; grid-template-columns:minmax(0,1fr) 356px; gap:16px; align-items:start;">
+
+      <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+
+        <!-- Gráfico -->
+        <section id="grafico" style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+          <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Precio</h2>
+            <span style="font-size:11px; color:#475569;">velas diarias · 12 meses · el rango lo maneja el propio gráfico</span>
+            <span style="margin-left:auto; font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid #24344d; color:#5b6a80; white-space:nowrap;">TradingView</span>
+          </header>
+          <div style="padding:16px 18px 10px;">
+            <svg viewBox="0 0 900 400" preserveAspectRatio="none" style="width:100%; height:400px;">
+              <defs>
+                <linearGradient id="gp" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#34d399" stop-opacity="0.2"></stop>
+                  <stop offset="100%" stop-color="#34d399" stop-opacity="0"></stop>
+                </linearGradient>
+              </defs>
+              <sc-for list="{{ chartGrid }}" as="g" hint-placeholder-count="5">
+                <line x1="0" y1="{{ g.y }}" x2="900" y2="{{ g.y }}" stroke="#131f33" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+              </sc-for>
+              <path d="{{ chartArea }}" fill="url(#gp)"></path>
+              <path d="{{ chartPath }}" stroke="#34d399" stroke-width="1.8" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+              <line x1="0" y1="{{ objetivoY }}" x2="900" y2="{{ objetivoY }}" stroke="#34d399" stroke-width="1" stroke-dasharray="6 5" stroke-opacity="0.5" vector-effect="non-scaling-stroke"></line>
+            </svg>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+              <sc-for list="{{ chartLabels }}" as="l" hint-placeholder-count="6">
+                <span style="font-size:10px; color:#475569;">{{ l.label }}</span>
+              </sc-for>
+            </div>
+            <p style="margin:8px 0 0; font-size:10px; line-height:1.6; color:#475569;">La línea punteada es el precio objetivo del consenso: US$215,00. En la app este bloque es el widget de TradingView, que trae sus propios controles de rango y temporalidad.</p>
+          </div>
+        </section>
+
+        <!-- A qué se dedica: sube al segundo lugar, es el "qué es la empresa" -->
+        <section id="empresa" style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+          <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">A qué se dedica</h2>
+            <span style="font-size:11px; color:#475569;">traducido del original de Yahoo</span>
+          </header>
+          <div style="display:grid; grid-template-columns:minmax(0,1fr) 210px; gap:28px; padding:18px;">
+            <div style="min-width:0;">
+              <p style="margin:0; font-size:13px; line-height:1.75; color:#cbd5e1; max-width:78ch; text-wrap:pretty;">NVIDIA Corporation diseña y comercializa unidades de procesamiento gráfico y plataformas de computación acelerada. Su segmento de centros de datos provee las GPU, las redes y el software que sostienen el entrenamiento y la inferencia de modelos de inteligencia artificial, y hoy explica la mayor parte de su facturación. El segmento de gaming vende las placas GeForce para consumidores; el de visualización profesional atiende diseño e ingeniería; y el automotriz provee plataformas de conducción autónoma. La compañía también licencia CUDA, el entorno de programación que en la práctica funciona como barrera de entrada para sus competidores.</p>
+              <p style="margin:14px 0 0; font-size:11px; line-height:1.6; color:#5b6a80; max-width:78ch;">Fuente: descripción de Yahoo Finance, traducida automáticamente. Si la cuota diaria del traductor se agota, se muestra el original en inglés.</p>
+            </div>
+            <dl style="margin:0; border-left:1px solid #131f33; padding-left:24px; display:flex; flex-direction:column; gap:14px;">
+              <sc-for list="{{ ficha }}" as="f" hint-placeholder-count="5">
+                <div>
+                  <dt style="font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">{{ f.label }}</dt>
+                  <dd style="margin:3px 0 0; font-size:13px; color:#e2e8f0; line-height:1.4;">{{ f.valor }}</dd>
+                  <sc-if value="{{ f.nota }}" hint-placeholder-val="{{ false }}">
+                    <dd style="margin:1px 0 0; font-size:10px; color:#475569;">{{ f.nota }}</dd>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </dl>
+          </div>
+        </section>
+
+        <!-- Fundamentals: agrupados por qué preguntan, no una lista plana -->
+        <section id="fundamentals" style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+          <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Fundamentals</h2>
+            <span style="font-size:11px; color:#475569;">contra la mediana de sus pares</span>
+            <div style="margin-left:auto; display:grid; grid-template-columns:96px 76px; gap:0 14px; font-size:9px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">
+              <span style="text-align:right;">NVDA</span>
+              <span style="text-align:right;">Mediana</span>
+            </div>
+          </header>
+
+          <sc-for list="{{ grupos }}" as="g" hint-placeholder-count="4">
+            <div>
+              <div style="display:flex; align-items:baseline; gap:9px; padding:9px 18px; background:#0a1220; border-bottom:1px solid #131f33;">
+                <span style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#7c8ba1;">{{ g.label }}</span>
+                <span style="font-size:10px; color:#475569;">{{ g.nota }}</span>
+              </div>
+              <sc-for list="{{ g.metricas }}" as="m" hint-placeholder-count="3">
+                <div style="display:grid; grid-template-columns:minmax(0,1fr) 96px 76px; align-items:center; gap:0 14px; padding:10px 18px; border-bottom:1px solid #101a2b;">
+                  <div style="min-width:0;">
+                    <p style="margin:0; font-size:12px; color:#cbd5e1;">{{ m.label }}</p>
+                    <div style="display:flex; align-items:center; gap:11px; margin-top:5px;">
+                      <div style="position:relative; width:88px; height:4px; border-radius:9999px; background:#131f33; flex-shrink:0;">
+                        <div style="position:absolute; top:0; bottom:0; border-radius:9999px; background:{{ m.barra }}; left:{{ m.left }}; width:{{ m.ancho }};"></div>
+                        <div style="position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:#475569;"></div>
+                      </div>
+                      <span style="font-size:11px; color:{{ m.tono }};">{{ m.lectura }}</span>
+                    </div>
+                  </div>
+                  <span style="text-align:right; font-size:14px; font-weight:500; color:#f1f5f9; font-variant-numeric:tabular-nums;">{{ m.valor }}</span>
+                  <span style="text-align:right; font-size:12px; color:#5b6a80; font-variant-numeric:tabular-nums;">{{ m.mediana }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+
+          <p style="margin:0; padding:13px 18px; font-size:11px; line-height:1.65; color:#475569; text-wrap:pretty;">Comparado contra la mediana de seis pares del sector: AMD, INTC, AVGO, QCOM, TXN, MU. La valuación va sin color a propósito: que esté cara no es malo por sí solo, ni barata es buena señal automáticamente.</p>
+        </section>
+
+        <!-- Ventas y márgenes + sorpresas -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:16px;">
+          <section id="historia" style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+            <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+              <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Ventas y márgenes</h2>
+              <span style="font-size:11px; color:#475569;">por año fiscal</span>
+            </header>
+            <div style="padding:16px 18px; display:flex; flex-direction:column; gap:9px;">
+              <sc-for list="{{ historia }}" as="h" hint-placeholder-count="5">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span style="font-size:11px; color:#5b6a80; width:32px; flex-shrink:0; font-variant-numeric:tabular-nums;">{{ h.anio }}</span>
+                  <div style="flex:1; height:22px; border-radius:5px; background:#0d1526; position:relative; overflow:hidden;">
+                    <div style="position:absolute; inset:0 auto 0 0; background:rgba(57,135,229,0.28); width:{{ h.ancho }};"></div>
+                    <span style="position:absolute; inset:0 auto 0 9px; display:flex; align-items:center; font-size:11px; color:#e2e8f0; font-variant-numeric:tabular-nums;">{{ h.ventas }}</span>
+                  </div>
+                  <span style="font-size:11px; color:#94a3b8; width:78px; text-align:right; flex-shrink:0; font-variant-numeric:tabular-nums;">margen {{ h.margen }}</span>
+                </div>
+              </sc-for>
+              <p style="margin:4px 0 0; font-size:10px; color:#475569;">Ventas anuales y margen neto. El margen es lo que distingue a una empresa que crece de una que sólo factura más.</p>
+            </div>
+          </section>
+
+          <section id="consenso" style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+            <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+              <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Resultados vs. consenso</h2>
+              <span style="font-size:11px; color:#475569;">últimos trimestres</span>
+            </header>
+            <div style="padding:16px 18px;">
+              <p style="margin:0 0 14px; font-size:13px; color:#cbd5e1;">Le ganó al consenso en <span style="color:#34d399; font-weight:600;">8 de 8</span> trimestres.</p>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <sc-for list="{{ sorpresas }}" as="s" hint-placeholder-count="8">
+                  <div style="display:grid; grid-template-columns:minmax(44px,auto) minmax(0,1fr) minmax(0,1fr) minmax(24px,1.2fr) minmax(42px,auto); align-items:center; gap:0 10px;">
+                    <span style="font-size:11px; color:#5b6a80; font-variant-numeric:tabular-nums;">{{ s.trimestre }}</span>
+                    <span style="font-size:11px; color:#475569; font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">esp. {{ s.esperado }}</span>
+                    <span style="font-size:11px; color:#cbd5e1; font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">real {{ s.real }}</span>
+                    <div style="height:4px; border-radius:9999px; background:#131f33; overflow:hidden;">
+                      <div style="height:100%; border-radius:9999px; background:#34d399; width:{{ s.ancho }};"></div>
+                    </div>
+                    <span style="font-size:11px; color:#34d399; font-variant-numeric:tabular-nums; text-align:right;">{{ s.pct }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Comparables -->
+        <section id="comparables" style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+          <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Comparables del sector</h2>
+            <span style="font-size:11px; color:#475569;">las más grandes de semiconductores, por capitalización</span>
+          </header>
+          <div style="display:grid; grid-template-columns:minmax(0,1fr) 84px 96px 76px 116px; gap:0 14px; padding:9px 18px; background:#0a1220; border-bottom:1px solid #131f33; font-size:9px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">
+            <span>Empresa</span>
+            <span style="text-align:right;">Hoy</span>
+            <span style="text-align:right;">12 meses</span>
+            <span style="text-align:right;">PER</span>
+            <span style="text-align:right;">Cap.</span>
+          </div>
+          <sc-for list="{{ comparables }}" as="c" hint-placeholder-count="7">
+            <div style="display:grid; grid-template-columns:minmax(0,1fr) 84px 96px 76px 116px; align-items:center; gap:0 14px; padding:10px 18px; border-bottom:1px solid #101a2b; background:{{ c.bg }};">
+              <div style="min-width:0;">
+                <span style="display:block; font-size:12px; font-weight:500; color:{{ c.fg }};">{{ c.ticker }}</span>
+                <span style="display:block; font-size:10px; color:#5b6a80; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ c.nombre }}</span>
+              </div>
+              <span style="text-align:right; font-size:12px; font-variant-numeric:tabular-nums; color:{{ c.cDia }};">{{ c.dia }}</span>
+              <span style="text-align:right; font-size:12px; font-variant-numeric:tabular-nums; color:{{ c.cAnio }};">{{ c.anio }}</span>
+              <span style="text-align:right; font-size:12px; color:#94a3b8; font-variant-numeric:tabular-nums;">{{ c.per }}</span>
+              <span style="text-align:right; font-size:12px; color:#94a3b8; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ c.cap }}</span>
+            </div>
+          </sc-for>
+        </section>
+      </div>
+
+      <!-- ── Sidebar ── -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Earnings sube al primer lugar: es la fecha que te condiciona la semana -->
+        <section id="earnings" style="border-radius:14px; border:1px solid #1f2c1f; background:linear-gradient(135deg,#0a1a12,#080f1c 70%); overflow:hidden;">
+          <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Próximo earnings</h2>
+            <span style="font-size:11px; color:#475569;">fecha confirmada</span>
+          </header>
+          <div style="padding:16px 18px;">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:14px;">
+              <div>
+                <p style="margin:0; font-size:22px; font-weight:600; color:#f1f5f9; letter-spacing:-0.02em;">26 ago</p>
+                <p style="margin:3px 0 0; font-size:11px; color:#5b6a80;">después del cierre</p>
+              </div>
+              <div style="text-align:right;">
+                <p style="margin:0; font-size:32px; font-weight:600; color:#34d399; font-variant-numeric:tabular-nums; line-height:1; letter-spacing:-0.03em;">2</p>
+                <p style="margin:3px 0 0; font-size:11px; color:#5b6a80;">días</p>
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; padding-top:14px; border-top:1px solid #17233a;">
+              <div>
+                <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">EPS esperado</p>
+                <p style="margin:3px 0 0; font-size:15px; color:#e2e8f0; font-variant-numeric:tabular-nums;">US$1,24</p>
+              </div>
+              <div>
+                <p style="margin:0; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Ventas esperadas</p>
+                <p style="margin:3px 0 0; font-size:15px; color:#e2e8f0; font-variant-numeric:tabular-nums;">US$54,2 mil M</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="analistas" style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+          <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Analistas</h2>
+            <span style="font-size:11px; color:#475569;">62 opiniones</span>
+          </header>
+          <div style="padding:16px 18px;">
+            <p style="margin:0 0 10px; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Recomendaciones por mes</p>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <sc-for list="{{ tendencia }}" as="t" hint-placeholder-count="4">
+                <div style="display:flex; align-items:center; gap:9px;">
+                  <span style="font-size:10px; color:#5b6a80; width:26px; flex-shrink:0; font-variant-numeric:tabular-nums;">{{ t.periodo }}</span>
+                  <div style="display:flex; flex:1; height:10px; border-radius:3px; overflow:hidden; background:#0d1526;">
+                    <div style="background:rgba(52,211,153,0.7); width:{{ t.compra }};"></div>
+                    <div style="background:rgba(100,116,139,0.7); width:{{ t.mantener }};"></div>
+                    <div style="background:rgba(248,113,113,0.7); width:{{ t.venta }};"></div>
+                  </div>
+                  <span style="font-size:10px; color:#7c8ba1; width:74px; text-align:right; flex-shrink:0; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ t.nota }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="margin-top:18px; padding-top:14px; border-top:1px solid #131f33;">
+              <p style="margin:0 0 10px; font-size:10px; text-transform:uppercase; letter-spacing:0.11em; color:#5b6a80;">Movimientos recientes</p>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <sc-for list="{{ movimientos }}" as="m" hint-placeholder-count="6">
+                  <div style="display:flex; align-items:baseline; gap:9px;">
+                    <span style="font-size:11px; color:#cbd5e1; flex-shrink:0;">{{ m.firma }}</span>
+                    <span style="font-size:11px; color:#5b6a80; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ m.hacia }}</span>
+                    <span style="margin-left:auto; font-size:11px; color:#94a3b8; font-variant-numeric:tabular-nums; flex-shrink:0; white-space:nowrap;">{{ m.objetivo }} <span style="color:{{ m.color }};">{{ m.flecha }}</span></span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="noticias" style="border-radius:14px; border:1px solid #17233a; background:#080f1c; overflow:hidden;">
+          <header style="padding:12px 18px; border-bottom:1px solid #131f33; display:flex; align-items:baseline; gap:10px;">
+            <h2 style="margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:#cbd5e1;">Noticias</h2>
+          </header>
+          <sc-for list="{{ noticias }}" as="n" hint-placeholder-count="5">
+            <a href="#" style="display:block; padding:12px 18px; border-bottom:1px solid #101a2b;">
+              <p style="margin:0; font-size:12px; line-height:1.5; color:#cbd5e1; text-wrap:pretty;">{{ n.titulo }}</p>
+              <p style="margin:5px 0 0; font-size:10px; color:#475569;">{{ n.medio }} · {{ n.fecha }}</p>
+            </a>
+          </sc-for>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1200}}">
+const GREEN = "#34d399", RED = "#f87171", NEUTRO = "#7c8ba1";
+const n2 = (v, d) => v.toLocaleString("es-AR", { minimumFractionDigits: d ?? 2, maximumFractionDigits: d ?? 2 });
+const fpct = (v, d) => (v > 0 ? "+" : v < 0 ? "−" : "") + n2(Math.abs(v), d ?? 2) + "%";
+const cpct = v => v > 0 ? GREEN : v < 0 ? RED : NEUTRO;
+
+const PRECIO = 182.44, OBJETIVO = 215, OBJ_MIN = 168, OBJ_MAX = 260;
+const ESCALA_MIN = 140, ESCALA_MAX = 275;
+const pos = v => ((v - ESCALA_MIN) / (ESCALA_MAX - ESCALA_MIN)) * 100 + "%";
+
+// label, retorno del papel, retorno del S&P
+const RETORNOS = [
+  ["1 semana", 4.82, 1.18], ["1 mes", 11.64, 2.64], ["3 meses", 28.40, 6.12],
+  ["6 meses", 41.20, 9.85], ["En el año", 52.86, 12.40], ["12 meses", 96.35, 17.62],
+];
+
+// grupo, nota, [label, valor, mediana, formato, sentido]
+const FUNDAMENTALS = [
+  ["Valuación", "sin color: caro no es malo por sí solo", [
+    ["PER", 54.2, 22.8, "num", "caro"],
+    ["PER forward", 38.6, 19.4, "num", "caro"],
+    ["Precio / libros", 48.9, 3.6, "num", "caro"],
+  ]],
+  ["Rentabilidad", "más es mejor", [
+    ["Margen bruto", 74.6, 48.2, "pct", "mejor"],
+    ["Margen neto", 55.8, 18.4, "pct", "mejor"],
+    ["ROE", 115.4, 21.6, "pct", "mejor"],
+  ]],
+  ["Crecimiento", "último trimestre contra el mismo del año anterior", [
+    ["Crec. ventas", 62.4, 8.6, "pct", "mejor"],
+    ["Crec. ganancias", 78.9, 11.2, "pct", "mejor"],
+  ]],
+  ["Deuda", "menos es mejor", [
+    ["Deuda / patrimonio", 12.8, 58.4, "pct", "apalancado"],
+  ]],
+];
+
+const HISTORIA = [
+  [2021, 26.91, 26], [2022, 26.97, 16], [2023, 60.92, 49],
+  [2024, 130.50, 56], [2025, 148.20, 56],
+];
+
+const SORPRESAS = [
+  ["2026-04", 1.01, 1.12, 10.9], ["2026-01", 0.84, 0.92, 9.5],
+  ["2025-10", 0.75, 0.81, 8.0], ["2025-07", 0.64, 0.68, 6.3],
+  ["2025-04", 0.60, 0.64, 6.7], ["2025-01", 0.52, 0.56, 7.7],
+  ["2024-10", 0.47, 0.51, 8.5], ["2024-07", 0.42, 0.46, 9.5],
+];
+
+const COMPARABLES = [
+  ["NVDA","NVIDIA Corporation", 2.14, 96.35, 54.2, "US$4,43 bill."],
+  ["AVGO","Broadcom Inc.", 1.42, 68.20, 42.6, "US$1,68 bill."],
+  ["AMD","Advanced Micro Devices", 1.86, 34.80, 89.1, "US$280,4 mil M"],
+  ["QCOM","QUALCOMM Incorporated", 0.64, 12.40, 16.8, "US$196,2 mil M"],
+  ["TXN","Texas Instruments", -0.28, 6.90, 34.2, "US$182,6 mil M"],
+  ["MU","Micron Technology", 2.86, 48.60, 14.6, "US$142,8 mil M"],
+  ["INTC","Intel Corporation", -1.24, -18.40, -12.6, "US$98,4 mil M"],
+];
+
+const TENDENCIA = [
+  ["hoy", 54, 7, 1], ["1m", 52, 8, 1], ["2m", 49, 10, 2], ["3m", 46, 12, 2],
+];
+
+const MOVIMIENTOS = [
+  ["Morgan Stanley", "mantiene Compra", 230, 1],
+  ["Goldman Sachs", "mantiene Compra", 225, 1],
+  ["Bernstein", "sube a Compra fuerte", 240, 1],
+  ["UBS", "mantiene Compra", 215, 0],
+  ["Wells Fargo", "recorta objetivo", 205, -1],
+  ["Citi", "mantiene Compra", 220, 1],
+];
+
+// titulo, medio, fecha — los tres campos que trae PanelNoticias
+const NOTICIAS = [
+  ["NVIDIA presenta resultados del segundo trimestre fiscal el miércoles después del cierre", "Reuters", "24 ago"],
+  ["Los hyperscalers elevan otra vez su presupuesto de capital para centros de datos", "Bloomberg", "24 ago"],
+  ["Las restricciones a la exportación hacia China siguen sin definición regulatoria", "Financial Times", "23 ago"],
+  ["Blackwell entra en producción de volumen según la cadena de suministro taiwanesa", "DigiTimes", "23 ago"],
+  ["El peso de NVDA en el S&P 500 vuelve a superar el 8%", "Barron's", "22 ago"],
+];
+
+function rng(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }; }
+
+class Component extends DCLogic {
+  renderVals() {
+    // TradingView monta el gráfico con interval "D" y range "12M", y trae sus
+    // propios controles de rango: acá se dibuja ese mismo tramo, nada más.
+    const n = 252;
+    const r = rng(7);
+    const serie = [];
+    let v = PRECIO;
+    for (let i = 0; i < n; i++) { serie.unshift(v); v = v / (1 + (r() - 0.44) * 0.035); }
+    serie[n - 1] = PRECIO;
+
+    const min = Math.min(...serie, OBJETIVO * 0.98), max = Math.max(...serie, OBJETIVO * 1.02);
+    const range = max - min;
+    const y = val => (390 - ((val - min) / range) * 380).toFixed(1);
+    const sx = 900 / (n - 1);
+    const pts = serie.map((val, i) => [(i * sx).toFixed(1), y(val)]);
+    const chartPath = pts.map(([x, yy], i) => (i ? "L" : "M") + x + "," + yy).join(" ");
+
+    // Doce meses hacia atrás desde hoy (24/08/2026), derivados de la fecha
+    const MES_CORTO = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+    const meses = [];
+    for (let i = 11; i >= 0; i -= 2) {
+      const d = new Date(2026, 7 - i, 1);
+      meses.push(MES_CORTO[d.getMonth()] + " " + String(d.getFullYear()).slice(2));
+    }
+
+    const mkMetrica = ([label, valor, mediana, formato, sentido]) => {
+      const desvio = (valor / mediana - 1) * 100;
+      const mag = Math.abs(desvio);
+      const arriba = desvio > 0;
+      let lectura, tono;
+      if (mag < 10) { lectura = "en línea con sus pares"; tono = NEUTRO; }
+      else {
+        const mucho = mag >= 40 ? "mucho " : "";
+        if (sentido === "caro") { lectura = mucho + "más " + (arriba ? "caro" : "barato"); tono = NEUTRO; }
+        else if (sentido === "apalancado") { lectura = mucho + (arriba ? "más" : "menos") + " endeudado"; tono = arriba ? RED : GREEN; }
+        else { lectura = mucho + (arriba ? "por encima" : "por debajo"); tono = arriba ? GREEN : RED; }
+      }
+      const ancho = Math.min(mag, 100) / 2;
+      const fmt = x => formato === "pct" ? n2(x, 1) + "%" : n2(x, 1);
+      return {
+        label, lectura, tono, valor: fmt(valor), mediana: fmt(mediana),
+        barra: tono === NEUTRO ? "#64748b" : tono,
+        left: arriba ? "50%" : (50 - ancho) + "%",
+        ancho: ancho + "%",
+      };
+    };
+
+    const maxVentas = Math.max(...HISTORIA.map(h => h[1]));
+    const maxSorpresa = Math.max(...SORPRESAS.map(s => s[3]));
+
+    return {
+      anclas: [
+        { label: "Precio", href: "#grafico" }, { label: "Empresa", href: "#empresa" },
+        { label: "Fundamentals", href: "#fundamentals" }, { label: "Comparables", href: "#comparables" },
+        { label: "Analistas", href: "#analistas" }, { label: "Earnings", href: "#earnings" },
+      ],
+      retornos: RETORNOS.map(([label, val, idx]) => {
+        const tope = 100;
+        const a = Math.min(Math.abs(val), tope) / tope * 50;
+        return {
+          label, pct: fpct(val, 1), color: cpct(val), indice: fpct(idx, 1),
+          left: val >= 0 ? "50%" : (50 - a) + "%", ancho: a + "%",
+        };
+      }),
+      objLeft: pos(OBJ_MIN), objAncho: ((OBJ_MAX - OBJ_MIN) / (ESCALA_MAX - ESCALA_MIN)) * 100 + "%",
+      precioX: pos(PRECIO), objetivoX: pos(OBJETIVO),
+      chartPath,
+      chartArea: chartPath + " L900,390 L0,390 Z",
+      chartGrid: [0, 1, 2, 3, 4, 5].map(i => ({ y: (10 + i * 76).toFixed(0) })),
+      chartLabels: meses.map(label => ({ label })),
+      objetivoY: y(OBJETIVO),
+      ficha: [
+        { label: "Fundada", valor: "1993", nota: "hace 33 años" },
+        { label: "Empleados", valor: "36.000", nota: null },
+        { label: "Sede", valor: "Santa Clara, California", nota: "Estados Unidos" },
+        { label: "Industria", valor: "Semiconductores", nota: null },
+        { label: "Sector", valor: "Tecnología", nota: null },
+      ],
+      grupos: FUNDAMENTALS.map(([label, nota, ms]) => ({
+        label, nota, metricas: ms.map(mkMetrica),
+      })),
+      historia: HISTORIA.map(([anio, ventas, margen]) => ({
+        anio: String(anio),
+        ventas: "US$" + n2(ventas, 1) + " mil M",
+        ancho: (ventas / maxVentas) * 100 + "%",
+        margen: margen + "%",
+      })),
+      sorpresas: SORPRESAS.map(([trimestre, esp, real, pct]) => ({
+        trimestre, esperado: "US$" + n2(esp), real: "US$" + n2(real),
+        pct: fpct(pct, 1), ancho: (pct / maxSorpresa) * 100 + "%",
+      })),
+      comparables: COMPARABLES.map(([ticker, nombre, dia, anio, per, cap]) => ({
+        ticker, nombre, cap,
+        dia: fpct(dia), cDia: cpct(dia), anio: fpct(anio), cAnio: cpct(anio),
+        per: per < 0 ? "—" : n2(per, 1),
+        bg: ticker === "NVDA" ? "rgba(30,41,59,0.5)" : "transparent",
+        fg: ticker === "NVDA" ? "#f1f5f9" : "#cbd5e1",
+      })),
+      tendencia: TENDENCIA.map(([periodo, c, m, v]) => {
+        const t = c + m + v;
+        return {
+          periodo, compra: (c / t) * 100 + "%", mantener: (m / t) * 100 + "%", venta: (v / t) * 100 + "%",
+          nota: c + "/" + t + " compra",
+        };
+      }),
+      movimientos: MOVIMIENTOS.map(([firma, hacia, objetivo, dir]) => ({
+        firma, hacia, objetivo: "US$" + objetivo,
+        flecha: dir > 0 ? "↑" : dir < 0 ? "↓" : "",
+        color: dir > 0 ? GREEN : dir < 0 ? RED : "transparent",
+      })),
+      noticias: NOTICIAS.map(([titulo, medio, fecha]) => ({ titulo, medio, fecha })),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

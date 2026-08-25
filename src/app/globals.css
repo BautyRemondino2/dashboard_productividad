@@ -2,47 +2,104 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Tokens del sistema
+
+   Base slate corrida hacia el azul frío. Los nombres dicen para qué sirve cada
+   color, no de qué color es: así una fila de tabla y el divisor de un card
+   comparten token porque cumplen la misma función, y cambiarlo los mueve a los
+   dos. Los valores salen del handoff de diseño y son finales.
+   ──────────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Fondos */
+  --color-fondo:        #020617;
+  --color-card:         #080f1c;
+  --color-chip:         #141f33;
+  --color-boton:        #0d1526;
+  --color-encabezado:   #0a1220;  /* header de tabla, pie de sección */
+
+  /* Bordes. Tres pesos: el del card, el que divide adentro, y el del control */
+  --color-borde:        #17233a;
+  --color-divisor:      #131f33;
+  --color-divisor-fino: #101a2b;  /* entre filas, más tenue que el del card */
+  --color-outline:      #24344d;  /* botón, chip, input */
+  --color-borde-nav:    #131c2e;
+  --color-separador:    #1e293b;
+
+  /* Texto, de más fuerte a más tenue */
+  --color-num:          #f8fafc;  /* cifra hero, heading */
+  --color-titulo:       #f1f5f9;
+  --color-cuerpo:       #e2e8f0;
+  --color-secundario:   #94a3b8;
+  --color-label:        #7c8ba1;  /* nav inactivo, label de dato */
+  --color-tenue:        #5b6a80;  /* label uppercase, nav terciario */
+  --color-meta:         #64748b;
+  --color-meta-suave:   #475569;  /* fechas, notas al pie */
+
+  /* Semánticos. Suba y baja son los únicos colores que codifican signo */
+  --color-sube:         #34d399;
+  --color-baja:         #f87171;
+  --color-marca:        oklch(48% 0.16 258);
+  --color-acento-verde: oklch(70% 0.11 150);
+  --color-acento-rojo:  oklch(70% 0.11 30);
+
+  /* Radios. La densidad es intencional: no redondear a la escala de Tailwind */
+  --radius-card:        14px;
+  --radius-chip:        7px;
+  --radius-badge:       6px;
+}
+
 :root {
   color-scheme: dark;
 }
 
 html, body {
-  background: #020617;
+  background: var(--color-fondo);
 }
 
 body {
   font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
   font-feature-settings: 'ss01', 'cv11';
   -webkit-font-smoothing: antialiased;
-  color: rgb(226, 232, 240);
+  color: var(--color-cuerpo);
 }
 
-/* Staggered fade-up for main sections */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ─── Superficies con gradiente ───────────────────────────────────────────────
+   No son tokens de color porque un gradiente no puede vivir en `--color-*`, y
+   forzarlo perdería las utilidades de Tailwind para el resto. */
+
+/* El nav flota sobre el contenido, así que va translúcido con desenfoque */
+.sup-nav {
+  background: rgba(2, 6, 23, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.fade-up {
-  animation: fadeUp 0.35s ease-out both;
-}
-.fade-up-1 { animation-delay: 0ms; }
-.fade-up-2 { animation-delay: 40ms; }
-.fade-up-3 { animation-delay: 80ms; }
-.fade-up-4 { animation-delay: 120ms; }
-.fade-up-5 { animation-delay: 160ms; }
+.sup-cinta      { background: linear-gradient(180deg, #070d1a, #050a14); }
+.sup-destacada  { background: linear-gradient(180deg, #0b1322, #080f1c); }
+.sup-earnings   { background: linear-gradient(135deg, #0a1a12, #080f1c 70%); }
+.sup-ficha      { background: linear-gradient(135deg, #0c1526, #080f1c 60%); }
 
-/* Subtle scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: rgb(30, 41, 59); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgb(51, 65, 85); }
-::-webkit-scrollbar-track { background: transparent; }
+/* ─── Tipografía ───────────────────────────────────────────────────────────── */
 
-/* Pretty text wrap for headings */
 h1, h2, h3 { text-wrap: pretty; }
 
-/* Tabular nums helper */
+/* Toda cifra va tabular: es lo que deja comparar una columna de un vistazo */
 .tabular { font-variant-numeric: tabular-nums; }
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--color-separador); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #334155; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Las animaciones de entrada se sacaron a propósito: en un panel que se abre
+   para mirar precios, que las cifras aparezcan escalonadas retrasa la lectura.
+   La clase queda como no-op para no romper las páginas que todavía la nombran. */
+.fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-up-4, .fade-up-5 {
+  animation: none;
+}
 
 /* ─── Print: optimize the RichSummary for A4 export ────────────────────────
    When the user hits Cmd+P or the "Imprimir / PDF" button, we hide every UI

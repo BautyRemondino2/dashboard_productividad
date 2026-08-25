@@ -4,6 +4,8 @@ import "./globals.css";
 import TopNav from "@/components/TopNav";
 import CommandPalette from "@/components/CommandPalette";
 import { DB_IS_EPHEMERAL } from "@/lib/db";
+import CintaIndicadores from "@/components/CintaIndicadores";
+import { ultimaActualizacion } from "@/lib/cinta";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
@@ -13,11 +15,22 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // El sello del nav sale de la misma lectura que alimenta la cinta
+  let actualizado: string | null = null;
+  try {
+    actualizado = ultimaActualizacion();
+  } catch {
+    /* sin base: el nav se dibuja igual, sin sello */
+  }
+
   return (
     <html lang="es" className={`${geist.variable} dark h-full`}>
-      <body className="flex flex-col h-full bg-slate-950 text-slate-100 antialiased">
-        <TopNav ephemeral={DB_IS_EPHEMERAL} />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+      {/* El scroll lo maneja el documento y no un contenedor interno: es lo que
+          permite que el nav y la cinta queden pegados arriba con `sticky`. */}
+      <body className="min-h-full bg-fondo text-cuerpo antialiased pb-16">
+        <TopNav ephemeral={DB_IS_EPHEMERAL} actualizado={actualizado} />
+        <CintaIndicadores />
+        <main>{children}</main>
         <CommandPalette />
       </body>
     </html>
