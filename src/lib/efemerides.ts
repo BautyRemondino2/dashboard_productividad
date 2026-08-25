@@ -187,23 +187,39 @@ export function fmtEfemerideDate(date: string): string {
   return `${days[d.getDay()]} ${d.getDate()} de ${months[d.getMonth()]}`;
 }
 
-/** Detects if a date sits in a long weekend (3+ consecutive non-working days
- *  including weekend), useful for surfacing "finde largo" hints. */
+/**
+ * Si el feriado arma un fin de semana largo de tres días o más.
+ *
+ * Lunes y viernes lo arman solos, pegados al sábado y domingo. Martes y jueves
+ * **no**: hace falta que el lunes o el viernes de al lado también sea feriado o
+ * no laborable, que en Argentina es una decisión aparte del Ejecutivo. Antes
+ * esta rama devolvía `true` sin verificarlo —el comentario describía el chequeo
+ * pero el código no lo hacía—, y acertaba de casualidad porque los únicos
+ * martes cargados son los de Carnaval, que sí tienen el lunes feriado.
+ */
 export function isLongWeekend(efemeride: Efemeride, all: Efemeride[]): boolean {
   if (efemeride.type !== "feriado") return false;
+
   const d = new Date(efemeride.date + "T12:00:00");
-  const dow = d.getDay(); // 0 Sun, 6 Sat
-  // Monday adjacent to Sat-Sun, or Friday adjacent to Sat-Sun, or Tue/Thu making 4-day
+  const dow = d.getDay(); // 0 domingo, 6 sábado
+
   if (dow === 1 || dow === 5) return true;
-  if (dow === 2 || dow === 4) {
-    // Need a non-laborable day on Monday or Friday respectively (puente)
-    return true;
-  }
-  // Multi-day holidays (carnaval lunes+martes)
-  const adjacent = all.find(e =>
-    e.date !== efemeride.date &&
-    Math.abs(new Date(e.date + "T12:00:00").getTime() - d.getTime()) <= 86_400_000 &&
-    e.type === "feriado"
-  );
-  return Boolean(adjacent);
+
+  /** Si el día a `offset` días también corta la actividad. */
+  const noSeTrabaja = (offset: number) => {
+    const otro = new Date(d.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+    return all.some(
+      (e) => e.date === otro && (e.type === "feriado" || e.type === "no-laborable")
+    );
+  };
+
+  // Martes necesita el lunes; jueves necesita el viernes
+  if (dow === 2) return noSeTrabaja(-1);
+  if (dow === 4) return noSeTrabaja(1);
+
+  // Miércoles sólo si es parte de una tanda de feriados consecutivos
+  if (dow === 3) return noSeTrabaja(-1) || noSeTrabaja(1);
+
+  // Sábado o domingo: ya cae dentro del fin de semana
+  return false;
 }
