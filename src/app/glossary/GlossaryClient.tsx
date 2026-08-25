@@ -1304,7 +1304,7 @@ export default function GlossaryClient({ terms: initialTerms }: Props) {
 
   return (
     <>
-    <div className="fade-up fade-up-2">
+    <div>
       {/* Search + new */}
       <div className="flex items-center gap-4 mb-5">
         <div className="relative flex-1">
@@ -1397,7 +1397,7 @@ export default function GlossaryClient({ terms: initialTerms }: Props) {
       </div>
     </div>
 
-    {/* fixed portals — outside the fade-up div to avoid transform containing-block bug */}
+    {/* fixed portals — outside the div to avoid transform containing-block bug */}
     <Drawer term={selected} allTerms={localTerms} onClose={() => setSelectedId(null)}
       onToggleFav={toggleFav} onDelete={deleteTerm} onUpdate={updateTerm}
       onOpenTerm={setSelectedId} onAddToCompare={toggleCompare}

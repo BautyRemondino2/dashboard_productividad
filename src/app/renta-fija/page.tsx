@@ -6,6 +6,7 @@ import { VISTA_RENTA_FIJA } from "@/lib/mercado";
 import RefreshButton from "@/app/mercado/RefreshButton";
 import CurvaSoberanos from "./CurvaSoberanos";
 import CurvaOns from "./CurvaOns";
+import Card, { Contenedor, EncabezadoPagina } from "@/components/Card";
 
 export const metadata = { title: "Renta fija · Dashboard" };
 
@@ -34,45 +35,29 @@ export default function RentaFijaPage() {
   const validacion = validarCurva(curva, precios["RIESGO_PAIS"] ?? null, precios["UST10Y"] ?? null);
 
   return (
-    <div className="px-8 py-7 max-w-[1400px]">
-      <div className="mb-6 fade-up fade-up-1 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[11px] uppercase tracking-widest text-slate-600 mb-1">Dashboard</p>
-          <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">Renta fija</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Soberanos hard-dollar, curva en pesos y corporativos · {total} instrumentos ·{" "}
-            {conDatos} con datos
-          </p>
-        </div>
-        <RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />
-      </div>
+    <Contenedor>
+      <EncabezadoPagina
+        titulo="Renta fija"
+        bajada={`Soberanos hard-dollar y corporativos · ${curva.length} soberanos en la curva · ${total} instrumentos, ${conDatos} con datos`}
+        derecha={<RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />}
+      />
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900/20 overflow-hidden mb-6 fade-up fade-up-2">
-        <header className="px-4 py-3 border-b border-slate-800/80 flex items-baseline gap-3 flex-wrap">
-          <h2 className="text-[13px] font-semibold text-slate-200">Curva de soberanos</h2>
-          <span className="text-[10px] text-slate-600">
-            TIR anual con capitalización semestral y base 30/360, calculada sobre los flujos
-          </span>
-        </header>
-        <div className="p-4">
+      <div className="space-y-4">
+        <Card
+          titulo="Curva de soberanos"
+          nota="TIR contra duration · capitalización semestral, base 30/360"
+          acento="var(--color-acento-verde)"
+          destacada
+        >
           <CurvaSoberanos puntos={curva} spreads={spreads} validacion={validacion} />
-        </div>
-      </section>
+        </Card>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900/20 overflow-hidden mb-6 fade-up fade-up-2">
-        <header className="px-4 py-3 border-b border-slate-800/80 flex items-baseline gap-3 flex-wrap">
-          <h2 className="text-[13px] font-semibold text-slate-200">
-            Obligaciones negociables
-          </h2>
-          <span className="text-[10px] text-slate-600">
-            corporativas en dólares · lo que rinden por encima del soberano es el riesgo de
-            la empresa
-          </span>
-        </header>
-        <div className="p-4">
-          <Suspense
-            fallback={<div className="h-[380px] animate-pulse bg-slate-900/30 rounded" />}
-          >
+        <Card
+          titulo="Obligaciones negociables"
+          nota="corporativas en dólares · lo que rinden por encima del soberano es el riesgo de la empresa"
+          acento="var(--color-acento-rojo)"
+        >
+          <Suspense fallback={<div className="h-[380px] animate-pulse bg-encabezado rounded-card" />}>
             {/* Sólo la curva ley NY como referencia: mezclar las dos leyes
                 daba una línea en zigzag que no es ninguna de las dos */}
             <SeccionOns
@@ -81,15 +66,15 @@ export default function RentaFijaPage() {
                 .map((p) => ({ duration: p.duration, tir: p.tir, ticker: p.ticker }))}
             />
           </Suspense>
-        </div>
-      </section>
+        </Card>
 
-      <MercadoClient
-        instruments={datos.instruments}
-        series={datos.series}
-        definiciones={datos.definiciones}
-        vista={VISTA_RENTA_FIJA}
-      />
-    </div>
+        <MercadoClient
+          instruments={datos.instruments}
+          series={datos.series}
+          definiciones={datos.definiciones}
+          vista={VISTA_RENTA_FIJA}
+        />
+      </div>
+    </Contenedor>
   );
 }

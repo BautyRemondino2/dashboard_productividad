@@ -6,6 +6,7 @@ import MapaProvincias from "./MapaProvincias";
 import Gobierno from "./Gobierno";
 import { getDatosProvinciales } from "@/lib/macro-provincias";
 import { Suspense } from "react";
+import Card, { Contenedor, EncabezadoPagina } from "@/components/Card";
 
 export const metadata = { title: "Macro Argentina · Dashboard" };
 
@@ -24,19 +25,12 @@ export default function MacroPage() {
   const { total, conDatos } = contarPorGrupos(datos, VISTA_MERCADO.tiles);
 
   return (
-    <div className="px-8 py-7 max-w-[1400px]">
-      <div className="mb-6 fade-up fade-up-1 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[11px] uppercase tracking-widest text-slate-600 mb-1">Dashboard</p>
-          <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">
-            Macro Argentina
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Dólar, tasas, inflación y actividad · {total} indicadores · {conDatos} con datos
-          </p>
-        </div>
-        <RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />
-      </div>
+    <Contenedor>
+      <EncabezadoPagina
+        titulo="Macro Argentina"
+        bajada={`Dólar, tasas, inflación y actividad · ${conDatos} de ${total} indicadores con dato`}
+        derecha={<RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />}
+      />
 
       <MercadoClient
         instruments={datos.instruments}
@@ -45,14 +39,14 @@ export default function MacroPage() {
         vista={VISTA_MERCADO}
       />
 
-      <div className="space-y-5 mt-7 fade-up fade-up-3">
+      <div className="space-y-4 mt-4">
         <Gobierno />
         <Suspense
-          fallback={<div className="h-[420px] rounded-xl border border-slate-800 bg-slate-900/20 animate-pulse" />}
+          fallback={<div className="h-[420px] rounded-card border border-borde bg-card animate-pulse" />}
         >
           <Provincias />
         </Suspense>
       </div>
-    </div>
+    </Contenedor>
   );
 }

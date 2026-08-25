@@ -64,8 +64,8 @@ export default function DefinicionPopover({ def, nombre }: { def: InstrumentoDef
         ?
       </button>
 
-      {/* Portal al body: las secciones .fade-up dejan un transform aplicado y un
-          ancestro con transform vuelve el fixed relativo a él, no al viewport. */}
+      {/* Portal al body: cualquier ancestro con transform vuelve el `fixed`
+          relativo a él y no al viewport, y el popover se iría de lugar. */}
       {open && pos && createPortal(
         <div
           ref={popRef}

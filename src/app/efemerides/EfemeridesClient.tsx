@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import type { Efemeride, EfemerideType } from "@/lib/efemerides";
+import { Contenedor } from "@/components/Card";
 
 interface DecoratedEfemeride extends Efemeride {
   days: number;
@@ -79,11 +80,10 @@ export default function EfemeridesClient({ today, year, thisYear, nextYear }: Pr
   }, [yearTab, thisYear, nextYear]);
 
   return (
-    <div className="px-8 py-7 max-w-[1100px] mx-auto fade-up fade-up-1">
+    <Contenedor ancho={1180}>
       {/* Header */}
       <div className="mb-6">
-        <p className="text-[11px] uppercase tracking-widest text-slate-600 mb-1">Calendario</p>
-        <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">Efemérides argentinas</h1>
+        <h1 className="text-[26px] font-semibold text-titulo tracking-[-0.02em]">Efemérides y feriados</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           Feriados nacionales, días no laborables y fechas históricas con su contexto.
         </p>
@@ -92,7 +92,7 @@ export default function EfemeridesClient({ today, year, thisYear, nextYear }: Pr
       {/* Next event hero */}
       {next && (
         <div
-          className={`mb-6 rounded-xl border px-6 py-5 fade-up fade-up-2 ${
+          className={`mb-6 rounded-xl border px-6 py-5 ${
             next.days === 0 ? "border-emerald-700 bg-emerald-950/30"
             : next.days <= 3 ? "border-emerald-900/60 bg-emerald-950/20"
             : "border-slate-800 bg-slate-900/40"
@@ -128,7 +128,7 @@ export default function EfemeridesClient({ today, year, thisYear, nextYear }: Pr
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 fade-up fade-up-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Stat label="Feriados" value={stats.feriados} dotClass="bg-emerald-400" />
         <Stat label="No laborables" value={stats.noLab} dotClass="bg-amber-400" />
         <Stat label="Efemérides" value={stats.efems} dotClass="bg-slate-500" />
@@ -136,7 +136,7 @@ export default function EfemeridesClient({ today, year, thisYear, nextYear }: Pr
       </div>
 
       {/* Tabs + filters */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap fade-up fade-up-4">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="inline-flex items-center bg-slate-900/60 border border-slate-800 rounded-md p-0.5 gap-0.5">
           <TabPill active={yearTab === "upcoming"} onClick={() => setYearTab("upcoming")}>Próximas</TabPill>
           <TabPill active={yearTab === "this"} onClick={() => setYearTab("this")}>{year}</TabPill>
@@ -153,7 +153,7 @@ export default function EfemeridesClient({ today, year, thisYear, nextYear }: Pr
       </div>
 
       {/* Body */}
-      <div className="fade-up fade-up-5">
+      <div>
         {byMonth.length === 0 ? (
           <p className="text-center text-[13px] text-slate-500 py-12">Sin resultados con este filtro.</p>
         ) : yearTab === "upcoming" ? (
@@ -179,7 +179,7 @@ export default function EfemeridesClient({ today, year, thisYear, nextYear }: Pr
           </div>
         )}
       </div>
-    </div>
+    </Contenedor>
   );
 }
 

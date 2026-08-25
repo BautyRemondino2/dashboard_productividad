@@ -94,13 +94,6 @@ h1, h2, h3 { text-wrap: pretty; }
 ::-webkit-scrollbar-thumb:hover { background: #334155; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* Las animaciones de entrada se sacaron a propósito: en un panel que se abre
-   para mirar precios, que las cifras aparezcan escalonadas retrasa la lectura.
-   La clase queda como no-op para no romper las páginas que todavía la nombran. */
-.fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-up-4, .fade-up-5 {
-  animation: none;
-}
-
 /* ─── Print: optimize the RichSummary for A4 export ────────────────────────
    When the user hits Cmd+P or the "Imprimir / PDF" button, we hide every UI
    chrome (nav, rail, hero, tabs) and show ONLY the RichSummary on a clean

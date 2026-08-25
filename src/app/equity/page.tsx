@@ -6,6 +6,7 @@ import EquityClient from "./EquityClient";
 import Referencias from "./Referencias";
 import FranjaEtf from "./FranjaEtf";
 import RefrescarEquity from "./RefrescarEquity";
+import { Contenedor, EncabezadoPagina } from "@/components/Card";
 
 export const metadata = { title: "Equity · Dashboard" };
 
@@ -38,8 +39,8 @@ async function Ranking() {
 
 function Esqueleto() {
   return (
-    <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/20">
-      <div className="h-8 bg-slate-900/60 border-b border-slate-800" />
+    <div className="border border-borde rounded-card overflow-hidden bg-card">
+      <div className="h-8 bg-encabezado border-b border-divisor" />
       <div className="divide-y divide-slate-900">
         {Array.from({ length: 12 }, (_, i) => (
           <div key={i} className="h-[43px] px-4 flex items-center gap-3">
@@ -56,25 +57,22 @@ function Esqueleto() {
 
 export default function EquityPage() {
   return (
-    <div className="px-8 py-7 max-w-[1600px]">
-      <div className="mb-6 fade-up fade-up-1 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[11px] uppercase tracking-widest text-slate-600 mb-1">Dashboard</p>
-          <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">Equity</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            NYSE + Nasdaq · {UNIVERSO.length} empresas · lo que más se movió
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/equity/earnings"
-            className="text-[11px] px-3 py-1.5 rounded-md border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-colors whitespace-nowrap"
-          >
-            calendario de earnings →
-          </Link>
-          <RefrescarEquity />
-        </div>
-      </div>
+    <Contenedor ancho={1600}>
+      <EncabezadoPagina
+        titulo="Equity"
+        bajada={`NYSE + Nasdaq · ${UNIVERSO.length} empresas · lo que más se movió`}
+        derecha={
+          <div className="flex items-center gap-2">
+            <Link
+              href="/equity/earnings"
+              className="text-[11px] px-[11px] py-[5px] rounded-chip border border-outline text-secundario hover:text-titulo transition-colors duration-[120ms] whitespace-nowrap"
+            >
+              calendario de earnings →
+            </Link>
+            <RefrescarEquity />
+          </div>
+        }
+      />
 
       <div className="space-y-4">
         <Suspense
@@ -93,6 +91,6 @@ export default function EquityPage() {
           <Ranking />
         </Suspense>
       </div>
-    </div>
+    </Contenedor>
   );
 }

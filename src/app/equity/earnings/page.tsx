@@ -142,7 +142,7 @@ async function Calendario() {
 export default function EarningsPage() {
   return (
     <div className="px-8 py-7 max-w-[1200px]">
-      <div className="mb-6 fade-up fade-up-1">
+      <div className="mb-6">
         <Link
           href="/equity"
           className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors"

@@ -493,7 +493,7 @@ export default function MercadoClient({
   return (
     <>
       <div className="grid gap-6 xl:grid-cols-[1fr_340px] items-start">
-        <div className="space-y-7 fade-up fade-up-2 min-w-0">
+        <div className="space-y-7 min-w-0">
           {sinDatos && (
             <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-4">
               <p className="text-[13px] text-slate-300 font-medium">Todavía no hay datos.</p>
@@ -544,7 +544,7 @@ export default function MercadoClient({
           })}
         </div>
 
-        <div className="space-y-3 fade-up fade-up-3 xl:sticky xl:top-6">
+        <div className="space-y-3 xl:sticky xl:top-6">
           {sinFuente.length > 0 && (
             <CargaPanel instruments={sinFuente} lastByTicker={lastByTicker} />
           )}

@@ -19,6 +19,7 @@ import type { FilaTablero } from "@/lib/equity-formato";
 import GraficoTradingView from "@/components/GraficoTradingView";
 import Logo from "./Logo";
 import { PanelNoticias } from "./Investigacion";
+import Card from "@/components/Card";
 
 export const dynamic = "force-dynamic";
 
@@ -47,22 +48,6 @@ function Dato({ label, valor, ayuda }: { label: string; valor: string; ayuda?: s
       <p className="text-[10px] uppercase tracking-wider text-slate-600">{label}</p>
       <p className="text-[15px] text-slate-200 tabular-nums mt-0.5">{valor}</p>
     </div>
-  );
-}
-
-function Panel({ titulo, nota, children }: {
-  titulo: string;
-  nota?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/20 overflow-hidden">
-      <header className="px-4 py-2.5 border-b border-slate-800/80 flex items-baseline gap-2">
-        <h2 className="text-[12px] font-semibold text-slate-200">{titulo}</h2>
-        {nota && <span className="text-[10px] text-slate-600">{nota}</span>}
-      </header>
-      <div className="p-4">{children}</div>
-    </section>
   );
 }
 
@@ -196,12 +181,12 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
     ana.precioObjetivo && ficha.precio ? (ana.precioObjetivo / ficha.precio - 1) * 100 : null;
 
   return (
-    <div className="px-8 py-7 max-w-[1600px] mx-auto">
+    <div className="mx-auto px-6 pt-6 max-w-[1600px]">
       {/* ── Encabezado ──────────────────────────────────────────────── */}
-      <div className="mb-6 fade-up fade-up-1">
+      <div className="mb-6">
         <Link
           href="/equity"
-          className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
+          className="text-[11px] text-tenue hover:text-secundario transition-colors duration-[120ms]"
         >
           ← Equity
         </Link>
@@ -210,7 +195,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
           <div className="min-w-0 flex items-start gap-3">
             <Logo web={ficha.web} ticker={ficha.ticker} tamaño={44} />
             <div className="min-w-0">
-            <h1 className="text-3xl font-semibold text-slate-100 tracking-tight">
+            <h1 className="text-[34px] leading-none font-semibold text-num tracking-[-0.03em]">
               {ficha.ticker}
             </h1>
             <p className="text-sm text-slate-400 mt-0.5">{ficha.nombre}</p>
@@ -251,29 +236,29 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
         <div className="space-y-5 min-w-0">
           <GraficoTradingView ticker={ficha.ticker} />
 
-          <Panel titulo="Retornos" nota="sobre cierres diarios">
+          <Card titulo="Retornos" nota="sobre cierres diarios">
             <Suspense
               fallback={<div className="h-[46px] animate-pulse bg-slate-900/50 rounded" />}
             >
               <Retornos ticker={ficha.ticker} />
             </Suspense>
-          </Panel>
+          </Card>
 
           <div className="grid md:grid-cols-2 gap-5">
-            <Panel titulo="Ventas y márgenes" nota="por año">
+            <Card titulo="Ventas y márgenes" nota="por año">
               <Suspense fallback={<div className="h-[130px] animate-pulse bg-slate-900/40 rounded" />}>
                 <Historia ticker={ficha.ticker} />
               </Suspense>
-            </Panel>
+            </Card>
 
-            <Panel titulo="Resultados vs. consenso" nota="últimos trimestres">
+            <Card titulo="Resultados vs. consenso" nota="últimos trimestres">
               <Suspense fallback={<div className="h-[130px] animate-pulse bg-slate-900/40 rounded" />}>
                 <Sorpresas ticker={ficha.ticker} />
               </Suspense>
-            </Panel>
+            </Card>
           </div>
 
-          <Panel titulo="A qué se dedica" nota="traducido del original de Yahoo">
+          <Card titulo="A qué se dedica" nota="traducido del original de Yahoo">
             {/* Prosa a la izquierda con el renglón acotado, ficha técnica a la
                 derecha: el párrafo solo dejaba medio panel vacío en pantalla
                 ancha, y estos datos no tenían dónde vivir. */}
@@ -305,29 +290,29 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
                 <FichaDato label="Sector" valor={SECTOR_LABEL[ficha.sector]} />
               </dl>
             </div>
-          </Panel>
+          </Card>
 
-          <Panel titulo="Fundamentals" nota="contra la mediana de sus pares">
+          <Card titulo="Fundamentals" nota="contra la mediana de sus pares">
             <Suspense fallback={<div className="h-[300px] animate-pulse bg-slate-900/40 rounded" />}>
               <Comparacion ticker={ficha.ticker} />
             </Suspense>
-          </Panel>
+          </Card>
 
-          <Panel titulo="Comparables del sector">
+          <Card titulo="Comparables del sector">
             <Comparables filas={comparables} actual={ficha.ticker} />
-          </Panel>
+          </Card>
 
         </div>
 
         {/* ── Sidebar ───────────────────────────────────────────────── */}
         <div className="space-y-5">
-          <Panel titulo="Noticias">
+          <Card titulo="Noticias">
             <Suspense fallback={<div className="h-40 animate-pulse bg-slate-900/40 rounded" />}>
               <Noticias ticker={ficha.ticker} />
             </Suspense>
-          </Panel>
+          </Card>
 
-          <Panel titulo="Analistas" nota={ana.cantidad ? `${ana.cantidad} opiniones` : undefined}>
+          <Card titulo="Analistas" nota={ana.cantidad ? `${ana.cantidad} opiniones` : undefined}>
             <div className="space-y-4">
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-slate-600">Consenso</p>
@@ -364,9 +349,9 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
                 </Suspense>
               </div>
             </div>
-          </Panel>
+          </Card>
 
-          <Panel
+          <Card
             titulo="Próximo earnings"
             nota={earnings.fecha && earnings.estimada ? "fecha estimada" : undefined}
           >
@@ -388,7 +373,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
                 />
               </div>
             </div>
-          </Panel>
+          </Card>
         </div>
       </div>
     </div>
