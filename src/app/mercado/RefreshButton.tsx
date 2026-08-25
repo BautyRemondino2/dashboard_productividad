@@ -50,13 +50,13 @@ export default function RefreshButton({ lastUpdate, needsBackfill }: {
   return (
     <div className="flex items-center gap-3 flex-wrap">
       {isPending ? (
-        <span className="text-[11px] text-slate-500 flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full border border-slate-700 border-t-slate-400 animate-spin" />
+        <span className="text-[11px] text-meta flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full border border-outline border-t-slate-400 animate-spin" />
           Actualizando fuentes…
         </span>
       ) : summary ? (
-        <span className="text-[11px] tabular-nums text-slate-500">
-          <span className="text-emerald-400 font-medium">{guardados} valores</span> actualizados
+        <span className="text-[11px] tabular-nums text-meta">
+          <span className="text-sube font-medium">{guardados} valores</span> actualizados
           {fallidas.length > 0 && (
             <span className="text-amber-500" title={fallidas.map((f) => `${f.label}: ${f.error}`).join(" · ")}>
               {" "}· {fallidas.length} {fallidas.length === 1 ? "fuente caída" : "fuentes caídas"} ({fallidas.map((f) => f.label).join(", ")})
@@ -64,12 +64,12 @@ export default function RefreshButton({ lastUpdate, needsBackfill }: {
           )}
         </span>
       ) : lastUpdate ? (
-        <span className="text-[11px] text-slate-600">datos {timeAgo(lastUpdate)}</span>
+        <span className="text-[11px] text-meta-suave">datos {timeAgo(lastUpdate)}</span>
       ) : null}
       <button
         onClick={() => refresh(false)}
         disabled={isPending}
-        className="text-[11px] font-medium px-2.5 py-1 rounded-md border border-slate-700 text-slate-300 hover:text-slate-100 hover:border-slate-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+        className="text-[11px] font-medium px-2.5 py-1 rounded-md border border-outline text-cuerpo hover:text-titulo hover:border-slate-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
       >
         ↻ Actualizar
       </button>

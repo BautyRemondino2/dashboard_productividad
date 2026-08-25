@@ -44,7 +44,15 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
   const data = useMemo(() => {
     const dias = RANGOS.find((r) => r.key === rango)?.dias ?? 90;
     if (dias === Infinity) return serie;
-    const corte = new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10);
+
+    // El rango se cuenta desde el último dato y no desde el reloj: si el último
+    // cierre es del viernes y esto se abre un domingo, "30 días" tiene que
+    // significar treinta días de datos, no veintiocho. De paso saca el
+    // `Date.now()` de adentro del memo, que el compilador marca como impuro.
+    const ancla = serie.at(-1)?.fecha;
+    if (!ancla) return serie;
+
+    const corte = new Date(Date.parse(ancla) - dias * 86_400_000).toISOString().slice(0, 10);
     const filtrado = serie.filter((p) => p.fecha >= corte);
     // Series mensuales (IPC) pueden quedar con 1 punto en rangos cortos
     return filtrado.length >= 2 ? filtrado : serie.slice(-2);
@@ -71,37 +79,37 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative z-10 w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-3xl bg-boton border border-outline rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="px-6 pt-5 pb-4 border-b border-slate-800 flex items-start justify-between gap-4">
+        <div className="px-6 pt-5 pb-4 border-b border-borde flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-secundario border border-outline/60">
                 {inst.ticker}
               </span>
-              <span className="text-[10px] text-slate-600">
+              <span className="text-[10px] text-meta-suave">
                 {serie.length} {serie.length === 1 ? "dato" : "datos"}
               </span>
             </div>
-            <h2 className="text-xl font-semibold text-slate-100 tracking-tight">{inst.nombre}</h2>
+            <h2 className="text-xl font-semibold text-titulo tracking-tight">{inst.nombre}</h2>
             <div className="flex items-baseline gap-3 mt-1.5 flex-wrap">
-              <span className="text-2xl font-semibold text-slate-100 tabular-nums">
+              <span className="text-2xl font-semibold text-titulo tabular-nums">
                 {ind.last ? formatValor(ind.last.valor, inst.unidad) : "—"}
               </span>
               {variacion !== null && (
-                <span className={`text-[13px] tabular-nums font-medium ${bueno ? "text-emerald-400" : "text-red-400"}`}>
+                <span className={`text-[13px] tabular-nums font-medium ${bueno ? "text-sube" : "text-baja"}`}>
                   {sube ? "▲" : "▼"} {Math.abs(variacion).toLocaleString("es-AR", { maximumFractionDigits: 2 })}%
-                  <span className="text-slate-600 font-normal"> en el rango</span>
+                  <span className="text-meta-suave font-normal"> en el rango</span>
                 </span>
               )}
               {ind.last && (
-                <span className="text-[11px] text-slate-600">al {formatFechaLarga(ind.last.fecha)}</span>
+                <span className="text-[11px] text-meta-suave">al {formatFechaLarga(ind.last.fecha)}</span>
               )}
             </div>
             {def && (
-              <p className="text-[12px] text-slate-400 leading-relaxed mt-2.5 text-pretty">
+              <p className="text-[12px] text-secundario leading-relaxed mt-2.5 text-pretty">
                 {def.short}{" "}
-                <Link href={hrefGlosario(def.term)} className="text-slate-300 hover:text-slate-100 whitespace-nowrap transition-colors">
+                <Link href={hrefGlosario(def.term)} className="text-cuerpo hover:text-titulo whitespace-nowrap transition-colors">
                   Ver en glosario →
                 </Link>
               </p>
@@ -110,7 +118,7 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
 
           <button
             onClick={onClose}
-            className="shrink-0 w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            className="shrink-0 w-8 h-8 rounded-md flex items-center justify-center text-meta hover:text-cuerpo hover:bg-slate-800 transition-colors"
             title="Cerrar (Esc)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -127,8 +135,8 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
               onClick={() => setRango(r.key)}
               className={`px-2.5 py-1 rounded-md text-[11px] transition-colors ${
                 rango === r.key
-                  ? "bg-slate-700/70 text-slate-100"
-                  : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/60"
+                  ? "bg-slate-700/70 text-titulo"
+                  : "text-meta hover:text-cuerpo hover:bg-slate-800/60"
               }`}
             >
               {r.label}
@@ -139,7 +147,7 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
         {/* Gráfico */}
         <div className="px-3 pt-3 pb-2 h-[320px]">
           {data.length < 2 ? (
-            <div className="h-full flex items-center justify-center text-[12px] text-slate-600">
+            <div className="h-full flex items-center justify-center text-[12px] text-meta-suave">
               Falta historia para graficar — hacen falta al menos dos datos.
             </div>
           ) : (
@@ -195,7 +203,7 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
         </div>
 
         {/* Deltas del rango visible */}
-        <div className="px-6 py-3 border-t border-slate-800 grid grid-cols-3 gap-3">
+        <div className="px-6 py-3 border-t border-borde grid grid-cols-3 gap-3">
           {([
             ["vs. anterior", ind.dPrev],
             ["30 días", ind.d30],
@@ -204,7 +212,7 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
             if (!d) {
               return (
                 <div key={label}>
-                  <p className="text-[9px] uppercase tracking-widest text-slate-600 mb-0.5">{label}</p>
+                  <p className="text-[9px] uppercase tracking-widest text-meta-suave mb-0.5">{label}</p>
                   <p className="text-[13px] text-slate-700 tabular-nums">—</p>
                 </div>
               );
@@ -214,9 +222,9 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
             const good = lower ? !up : up;
             return (
               <div key={label}>
-                <p className="text-[9px] uppercase tracking-widest text-slate-600 mb-0.5">{label}</p>
+                <p className="text-[9px] uppercase tracking-widest text-meta-suave mb-0.5">{label}</p>
                 <p className={`text-[13px] tabular-nums font-medium ${
-                  flat ? "text-slate-500" : good ? "text-emerald-400" : "text-red-400"
+                  flat ? "text-meta" : good ? "text-sube" : "text-baja"
                 }`}>
                   {flat ? "=" : up ? "▲" : "▼"} {formatDelta(d, inst.unidad)}
                 </p>

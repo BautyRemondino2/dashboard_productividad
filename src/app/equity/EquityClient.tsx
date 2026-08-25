@@ -197,14 +197,14 @@ export default function EquityClient({
   const chip = (activa: boolean) =>
     `text-[11px] px-2.5 py-1 rounded-md transition-colors whitespace-nowrap border ${
       activa
-        ? "bg-slate-800 text-slate-100 border-slate-700"
-        : "text-slate-500 hover:text-slate-300 border-transparent hover:border-slate-800"
+        ? "bg-slate-800 text-titulo border-outline"
+        : "text-meta hover:text-cuerpo border-transparent hover:border-borde"
     }`;
 
   // ── Celdas de una fila ────────────────────────────────────────────────────
   const celdas = (f: FilaConRetornos) => (
     <>
-      <td className="px-2 py-2 text-right text-[12px] text-slate-300 tabular-nums">
+      <td className="px-2 py-2 text-right text-[12px] text-cuerpo tabular-nums">
         {fmtUsd(f.precio)}
       </td>
 
@@ -231,14 +231,14 @@ export default function EquityClient({
         </div>
       </td>
 
-      <td className="px-2 py-2 text-right text-[11px] text-slate-400 tabular-nums">
+      <td className="px-2 py-2 text-right text-[11px] text-secundario tabular-nums">
         {fmtNumero(f.per)}
       </td>
-      <td className="px-2 py-2 text-right text-[11px] text-slate-400 tabular-nums whitespace-nowrap">
+      <td className="px-2 py-2 text-right text-[11px] text-secundario tabular-nums whitespace-nowrap">
         {fmtCap(f.capitalizacion)}
       </td>
       <td className="pl-2 pr-4 py-2 text-right text-[11px] tabular-nums whitespace-nowrap">
-        <span className={f.earningsEstimado ? "text-slate-600" : "text-slate-400"}>
+        <span className={f.earningsEstimado ? "text-meta-suave" : "text-secundario"}>
           {fmtFecha(f.proximoEarnings)}
         </span>
         {f.proximoEarnings && f.earningsEstimado && (
@@ -262,10 +262,10 @@ export default function EquityClient({
           title={SECTOR_LABEL[f.sector]}
         />
         <span className="min-w-0">
-          <span className="text-[13px] font-medium text-slate-100 group-hover:text-white">
+          <span className="text-[13px] font-medium text-titulo group-hover:text-white">
             {f.ticker}
           </span>
-          <span className="block text-[10px] text-slate-600 truncate max-w-[190px]">
+          <span className="block text-[10px] text-meta-suave truncate max-w-[190px]">
             {f.nombre}
           </span>
         </span>
@@ -289,7 +289,7 @@ export default function EquityClient({
 
         <button
           onClick={() => setSubiendo((v) => !v)}
-          className="text-[11px] px-2.5 py-1 rounded-md border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-colors whitespace-nowrap"
+          className="text-[11px] px-2.5 py-1 rounded-md border border-borde text-secundario hover:text-cuerpo hover:border-outline transition-colors whitespace-nowrap"
         >
           {subiendo ? "↑ los que más subieron" : "↓ los que más bajaron"}
         </button>
@@ -328,12 +328,12 @@ export default function EquityClient({
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="ticker o empresa…"
-            className="bg-slate-900 border border-slate-800 focus:border-slate-600 outline-none rounded-md px-2.5 py-1 text-[11px] text-slate-300 w-36 placeholder:text-slate-700"
+            className="bg-boton border border-borde focus:border-outline outline-none rounded-md px-2.5 py-1 text-[11px] text-cuerpo w-36 placeholder:text-slate-700"
           />
           <select
             value={sector}
             onChange={(e) => setSector(e.target.value as Sector | "todos")}
-            className="bg-slate-900 border border-slate-800 focus:border-slate-600 outline-none rounded-md px-2 py-1 text-[11px] text-slate-300 [color-scheme:dark]"
+            className="bg-boton border border-borde focus:border-outline outline-none rounded-md px-2 py-1 text-[11px] text-cuerpo [color-scheme:dark]"
           >
             <option value="todos">Todos los sectores</option>
             {sectoresPresentes.map((s) => (
@@ -346,11 +346,11 @@ export default function EquityClient({
       </div>
 
       {/* ── Tabla ─────────────────────────────────────────────────────── */}
-      <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/20">
+      <div className="border border-borde rounded-card overflow-hidden bg-card">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1080px] border-collapse">
             <thead>
-              <tr className="bg-slate-900/60 border-b border-slate-800 text-[10px] uppercase tracking-widest text-slate-500">
+              <tr className="bg-encabezado border-b border-borde text-[10px] uppercase tracking-widest text-meta">
                 <th className="text-left font-normal pl-4 pr-2 py-2 w-10">#</th>
                 <th className="text-left font-normal px-2 py-2">Empresa</th>
                 <th className="text-right font-normal px-2 py-2">Precio</th>
@@ -359,7 +359,7 @@ export default function EquityClient({
                     key={p}
                     onClick={() => setPeriodo(p)}
                     className={`text-right font-normal px-2 py-2 cursor-pointer transition-colors whitespace-nowrap ${
-                      periodo === p ? "text-slate-200 bg-slate-800/50" : "hover:text-slate-300"
+                      periodo === p ? "text-cuerpo bg-slate-800/50" : "hover:text-cuerpo"
                     }`}
                   >
                     {PERIODO_LABEL[p]}
@@ -372,21 +372,21 @@ export default function EquityClient({
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-900">
+            <tbody className="divide-y divide-divisor-fino">
               {grupos
                 ? grupos.map((g) => (
                     <Fragment key={g.sector}>
-                      <tr className="bg-slate-900/50">
+                      <tr className="bg-encabezado">
                         <td colSpan={COLUMNAS} className="px-4 py-1.5">
                           <div className="flex items-center gap-2">
                             <span
                               className="w-2 h-2 rounded-full"
                               style={{ background: sectorColor(g.sector) }}
                             />
-                            <span className="text-[11px] font-medium text-slate-300">
+                            <span className="text-[11px] font-medium text-cuerpo">
                               {SECTOR_LABEL[g.sector]}
                             </span>
-                            <span className="text-[10px] text-slate-600">
+                            <span className="text-[10px] text-meta-suave">
                               {g.items.length} {g.items.length === 1 ? "empresa" : "empresas"}
                             </span>
                             <span
@@ -400,9 +400,9 @@ export default function EquityClient({
                       {g.items.map((f, i) => (
                         <tr
                           key={f.ticker}
-                          className="group hover:bg-slate-900/40 transition-colors"
+                          className="group hover:bg-card transition-colors"
                         >
-                          <td className="pl-4 pr-2 py-2 text-[11px] text-slate-600 tabular-nums">
+                          <td className="pl-4 pr-2 py-2 text-[11px] text-meta-suave tabular-nums">
                             {i + 1}
                           </td>
                           {empresa(f)}
@@ -412,8 +412,8 @@ export default function EquityClient({
                     </Fragment>
                   ))
                 : visibles.map((f, i) => (
-                    <tr key={f.ticker} className="group hover:bg-slate-900/40 transition-colors">
-                      <td className="pl-4 pr-2 py-2 text-[11px] text-slate-600 tabular-nums">
+                    <tr key={f.ticker} className="group hover:bg-card transition-colors">
+                      <td className="pl-4 pr-2 py-2 text-[11px] text-meta-suave tabular-nums">
                         {i + 1}
                       </td>
                       {empresa(f)}
@@ -425,15 +425,15 @@ export default function EquityClient({
         </div>
 
         {visibles.length === 0 && (
-          <div className="px-4 py-8 text-center text-[12px] text-slate-600">
+          <div className="px-4 py-8 text-center text-[12px] text-meta-suave">
             Ningún papel cumple con {activo.label.toLowerCase()} y los filtros aplicados.
           </div>
         )}
       </div>
 
       {sugerencias.length > 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/20 px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
+        <div className="rounded-card border border-borde bg-card px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-meta-suave mb-2">
             Fuera del ranking
           </p>
           <div className="flex flex-wrap gap-2">
@@ -441,12 +441,12 @@ export default function EquityClient({
               <Link
                 key={r.ticker}
                 href={`/equity/${r.ticker}`}
-                className="group flex items-baseline gap-2 px-2.5 py-1.5 rounded-md border border-slate-800 hover:border-slate-700 hover:bg-slate-900/60 transition-colors"
+                className="group flex items-baseline gap-2 px-2.5 py-1.5 rounded-md border border-borde hover:border-outline hover:bg-encabezado transition-colors"
               >
-                <span className="text-[12px] font-medium text-slate-200 group-hover:text-white">
+                <span className="text-[12px] font-medium text-cuerpo group-hover:text-white">
                   {r.ticker}
                 </span>
-                <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
+                <span className="text-[10px] text-meta truncate max-w-[180px]">
                   {r.nombre}
                 </span>
                 {r.argentino && (
@@ -455,14 +455,14 @@ export default function EquityClient({
               </Link>
             ))}
           </div>
-          <p className="text-[10px] text-slate-600 mt-2">
+          <p className="text-[10px] text-meta-suave mt-2">
             Estos no entraron entre las {filas.length} con más momentum, pero tienen su
             ficha completa.
           </p>
         </div>
       )}
 
-      <p className="text-[10px] text-slate-600 leading-relaxed">
+      <p className="text-[10px] text-meta-suave leading-relaxed">
         {visibles.length} de {filas.length} empresas · {activo.ayuda}.{" "}
         {contraIndice
           ? "Los porcentajes son la diferencia contra el S&P 500 en el mismo período."

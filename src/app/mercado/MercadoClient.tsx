@@ -55,11 +55,11 @@ function DeltaChip({ label, delta, unidad, lowerIsBetter }: {
   const flat = delta.abs === 0;
   const up = delta.abs > 0;
   const good = lowerIsBetter ? !up : up;
-  const cls = flat ? "text-slate-500" : good ? "text-emerald-400" : "text-red-400";
+  const cls = flat ? "text-meta" : good ? "text-sube" : "text-baja";
   return (
     <span className={`text-[10px] tabular-nums font-medium whitespace-nowrap ${cls}`}
       title={`vs. ${formatFechaCorta(delta.refFecha)}`}>
-      <span className="text-slate-600 font-normal">{label}</span>{" "}
+      <span className="text-meta-suave font-normal">{label}</span>{" "}
       {flat ? "=" : up ? "▲" : "▼"} {formatDelta(delta, unidad)}
     </span>
   );
@@ -86,12 +86,12 @@ function Section({ grupo, count, children }: {
     <div>
       <div className="flex items-baseline gap-2.5 mb-3">
         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: grupoColor(grupo, 70) }} />
-        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-secundario">
           {GRUPO_LABEL[grupo]}
         </h3>
-        {nota && <span className="text-[10px] text-slate-600">· {nota}</span>}
+        {nota && <span className="text-[10px] text-meta-suave">· {nota}</span>}
         <span className="text-[10px] text-slate-700 tabular-nums">{count}</span>
-        <div className="flex-1 h-px bg-slate-900" />
+        <div className="flex-1 h-px bg-boton" />
       </div>
       {children}
     </div>
@@ -113,16 +113,16 @@ function IndicatorTile({ inst, ind, spark, def, onOpen }: Row & { def?: Instrume
       tabIndex={clickable ? 0 : undefined}
       onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } } : undefined}
       title={clickable ? "Ver gráfico" : undefined}
-      className={`group relative rounded-xl border bg-slate-900/40 overflow-hidden transition-all ${
+      className={`group relative rounded-card border bg-card overflow-hidden transition-all ${
         clickable
-          ? "cursor-pointer border-slate-800/80 hover:bg-slate-900/70 hover:border-slate-700"
-          : "border-slate-800/80"
+          ? "cursor-pointer border-borde hover:bg-chip hover:border-outline"
+          : "border-borde"
       }`}
     >
       <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: grupoColor(grupo, 70) }} />
       <div className="pl-4 pr-3.5 py-3">
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-[12px] font-medium text-slate-300 truncate">{inst.nombre}</span>
+          <span className="text-[12px] font-medium text-cuerpo truncate">{inst.nombre}</span>
           <div className="flex items-center gap-1.5 shrink-0">
             {def && <DefinicionPopover def={def} nombre={inst.nombre} />}
             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap"
@@ -135,22 +135,22 @@ function IndicatorTile({ inst, ind, spark, def, onOpen }: Row & { def?: Instrume
           <>
             <div className="flex items-end justify-between gap-2">
               <div>
-                <div className="text-xl font-semibold text-slate-100 tabular-nums leading-tight">
+                <div className="text-xl font-semibold text-titulo tabular-nums leading-tight">
                   {formatValor(ind.last.valor, inst.unidad)}
                 </div>
-                <div className="text-[10px] text-slate-600 mt-0.5">al {formatFechaCorta(ind.last.fecha)}</div>
+                <div className="text-[10px] text-meta-suave mt-0.5">al {formatFechaCorta(ind.last.fecha)}</div>
               </div>
               {spark.length >= 2 && (
                 <Sparkline data={spark} width={72} height={24}
                   color={trendGood ? "rgb(52,211,153)" : "rgb(248,113,113)"} />
               )}
             </div>
-            <div className="mt-2 pt-2 border-t border-slate-900">
+            <div className="mt-2 pt-2 border-t border-divisor">
               <DeltaRow ind={ind} unidad={inst.unidad} lowerIsBetter={lower} />
             </div>
           </>
         ) : (
-          <div className="text-[12px] text-slate-600 italic py-1.5">sin datos — cargalo en el panel →</div>
+          <div className="text-[12px] text-meta-suave italic py-1.5">sin datos — cargalo en el panel →</div>
         )}
       </div>
       {clickable && (
@@ -174,14 +174,14 @@ function InstrumentTable({ rows, definiciones, onOpen }: {
 }) {
   const grid = { gridTemplateColumns: "minmax(120px,1.4fr) 1fr 1fr 1fr 1fr 88px" };
   return (
-    <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/20">
-      <div className="grid items-center gap-x-4 px-4 py-2 bg-slate-900/60 border-b border-slate-800 text-[10px] uppercase tracking-widest text-slate-500"
+    <div className="border border-borde rounded-card overflow-hidden bg-card">
+      <div className="grid items-center gap-x-4 px-4 py-2 bg-encabezado border-b border-borde text-[10px] uppercase tracking-widest text-meta"
         style={grid}>
         <div>Instrumento</div><div className="text-right">Último</div>
         <div className="text-right">vs. ant</div><div className="text-right">30d</div>
         <div className="text-right">90d</div><div />
       </div>
-      <div className="divide-y divide-slate-900">
+      <div className="divide-y divide-divisor-fino">
         {rows.map(({ inst, ind, spark }) => {
           const lower = LOWER_IS_BETTER.has(inst.ticker);
           const trendUp = spark.length >= 2 ? spark[spark.length - 1] >= spark[0] : true;
@@ -193,7 +193,7 @@ function InstrumentTable({ rows, definiciones, onOpen }: {
             const good = lower ? !up : up;
             return (
               <span className={`text-[11px] tabular-nums font-medium ${
-                flat ? "text-slate-500" : good ? "text-emerald-400" : "text-red-400"
+                flat ? "text-meta" : good ? "text-sube" : "text-baja"
               }`} title={`vs. ${formatFechaCorta(delta.refFecha)}`}>
                 {flat ? "=" : up ? "▲" : "▼"} {formatDelta(delta, inst.unidad)}
               </span>
@@ -208,13 +208,13 @@ function InstrumentTable({ rows, definiciones, onOpen }: {
               onKeyDown={clickable ? (e) => { if (e.key === "Enter") onOpen(inst.ticker); } : undefined}
               title={clickable ? "Ver gráfico" : undefined}
               className={`grid items-center gap-x-4 px-4 py-2.5 relative transition-colors ${
-                clickable ? "cursor-pointer hover:bg-slate-900/50" : ""
+                clickable ? "cursor-pointer hover:bg-encabezado" : ""
               }`}
               style={grid}>
               <div className="absolute left-0 top-0 bottom-0 w-[3px]"
                 style={{ background: inst.ley ? LEY_COLOR[inst.ley] : grupoColor(inst.grupo, 70) }} />
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[13px] font-medium text-slate-100">{inst.ticker}</span>
+                <span className="text-[13px] font-medium text-titulo">{inst.ticker}</span>
                 {definiciones[inst.ticker] && (
                   <DefinicionPopover def={definiciones[inst.ticker]} nombre={inst.nombre} />
                 )}
@@ -228,10 +228,10 @@ function InstrumentTable({ rows, definiciones, onOpen }: {
               <div className="text-right">
                 {ind.last ? (
                   <div>
-                    <span className="text-[13px] font-semibold text-slate-100 tabular-nums">
+                    <span className="text-[13px] font-semibold text-titulo tabular-nums">
                       {formatValor(ind.last.valor, inst.unidad)}
                     </span>
-                    <span className="text-[9px] text-slate-600 ml-1.5">{formatFechaCorta(ind.last.fecha)}</span>
+                    <span className="text-[9px] text-meta-suave ml-1.5">{formatFechaCorta(ind.last.fecha)}</span>
                   </div>
                 ) : (
                   <span className="text-[11px] text-slate-700 italic">sin datos</span>
@@ -291,17 +291,17 @@ function CargaPanel({ instruments, lastByTicker }: {
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/30 overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-800/80 flex items-center justify-between gap-3">
+    <div className="rounded-card border border-borde bg-card overflow-hidden">
+      <div className="px-4 py-3 border-b border-borde flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-[13px] font-semibold text-slate-100">Carga manual</h3>
-          <p className="text-[10px] text-slate-600 mt-0.5">para lo que no trae ninguna fuente</p>
+          <h3 className="text-[13px] font-semibold text-titulo">Carga manual</h3>
+          <p className="text-[10px] text-meta-suave mt-0.5">para lo que no trae ninguna fuente</p>
         </div>
         <input
           type="date"
           value={fecha}
           onChange={(e) => { setFecha(e.target.value); setMsg(null); }}
-          className="bg-slate-900 border border-slate-700 focus:border-slate-500 outline-none rounded-md px-2 py-1 text-[11px] text-slate-300 tabular-nums [color-scheme:dark]"
+          className="bg-boton border border-outline focus:border-slate-500 outline-none rounded-md px-2 py-1 text-[11px] text-cuerpo tabular-nums [color-scheme:dark]"
         />
       </div>
 
@@ -311,8 +311,8 @@ function CargaPanel({ instruments, lastByTicker }: {
           return (
             <div key={inst.ticker} className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <span className="text-[12px] font-medium text-slate-300">{inst.ticker}</span>
-                <span className="text-[10px] text-slate-600 ml-1.5 truncate">
+                <span className="text-[12px] font-medium text-cuerpo">{inst.ticker}</span>
+                <span className="text-[10px] text-meta-suave ml-1.5 truncate">
                   {inst.nombre} · {defaultMetric(inst.tipo)}
                 </span>
               </div>
@@ -322,23 +322,23 @@ function CargaPanel({ instruments, lastByTicker }: {
                 value={values[inst.ticker] ?? ""}
                 onChange={(e) => { setValues((v) => ({ ...v, [inst.ticker]: e.target.value })); setMsg(null); }}
                 placeholder={last ? `${last.valor.toLocaleString("es-AR")} (${formatFechaCorta(last.fecha)})` : "—"}
-                className="w-28 shrink-0 bg-slate-900 border border-slate-800 focus:border-slate-500 outline-none rounded-md px-2 py-1 text-[12px] text-right text-slate-100 tabular-nums placeholder:text-slate-700"
+                className="w-28 shrink-0 bg-boton border border-borde focus:border-slate-500 outline-none rounded-md px-2 py-1 text-[12px] text-right text-titulo tabular-nums placeholder:text-slate-700"
               />
             </div>
           );
         })}
       </div>
 
-      <div className="px-4 py-3 border-t border-slate-800/80 flex items-center justify-between gap-3">
+      <div className="px-4 py-3 border-t border-borde flex items-center justify-between gap-3">
         {msg ? (
-          <p className={`text-[11px] ${msg.ok ? "text-emerald-400" : "text-red-400"}`}>{msg.text}</p>
+          <p className={`text-[11px] ${msg.ok ? "text-sube" : "text-baja"}`}>{msg.text}</p>
         ) : (
-          <p className="text-[11px] text-slate-600 tabular-nums">{filled.length} para guardar</p>
+          <p className="text-[11px] text-meta-suave tabular-nums">{filled.length} para guardar</p>
         )}
         <button
           onClick={save}
           disabled={isPending || filled.length === 0}
-          className="text-[12px] font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-white disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          className="text-[12px] font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-white disabled:bg-slate-800 disabled:text-meta-suave disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
           {isPending ? "Guardando…" : "Guardar"}
         </button>
@@ -385,23 +385,23 @@ function AddInstrument() {
     });
   }
 
-  const inputCls = "w-full bg-slate-900 border border-slate-800 focus:border-slate-500 outline-none rounded-md px-2 py-1.5 text-[12px] text-slate-100 placeholder:text-slate-700";
+  const inputCls = "w-full bg-boton border border-borde focus:border-slate-500 outline-none rounded-md px-2 py-1.5 text-[12px] text-titulo placeholder:text-slate-700";
   const selectCls = `${inputCls} [color-scheme:dark]`;
 
   if (!open) {
     return (
       <button onClick={() => setOpen(true)}
-        className="w-full rounded-xl border border-dashed border-slate-800 hover:border-slate-600 bg-slate-900/10 hover:bg-slate-900/40 px-4 py-2.5 text-[12px] text-slate-600 hover:text-slate-300 transition-all">
+        className="w-full rounded-card border border-dashed border-borde hover:border-outline bg-card hover:bg-card px-4 py-2.5 text-[12px] text-meta-suave hover:text-cuerpo transition-all">
         + Nuevo instrumento <span className="text-slate-700">(Lecap, CER, ON…)</span>
       </button>
     );
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/30 px-4 py-3 space-y-2.5">
+    <div className="rounded-card border border-borde bg-card px-4 py-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <h3 className="text-[13px] font-semibold text-slate-100">Nuevo instrumento</h3>
-        <button onClick={() => setOpen(false)} className="text-[11px] text-slate-600 hover:text-slate-300 transition-colors">cancelar</button>
+        <h3 className="text-[13px] font-semibold text-titulo">Nuevo instrumento</h3>
+        <button onClick={() => setOpen(false)} className="text-[11px] text-meta-suave hover:text-cuerpo transition-colors">cancelar</button>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <input type="text" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())}
@@ -424,9 +424,9 @@ function AddInstrument() {
           <option value="NY">Ley NY</option>
         </select>
       </div>
-      {error && <p className="text-[11px] text-red-400">{error}</p>}
+      {error && <p className="text-[11px] text-baja">{error}</p>}
       <button onClick={submit} disabled={isPending || !ticker.trim() || !nombre.trim()}
-        className="w-full text-[12px] font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-white disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors">
+        className="w-full text-[12px] font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-white disabled:bg-slate-800 disabled:text-meta-suave disabled:cursor-not-allowed transition-colors">
         {isPending ? "Agregando…" : "Agregar"}
       </button>
     </div>
@@ -495,9 +495,9 @@ export default function MercadoClient({
       <div className="grid gap-6 xl:grid-cols-[1fr_340px] items-start">
         <div className="space-y-7 min-w-0">
           {sinDatos && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-4">
-              <p className="text-[13px] text-slate-300 font-medium">Todavía no hay datos.</p>
-              <p className="text-[12px] text-slate-500 mt-0.5">
+            <div className="rounded-card border border-borde bg-card px-5 py-4">
+              <p className="text-[13px] text-cuerpo font-medium">Todavía no hay datos.</p>
+              <p className="text-[12px] text-meta mt-0.5">
                 Usá ↻ Actualizar arriba para traer todo de las fuentes automáticas.
               </p>
             </div>
@@ -530,7 +530,7 @@ export default function MercadoClient({
             // forma: la tabla queda para el detalle, sin ocupar la pantalla
             return vista.tablasPlegadas ? (
               <details key={g} className="group">
-                <summary className="cursor-pointer list-none text-[11px] text-slate-500 hover:text-slate-300 transition-colors select-none">
+                <summary className="cursor-pointer list-none text-[11px] text-meta hover:text-cuerpo transition-colors select-none">
                   <span className="group-open:hidden">▸ ver la tabla de {GRUPO_LABEL[g].toLowerCase()} ({rows.length})</span>
                   <span className="hidden group-open:inline">▾ ocultar la tabla</span>
                 </summary>

@@ -250,7 +250,9 @@ export function formatDelta(delta: DeltaInfo, unidad: Unidad): string {
  * y un AL30 son dos momentos distintos del día.
  */
 export const VISTA_MERCADO = {
-  tiles: ["fx", "tasas_ars", "inflacion", "riesgo", "global", "commodities", "acciones"] as Grupo[],
+  // Sin fx ni riesgo: esos dos suben al hero de la página con la cifra en
+  // grande, y repetirlos abajo como un tile más los volvería a aplanar
+  tiles: ["tasas_ars", "inflacion", "global", "commodities", "acciones"] as Grupo[],
   tablas: [] as Grupo[],
   tablasPlegadas: false,
 };

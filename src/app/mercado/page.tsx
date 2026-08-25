@@ -1,4 +1,4 @@
-import { cargarPanel, contarPorGrupos } from "@/lib/panel-datos";
+import { cargarPanel } from "@/lib/panel-datos";
 import MercadoClient from "./MercadoClient";
 import { VISTA_MERCADO } from "@/lib/mercado";
 import RefreshButton from "./RefreshButton";
@@ -6,7 +6,8 @@ import MapaProvincias from "./MapaProvincias";
 import Gobierno from "./Gobierno";
 import { getDatosProvinciales } from "@/lib/macro-provincias";
 import { Suspense } from "react";
-import Card, { Contenedor, EncabezadoPagina } from "@/components/Card";
+import { Contenedor, EncabezadoPagina } from "@/components/Card";
+import HeroMacro from "./HeroMacro";
 
 export const metadata = { title: "Macro Argentina · Dashboard" };
 
@@ -22,7 +23,9 @@ async function Provincias() {
 
 export default function MacroPage() {
   const datos = cargarPanel();
-  const { total, conDatos } = contarPorGrupos(datos, VISTA_MERCADO.tiles);
+  // El conteo va sobre todo el panel, no sobre los tiles: el dólar y el riesgo
+  // país siguen siendo indicadores aunque ahora se muestren en el hero
+  const { total, conDatos } = datos;
 
   return (
     <Contenedor>
@@ -32,12 +35,16 @@ export default function MacroPage() {
         derecha={<RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />}
       />
 
-      <MercadoClient
-        instruments={datos.instruments}
-        series={datos.series}
-        definiciones={datos.definiciones}
-        vista={VISTA_MERCADO}
-      />
+      <HeroMacro datos={datos} />
+
+      <div className="mt-4">
+        <MercadoClient
+          instruments={datos.instruments}
+          series={datos.series}
+          definiciones={datos.definiciones}
+          vista={VISTA_MERCADO}
+        />
+      </div>
 
       <div className="space-y-4 mt-4">
         <Gobierno />

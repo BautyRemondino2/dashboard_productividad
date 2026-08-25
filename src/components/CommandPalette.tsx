@@ -154,10 +154,10 @@ export default function CommandPalette() {
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={close} />
-      <div className="relative z-10 w-full max-w-xl mx-4 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col max-h-[70vh]">
+      <div className="relative z-10 w-full max-w-xl mx-4 bg-boton border border-outline rounded-2xl shadow-2xl flex flex-col max-h-[70vh]">
         {/* Input */}
-        <div className="px-4 py-3 border-b border-slate-800 flex items-center gap-3">
-          <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <div className="px-4 py-3 border-b border-borde flex items-center gap-3">
+          <svg className="w-4 h-4 text-meta shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
           </svg>
           <input
@@ -167,24 +167,24 @@ export default function CommandPalette() {
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKey}
             placeholder="Buscar instrumentos, términos del glosario…"
-            className="flex-1 bg-transparent text-[14px] text-slate-100 placeholder-slate-600 outline-none"
+            className="flex-1 bg-transparent text-[14px] text-titulo placeholder-slate-600 outline-none"
           />
-          <kbd className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 font-mono">esc</kbd>
+          <kbd className="text-[10px] text-meta bg-slate-800 border border-outline rounded px-1.5 py-0.5 font-mono">esc</kbd>
         </div>
 
         {/* Results */}
         <div ref={listRef} className="flex-1 overflow-y-auto py-1">
           {!loaded && (
-            <div className="px-4 py-8 text-center text-[12px] text-slate-500">Cargando…</div>
+            <div className="px-4 py-8 text-center text-[12px] text-meta">Cargando…</div>
           )}
           {loaded && flat.length === 0 && (
-            <div className="px-4 py-8 text-center text-[12px] text-slate-500">
-              Sin resultados para <span className="text-slate-300">&ldquo;{query}&rdquo;</span>
+            <div className="px-4 py-8 text-center text-[12px] text-meta">
+              Sin resultados para <span className="text-cuerpo">&ldquo;{query}&rdquo;</span>
             </div>
           )}
           {loaded && groups.map(g => (
             <div key={g.key} className="py-1">
-              <div className="px-4 pt-2 pb-1 text-[9px] font-semibold uppercase tracking-widest text-slate-600">
+              <div className="px-4 pt-2 pb-1 text-[9px] font-semibold uppercase tracking-widest text-meta-suave">
                 {g.label}
               </div>
               {g.items.map(item => {
@@ -203,15 +203,15 @@ export default function CommandPalette() {
                   >
                     <ItemIcon item={item} />
                     <div className="min-w-0 flex-1">
-                      <p className={`text-[13px] truncate ${isActive ? "text-slate-100" : "text-slate-200"}`}>
+                      <p className={`text-[13px] truncate ${isActive ? "text-titulo" : "text-cuerpo"}`}>
                         {item.label}
                       </p>
                       {item.subtitle && (
-                        <p className="text-[10px] text-slate-500 truncate">{item.subtitle}</p>
+                        <p className="text-[10px] text-meta truncate">{item.subtitle}</p>
                       )}
                     </div>
                     {item.href && (
-                      <svg className="w-3 h-3 text-slate-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3 text-meta-suave shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     )}
@@ -223,20 +223,20 @@ export default function CommandPalette() {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-600">
+        <div className="px-4 py-2 border-t border-borde flex items-center justify-between text-[10px] text-meta-suave">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded font-mono">↑</kbd>
-              <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded font-mono">↓</kbd>
+              <kbd className="px-1 py-0.5 bg-slate-800 border border-outline rounded font-mono">↑</kbd>
+              <kbd className="px-1 py-0.5 bg-slate-800 border border-outline rounded font-mono">↓</kbd>
               navegar
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded font-mono">↵</kbd>
+              <kbd className="px-1 py-0.5 bg-slate-800 border border-outline rounded font-mono">↵</kbd>
               abrir
             </span>
           </div>
           <span>
-            <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded font-mono">⌘K</kbd>
+            <kbd className="px-1 py-0.5 bg-slate-800 border border-outline rounded font-mono">⌘K</kbd>
             {" "}para abrir
           </span>
         </div>
@@ -252,9 +252,9 @@ function ItemIcon({ item }: { item: CommandPaletteItem }) {
     glossary:    "◉",
   };
   const colors: Record<CommandPaletteItem["type"], string> = {
-    nav:         "text-slate-300",
+    nav:         "text-cuerpo",
     instrumento: "text-sky-400",
-    glossary:    "text-emerald-400",
+    glossary:    "text-sube",
   };
   return (
     <span

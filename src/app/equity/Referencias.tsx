@@ -13,14 +13,14 @@ export default async function Referencias() {
   const sectores = benchmarks.slice(1);
 
   return (
-    <div className="flex items-stretch gap-4 border border-slate-800 rounded-xl bg-slate-900/20 px-4 py-3 overflow-x-auto">
+    <div className="flex items-stretch gap-4 border border-borde rounded-card bg-card px-4 py-3 overflow-x-auto">
       {/* El índice, con más peso visual que los sectores */}
-      <div className="shrink-0 pr-4 border-r border-slate-800">
-        <p className="text-[10px] uppercase tracking-widest text-slate-600">
+      <div className="shrink-0 pr-4 border-r border-borde">
+        <p className="text-[10px] uppercase tracking-widest text-meta-suave">
           {indice.nombre}
         </p>
         <div className="flex items-baseline gap-2 mt-0.5">
-          <span className="text-[17px] font-semibold text-slate-100 tabular-nums">
+          <span className="text-[17px] font-semibold text-titulo tabular-nums">
             {indice.precio?.toLocaleString("es-AR", { maximumFractionDigits: 0 }) ?? "—"}
           </span>
           <span className={`text-[12px] tabular-nums ${colorRetorno(indice.dia)}`}>
@@ -35,7 +35,7 @@ export default async function Referencias() {
           .sort((a, b) => (b.dia ?? -99) - (a.dia ?? -99))
           .map((s) => (
             <div key={s.ticker} className="shrink-0" title={`${s.nombre} · ETF ${s.ticker}`}>
-              <p className="text-[10px] text-slate-500 whitespace-nowrap">{s.nombre}</p>
+              <p className="text-[10px] text-meta whitespace-nowrap">{s.nombre}</p>
               <p className={`text-[12px] tabular-nums ${colorRetorno(s.dia)}`}>
                 {fmtPct(s.dia, 2)}
               </p>

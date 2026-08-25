@@ -14,27 +14,27 @@ export default async function FranjaEtf() {
   if (composiciones.length === 0) return null;
 
   return (
-    <section className="border border-slate-800 rounded-xl bg-slate-900/20 overflow-hidden flex flex-wrap items-stretch">
+    <section className="border border-borde rounded-card bg-card overflow-hidden flex flex-wrap items-stretch">
       {composiciones.map((c) => (
         <Link
           key={c.ticker}
           href="/etf"
-          className="flex-1 min-w-[168px] px-4 py-3 border-r border-slate-800 hover:bg-slate-900/50 transition-colors"
+          className="flex-1 min-w-[168px] px-4 py-3 border-r border-borde hover:bg-encabezado transition-colors"
         >
           <div className="flex items-baseline gap-2">
-            <span className="text-[13px] font-semibold text-slate-100">{c.ticker}</span>
-            <span className="text-[10px] text-slate-500 truncate">{c.nombre}</span>
+            <span className="text-[13px] font-semibold text-titulo">{c.ticker}</span>
+            <span className="text-[10px] text-meta truncate">{c.nombre}</span>
             <span className={`text-[11px] tabular-nums ml-auto ${colorRetorno(c.dia)}`}>
               {fmtPct(c.dia, 2)}
             </span>
           </div>
-          <span className="text-[11px] text-slate-400 tabular-nums">{fmtUsd(c.precio)}</span>
+          <span className="text-[11px] text-secundario tabular-nums">{fmtUsd(c.precio)}</span>
         </Link>
       ))}
 
       <Link
         href="/etf"
-        className="px-4 py-3 flex items-center text-[11px] text-slate-500 hover:text-slate-200 transition-colors whitespace-nowrap"
+        className="px-4 py-3 flex items-center text-[11px] text-meta hover:text-cuerpo transition-colors whitespace-nowrap"
       >
         ver los {ETFS.length} ETF →
       </Link>

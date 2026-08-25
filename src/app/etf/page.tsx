@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ETFS, getComposiciones, getIndicesReferencia } from "@/lib/equity";
 import EtfClient from "./EtfClient";
-import Card, { Contenedor, EncabezadoPagina } from "@/components/Card";
+import { Contenedor, EncabezadoPagina } from "@/components/Card";
 
 export const metadata = { title: "ETF · Dashboard" };
 export const dynamic = "force-dynamic";
