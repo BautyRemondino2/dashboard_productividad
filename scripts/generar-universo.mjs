@@ -234,6 +234,10 @@ for (const x of crudos) {
     nombre: limpiarNombre(x.name),
     // El GICS del índice gana; si no está, se traduce la taxonomía de Nasdaq
     sector: gics ?? NASDAQ_A_GICS[x.sector] ?? "Otros",
+    // La industria de Nasdaq es más fina que el sector y es lo que hace
+    // comparable a una empresa: "Communication Services" mete en la misma
+    // bolsa a Netflix y a Verizon, que no comparten nada
+    industria: (x.industry || "").trim() || null,
     bolsa: x.bolsa,
     pais: (x.country || "").trim() || null,
     sp500: gicsPorTicker.has(ticker),
@@ -259,6 +263,7 @@ if (sinCap.length) {
       ticker,
       nombre: limpiarNombre(x.name),
       sector: gics ?? NASDAQ_A_GICS[x.sector] ?? "Otros",
+      industria: (x.industry || "").trim() || null,
       bolsa: x.bolsa,
       pais: (x.country || "").trim() || null,
       sp500: gicsPorTicker.has(ticker),
@@ -482,6 +487,31 @@ ${Object.entries(puente).sort().map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.
 // ─── 6. Escritura ───────────────────────────────────────────────────────────
 
 // "Otros" siempre al final: es el cajón de los que no encajan
+/**
+ * Identidad de la empresa, ignorando la clase de acción.
+ *
+ * Veinte empresas del universo cotizan con más de una clase —Alphabet con GOOG
+ * y GOOGL, Berkshire con BRK-A y BRK-B, Fox con FOX y FOXA—. Sin esto, Alphabet
+ * entra dos veces entre los ocho comparables de Netflix y pesa el doble en cada
+ * mediana. La empresa es la misma; lo que cambia son los derechos de voto.
+ */
+function identidad(nombre) {
+  return nombre
+    .replace(/\s+(Class\s+[A-Z]|Cl\s+[A-Z])\b.*$/i, "")
+    .replace(/\s+(Capital Stock|Common Stock|Ordinary Shares|Series\s+[A-Z])\b.*$/i, "")
+    .replace(/[.,]+$/, "")
+    .trim()
+    .toLowerCase();
+}
+for (const u of universo) u.empresa = identidad(u.nombre);
+
+const conClases = new Map();
+for (const u of universo) conClases.set(u.empresa, (conClases.get(u.empresa) ?? 0) + 1);
+console.log(`Empresas con más de una clase cotizando: ${[...conClases.values()].filter((n) => n > 1).length}`);
+
+const sinIndustria = universo.filter((u) => !u.industria).length;
+console.log(`Sin industria declarada: ${sinIndustria} de ${universo.length}`);
+
 const sectores = [...new Set(universo.map((u) => u.sector))]
   .sort((a, b) => (a === "Otros" ? 1 : b === "Otros" ? -1 : a.localeCompare(b)));
 
@@ -522,6 +552,13 @@ export interface EmpresaUniverso {
   ticker: string;
   nombre: string;
   sector: Sector;
+  /** Más fina que el sector: es lo que hace comparables a dos empresas. */
+  industria: string | null;
+  /**
+   * La empresa detrás del ticker, sin la clase de acción. GOOG y GOOGL
+   * comparten este valor, así que Alphabet cuenta una sola vez entre los pares.
+   */
+  empresa: string;
   bolsa: "NYSE" | "NASDAQ" | "OTRA";
   pais: string | null;
   /** Si integra el S&P 500 — su sector viene del GICS del índice. */
@@ -531,7 +568,7 @@ export interface EmpresaUniverso {
 }
 
 export const UNIVERSO: EmpresaUniverso[] = [
-${universo.map((u) => `  { ticker: ${JSON.stringify(u.ticker)}, nombre: ${JSON.stringify(u.nombre)}, sector: ${JSON.stringify(u.sector)}, bolsa: ${JSON.stringify(u.bolsa)}, pais: ${JSON.stringify(u.pais)}, sp500: ${u.sp500}, argentino: ${u.argentino} },`).join("\n")}
+${universo.map((u) => `  { ticker: ${JSON.stringify(u.ticker)}, nombre: ${JSON.stringify(u.nombre)}, sector: ${JSON.stringify(u.sector)}, industria: ${JSON.stringify(u.industria ?? null)}, empresa: ${JSON.stringify(u.empresa)}, bolsa: ${JSON.stringify(u.bolsa)}, pais: ${JSON.stringify(u.pais)}, sp500: ${u.sp500}, argentino: ${u.argentino} },`).join("\n")}
 ];
 
 export const POR_TICKER = new Map(UNIVERSO.map((e) => [e.ticker, e]));

@@ -15,9 +15,9 @@
  * sigue caliente reusa, la que arranca en frío vuelve a pedir.
  */
 import YahooFinance from "yahoo-finance2";
-import { UNIVERSO, POR_TICKER } from "@/lib/equity-universo";
+import { UNIVERSO, POR_TICKER, type EmpresaUniverso } from "@/lib/equity-universo";
 import { TENENCIA_A_TICKER } from "@/lib/equity-tenencias";
-import type { Sector } from "@/lib/equity-sectores";
+import { SECTOR_LABEL, type Sector } from "@/lib/equity-sectores";
 import type {
   FilaTablero, FilaConRetornos, Retornos, MetricaComparada, FamiliaETF,
 } from "@/lib/equity-formato";
@@ -528,10 +528,25 @@ async function fundamentalsCrudos(ticker: string) {
   };
 }
 
+/** Un par, con lo que vale en cada métrica. */
+export interface ParComparado {
+  ticker: string;
+  nombre: string;
+  capitalizacion: number | null;
+  dia: number | null;
+  /** Retorno de los últimos 12 meses, en %. */
+  año: number | null;
+  valores: Record<string, number | null>;
+}
+
 export interface Comparacion {
   metricas: MetricaComparada[];
-  /** Contra cuántos pares se comparó, y cuáles. */
-  pares: string[];
+  /** Contra quiénes se comparó, con su valor en cada métrica. */
+  pares: ParComparado[];
+  /** Si los pares salieron de la industria o hubo que abrir al sector. */
+  criterio: "industria" | "sector";
+  /** Cómo se llama el grupo con el que se comparó. */
+  grupo: string;
 }
 
 /**
@@ -547,19 +562,53 @@ export function getComparacion(ticker: string, cantidadPares = 8): Promise<Compa
     if (!empresa) return null;
 
     const tablero = await getTablero();
-    const pares = tablero
-      .filter((f) => f.sector === empresa.sector && f.ticker !== ticker)
-      .sort((a, b) => (b.capitalizacion ?? 0) - (a.capitalizacion ?? 0))
-      .slice(0, cantidadPares)
-      .map((f) => f.ticker);
+    const porTicker = new Map(tablero.map((f) => [f.ticker, f]));
+
+    /**
+     * Elige los pares evitando dos trampas.
+     *
+     * La primera es la clase de acción: Alphabet cotiza como GOOG y GOOGL, así
+     * que entraba dos veces entre los ocho de Netflix y pesaba doble en cada
+     * mediana. Son la misma empresa; lo que cambia son los derechos de voto.
+     *
+     * La segunda es que el sector GICS es demasiado grueso. "Communication
+     * Services" mete a Netflix con Verizon y AT&T, que no comparten ni el
+     * margen ni el ciclo. Se busca primero por industria y sólo se abre al
+     * sector si no hay con quién comparar.
+     */
+    function elegir(mismo: (e: EmpresaUniverso) => boolean): string[] {
+      const vistas = new Set<string>([empresa!.empresa]);
+      const out: string[] = [];
+
+      for (const e of UNIVERSO) {
+        if (e.ticker === ticker || !mismo(e)) continue;
+        if (vistas.has(e.empresa)) continue; // otra clase de una que ya está
+        const fila = porTicker.get(e.ticker);
+        if (!fila?.capitalizacion) continue;
+        vistas.add(e.empresa);
+        out.push(e.ticker);
+      }
+
+      return out
+        .sort((a, b) => (porTicker.get(b)?.capitalizacion ?? 0) - (porTicker.get(a)?.capitalizacion ?? 0))
+        .slice(0, cantidadPares);
+    }
+
+    // Con menos de cuatro pares la mediana no significa nada
+    const porIndustria = empresa.industria ? elegir((e) => e.industria === empresa.industria) : [];
+    const usaIndustria = porIndustria.length >= 4;
+    const pares = usaIndustria ? porIndustria : elegir((e) => e.sector === empresa.sector);
 
     const [propio, ...deLosPares] = await Promise.all([
       fundamentalsCrudos(ticker),
       ...pares.map((p) => fundamentalsCrudos(p).catch(() => null)),
     ]);
 
-    const vivos = deLosPares.filter((p): p is NonNullable<typeof p> => p != null);
-    const med = (k: keyof typeof propio) => mediana(vivos.map((p) => p[k]));
+    const vivos = pares
+      .map((t, i) => ({ ticker: t, datos: deLosPares[i] }))
+      .filter((p): p is { ticker: string; datos: NonNullable<(typeof deLosPares)[number]> } => p.datos != null);
+
+    const med = (k: keyof typeof propio) => mediana(vivos.map((p) => p.datos[k]));
 
     const metricas: MetricaComparada[] = [
       { clave: "perTrailing", label: "PER", valor: propio.perTrailing, mediana: med("perTrailing"),
@@ -569,24 +618,46 @@ export function getComparacion(ticker: string, cantidadPares = 8): Promise<Compa
         formato: "num", sentido: "alto_caro",
         ayuda: "Sobre las ganancias que espera el consenso para el año que viene" },
       { clave: "priceToBook", label: "Precio / libros", valor: propio.priceToBook, mediana: med("priceToBook"),
-        formato: "num", sentido: "alto_caro" },
+        formato: "num", sentido: "alto_caro",
+        ayuda: "Cuántas veces el patrimonio contable paga el precio" },
       { clave: "margenBruto", label: "Margen bruto", valor: propio.margenBruto, mediana: med("margenBruto"),
-        formato: "pct", sentido: "alto_mejor" },
+        formato: "pct", sentido: "alto_mejor",
+        ayuda: "Lo que queda de cada venta antes de gastos de estructura" },
       { clave: "margenNeto", label: "Margen neto", valor: propio.margenNeto, mediana: med("margenNeto"),
-        formato: "pct", sentido: "alto_mejor" },
+        formato: "pct", sentido: "alto_mejor",
+        ayuda: "Lo que queda al final, después de todo" },
       { clave: "roe", label: "ROE", valor: propio.roe, mediana: med("roe"),
         formato: "pct", sentido: "alto_mejor", ayuda: "Retorno sobre el patrimonio" },
       { clave: "crecimientoVentas", label: "Crec. ventas", valor: propio.crecimientoVentas,
         mediana: med("crecimientoVentas"), formato: "pct", sentido: "alto_mejor",
         ayuda: "Último trimestre contra el mismo del año anterior" },
       { clave: "crecimientoGanancias", label: "Crec. ganancias", valor: propio.crecimientoGanancias,
-        mediana: med("crecimientoGanancias"), formato: "pct", sentido: "alto_mejor" },
+        mediana: med("crecimientoGanancias"), formato: "pct", sentido: "alto_mejor",
+        ayuda: "Último trimestre contra el mismo del año anterior" },
       { clave: "deudaSobrePatrimonio", label: "Deuda / patrimonio", valor: propio.deudaSobrePatrimonio,
         mediana: med("deudaSobrePatrimonio"), formato: "pct", sentido: "alto_apalancado",
         ayuda: "Deuda total como porcentaje del patrimonio neto" },
     ];
 
-    return { metricas, pares };
+    // Cada par con su valor en cada métrica: es lo que deja ver la dispersión
+    // en vez de sólo la mediana. Ya venían bajados; antes se descartaban.
+    const comparados: ParComparado[] = vivos.map((p) => ({
+      ticker: p.ticker,
+      nombre: POR_TICKER.get(p.ticker)?.nombre ?? p.ticker,
+      capitalizacion: porTicker.get(p.ticker)?.capitalizacion ?? null,
+      dia: porTicker.get(p.ticker)?.dia ?? null,
+      año: porTicker.get(p.ticker)?.año ?? null,
+      valores: Object.fromEntries(
+        metricas.map((m) => [m.clave, p.datos[m.clave as keyof typeof propio] ?? null])
+      ) as Record<string, number | null>,
+    }));
+
+    return {
+      metricas,
+      pares: comparados,
+      criterio: usaIndustria ? "industria" : "sector",
+      grupo: usaIndustria ? empresa.industria! : SECTOR_LABEL[empresa.sector],
+    };
   });
 }
 

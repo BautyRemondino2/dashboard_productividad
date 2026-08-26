@@ -4,18 +4,18 @@ import { notFound } from "next/navigation";
 import { POR_TICKER } from "@/lib/equity-universo";
 import { SECTOR_LABEL } from "@/lib/equity-sectores";
 import {
-  getComparables, getComparacion, getConsenso, getFicha, getHistoriaFinanciera,
+  getComparacion, getConsenso, getFicha, getHistoriaFinanciera,
   getNoticias, getRetornosDe,
 } from "@/lib/equity";
 import { traducirDescripcion } from "@/lib/traducir";
 import {
-  PanelConsenso, PanelFundamentals, PanelHistoria, PanelSorpresas,
+  PanelConsenso, PanelHistoria, PanelSorpresas,
 } from "./Fundamentals";
+import PanelComparacion from "./Comparacion";
 import {
   PERIODOS, PERIODO_LABEL, RECOMENDACION_LABEL, colorRetorno,
-  fmtCap, fmtFecha, fmtNumero, fmtPct, fmtUsd,
+  fmtCap, fmtFecha, fmtPct, fmtUsd,
 } from "@/lib/equity-formato";
-import type { FilaTablero } from "@/lib/equity-formato";
 import GraficoTradingView from "@/components/GraficoTradingView";
 import Logo from "./Logo";
 import { PanelNoticias } from "./Investigacion";
@@ -74,8 +74,10 @@ async function Retornos({ ticker }: { ticker: string }) {
 
 async function Comparacion({ ticker }: { ticker: string }) {
   const comparacion = await getComparacion(ticker);
-  if (!comparacion) return <p className="text-[11px] text-slate-600">Sin datos comparables.</p>;
-  return <PanelFundamentals comparacion={comparacion} />;
+  if (!comparacion) {
+    return <p className="px-[18px] py-4 text-[11px] text-meta-suave">Sin datos comparables.</p>;
+  }
+  return <PanelComparacion comparacion={comparacion} ticker={ticker} />;
 }
 
 async function Sorpresas({ ticker }: { ticker: string }) {
@@ -115,56 +117,6 @@ async function Noticias({ ticker }: { ticker: string }) {
   return <PanelNoticias noticias={noticias} />;
 }
 
-function Comparables({ filas, actual }: { filas: FilaTablero[]; actual: string }) {
-  if (filas.length === 0) {
-    return <p className="text-[11px] text-slate-600">Sin comparables en el índice.</p>;
-  }
-  return (
-    <div className="overflow-x-auto -m-4">
-      <table className="w-full min-w-[520px] border-collapse">
-        <thead>
-          <tr className="text-[10px] uppercase tracking-widest text-slate-600 border-b border-slate-800/80">
-            <th className="text-left font-normal pl-4 pr-2 py-2">Empresa</th>
-            <th className="text-right font-normal px-2 py-2">Hoy</th>
-            <th className="text-right font-normal px-2 py-2">12 meses</th>
-            <th className="text-right font-normal px-2 py-2">PER</th>
-            <th className="text-right font-normal pl-2 pr-4 py-2">Cap.</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-900">
-          {filas.map((f) => (
-            <tr key={f.ticker} className="hover:bg-slate-900/40 transition-colors">
-              <td className="pl-4 pr-2 py-2">
-                <Link href={`/equity/${f.ticker}`} className="block min-w-0">
-                  <span className="text-[12px] font-medium text-slate-200">{f.ticker}</span>
-                  <span className="block text-[10px] text-slate-600 truncate max-w-[180px]">
-                    {f.nombre}
-                  </span>
-                </Link>
-              </td>
-              <td className={`px-2 py-2 text-right text-[12px] tabular-nums ${colorRetorno(f.dia)}`}>
-                {fmtPct(f.dia)}
-              </td>
-              <td className={`px-2 py-2 text-right text-[12px] tabular-nums ${colorRetorno(f.año)}`}>
-                {fmtPct(f.año)}
-              </td>
-              <td className="px-2 py-2 text-right text-[12px] text-slate-400 tabular-nums">
-                {fmtNumero(f.per)}
-              </td>
-              <td className="pl-2 pr-4 py-2 text-right text-[12px] text-slate-400 tabular-nums whitespace-nowrap">
-                {fmtCap(f.capitalizacion)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="px-4 pt-3 text-[10px] text-slate-600">
-        Las más grandes del mismo sector que {actual}, por capitalización.
-      </p>
-    </div>
-  );
-}
-
 // ─── Página ─────────────────────────────────────────────────────────────────
 
 export default async function TickerPage({ params }: { params: Promise<{ ticker: string }> }) {
@@ -173,7 +125,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
 
   if (!POR_TICKER.has(ticker)) notFound();
 
-  const [ficha, comparables] = await Promise.all([getFicha(ticker), getComparables(ticker)]);
+  const ficha = await getFicha(ticker);
   if (!ficha) notFound();
 
   const { analistas: ana, earnings } = ficha;
@@ -292,14 +244,18 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             </div>
           </Card>
 
-          <Card titulo="Fundamentals" nota="contra la mediana de sus pares">
-            <Suspense fallback={<div className="h-[300px] animate-pulse bg-slate-900/40 rounded" />}>
+          {/* Fundamentals y comparables van juntos: partidos, la mediana
+              parecía una verdad del sector en vez de el medio de ocho empresas
+              concretas que conviene poder mirar una por una. */}
+          <Card
+            titulo="Fundamentals"
+            nota="dónde cae contra cada uno de sus pares"
+            cuerpo={false}
+            id="fundamentals"
+          >
+            <Suspense fallback={<div className="h-[420px] animate-pulse bg-card" />}>
               <Comparacion ticker={ficha.ticker} />
             </Suspense>
-          </Card>
-
-          <Card titulo="Comparables del sector">
-            <Comparables filas={comparables} actual={ficha.ticker} />
           </Card>
 
         </div>

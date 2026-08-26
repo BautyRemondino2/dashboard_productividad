@@ -1,6 +1,6 @@
 /**
  * Sectores del universo de equity, en taxonomía GICS.
- * Generado por `node scripts/generar-universo.mjs` el 2026-08-23.
+ * Generado por `node scripts/generar-universo.mjs` el 2026-08-26.
  *
  * Separado de `equity-universo` a propósito: esto lo importan Client
  * Components, y la lista de empresas no tiene por qué viajar al navegador.

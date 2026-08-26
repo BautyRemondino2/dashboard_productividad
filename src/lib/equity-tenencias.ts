@@ -2,7 +2,7 @@
  * Puente entre el símbolo con que un ETF reporta una tenencia y el ticker
  * equivalente en este dashboard.
  *
- * Generado por `node scripts/generar-universo.mjs` el 2026-08-23.
+ * Generado por `node scripts/generar-universo.mjs` el 2026-08-26.
  *
  * Un ETF de Brasil compra VALE3.SA en B3; la misma empresa cotiza en NYSE como
  * VALE. Sin este mapeo la tenencia no enlaza a ninguna ficha. Cada destino está
@@ -11,8 +11,8 @@
  */
 
 export const TENENCIA_A_TICKER: Record<string, string> = {
-  "000660.KS": "SKHY",
-  "055550.KS": "SHG",
+  "000660.KQ": "SKHY",
+  "055550.KQ": "SHG",
   "2303.TW": "UMC",
   "2330.TW": "TSM",
   "3711.TW": "ASX",
