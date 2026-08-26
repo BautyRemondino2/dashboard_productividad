@@ -49,14 +49,27 @@ const DESTINO = "src/lib/bonos-flujos-ars.ts";
 const UA = { "user-agent": "personal-dashboard/1.0", referer: "https://mercado.rava.com/analisis-bonos" };
 
 /**
- * Cuánto puede alejarse nuestro cronograma del de rava para aceptar el bono.
+ * Cuánto puede alejarse nuestro cronograma del de rava, en dos niveles.
  *
  * El control es sobre el **precio**, no sobre la TIR: en un bono a un mes, dos
  * décimas de precio son diez puntos de TIR anualizada, así que una tolerancia
  * en TIR rechazaría bonos sanos del tramo corto y dejaría pasar errores gordos
- * en el largo. Medio punto de precio es un cronograma que cierra.
+ * en el largo.
+ *
+ * Y va en dos niveles porque los dos tipos de error tienen tamaños muy
+ * distintos. Un cronograma mal interpretado se va lejos: cuando esta fuente
+ * publicaba los flujos de DICP sin la capitalización, el precio daba 21% abajo,
+ * y CUAP 28%. En cambio, que la referencia y el precio sean de instantes
+ * distintos —o que la fuente use un dólar de otro día, cosa que hace: para
+ * D30S6 usa el A3500 de tres hábiles antes y para TZVD8 uno diez pesos más
+ * caro— mueve menos de un punto.
+ *
+ * Así que abajo de 2% el bono entra, y entre 0,5% y 2% entra pero avisando. Con
+ * el corte único en 0,5% se caían cuatro dólar linked cuyo cronograma es un
+ * único pago de 100 dólares al vencimiento: no hay nada ahí que interpretar mal.
  */
-const TOLERANCIA_PRECIO = 0.005;
+const TOLERANCIA_DURA = 0.02;
+const TOLERANCIA_AVISO = 0.005;
 
 /**
  * El CER se aplica con diez días hábiles de rezago.
@@ -174,9 +187,51 @@ const baseCanje2005 = cerEmisionPublicado.get("DICP") ?? cerEmisionPublicado.get
 if (baseCanje2005) for (const t of CER_CANJE_2005) if (!cerEmisionPublicado.has(t)) cerEmisionPublicado.set(t, baseCanje2005);
 console.log(`  ${cerEmisionPublicado.size} con CER de emisión conocido`);
 
+// ── Nombres ──────────────────────────────────────────────────────────────────
+
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** "dic-27" a partir de una fecha ISO. */
+const mesAño = (iso) => `${MESES[Number(iso.slice(5, 7)) - 1]}-${iso.slice(2, 4)}`;
+
+/**
+ * Cómo se llama cada bono, por familia.
+ *
+ * El ticker no dice nada por sí solo —TZXD7 y X30N6 son dos cosas distintas— y
+ * en el detalle del gráfico el nombre es lo que ubica al que no los tiene todos
+ * en la cabeza. La familia sale del prefijo, que es la misma convención con la
+ * que se los descubre más arriba.
+ */
+function nombrarCer(ticker, vencimiento) {
+  if (ticker === "DICP") return "Discount en pesos";
+  if (ticker === "PARP") return "Par en pesos";
+  if (ticker === "CUAP") return "Cuasipar en pesos";
+  if (/^TZX/.test(ticker)) return `Boncer cupón cero ${mesAño(vencimiento)}`;
+  if (/^X/.test(ticker)) return `Lecer ${mesAño(vencimiento)}`;
+  return `Boncer ${mesAño(vencimiento)}`;
+}
+
+const nombrarDl = (ticker, vencimiento) =>
+  `${/^TZV/.test(ticker) ? "Bono" : "Letra"} dólar linked ${mesAño(vencimiento)}`;
+
 // ── Cronogramas ──────────────────────────────────────────────────────────────
 
 const flujoDe = async (ticker) => jsonDe(`https://mercado.rava.com/api/prices/bonos-flujo/${ticker}`);
+
+/**
+ * En qué unidad vino el pago.
+ *
+ * La fuente no es consistente consigo misma: el flujo de TZV27 vuelve en
+ * dólares (100 por cada 100 VN) y el de TZVD8, que es el mismo tipo de bono, en
+ * pesos ya convertidos al A3500 (151.416 por cada 100 VN). Se decide por cuál
+ * de las dos lecturas deja el pago cerca del saldo, que es lo que un bullet
+ * tiene que devolver.
+ */
+function enDolares(total, saldo, fx) {
+  const comoDolar = total / saldo;
+  const comoPeso = total / saldo / fx;
+  return Math.abs(comoDolar - 1) < Math.abs(comoPeso - 1) ? total : total / fx;
+}
 
 /** Los pagos futuros, ya sumados renta + amortización. */
 function futuros(flujos) {
@@ -191,6 +246,7 @@ const redondear = (n) => +n.toFixed(6);
 console.log("Bajando cronogramas…");
 const cer = [];
 const descartes = [];
+const avisos = [];
 
 for (const b of candidatosCer) {
   const ticker = b.especie;
@@ -212,7 +268,7 @@ for (const b of candidatosCer) {
 
     cer.push({
       ticker,
-      nombre: `${ticker} · CER ${b.vencimiento.slice(0, 4)}`,
+      nombre: nombrarCer(ticker, b.vencimiento.slice(0, 10)),
       simboloPrecio: ticker,
       vencimiento: b.vencimiento.slice(0, 10),
       cerEmision: redondear(cerEmision),
@@ -238,17 +294,17 @@ for (const b of candidatosDl) {
     // en vez de calcular mal.
     if (pagos.length !== 1) { descartes.push([ticker, `${pagos.length} pagos: no es bullet, revisar`]); continue; }
 
-    // La proyección de rava usa el A3500 del día, no el rezagado: para leer
-    // cuántos dólares paga hay que dividir por el mismo que usaron ellos
-    const dolares = pagos[0].total / a3500Proyeccion;
-    if (Math.abs(dolares - pagos[0].saldo) > 0.5) {
-      descartes.push([ticker, `el pago no da ${pagos[0].saldo} dólares (da ${dolares.toFixed(2)}): ¿no es dólar linked?`]);
+    // Cuando viene en pesos, la proyección usa el A3500 del día y no el
+    // rezagado: para leer cuántos dólares paga hay que dividir por ese mismo
+    const dolares = enDolares(pagos[0].total, pagos[0].saldo, a3500Proyeccion) / pagos[0].saldo * 100;
+    if (Math.abs(dolares - 100) > 0.5) {
+      descartes.push([ticker, `el pago no da 100 dólares por cada 100 VN (da ${dolares.toFixed(2)}): ¿no es dólar linked?`]);
       continue;
     }
 
     dolarLinked.push({
       ticker,
-      nombre: `${ticker} · dólar linked ${b.vencimiento.slice(0, 4)}`,
+      nombre: nombrarDl(ticker, b.vencimiento.slice(0, 10)),
       simboloPrecio: ticker,
       vencimiento: b.vencimiento.slice(0, 10),
       flujos: [{ fecha: pagos[0].fecha, monto: redondear(pagos[0].saldo) }],
@@ -301,13 +357,14 @@ function controlar(lista, precioAjustado) {
     const error = Math.abs(implicito - precio) / precio;
     const propia = tir(b.flujos, precio);
     if (propia == null) { descartes.push([b.ticker, "no converge la TIR"]); continue; }
-    if (error > TOLERANCIA_PRECIO) {
+    if (error > TOLERANCIA_DURA) {
       descartes.push([
         b.ticker,
         `el cronograma no cierra: a la TIR de rava (${b.tirRava.toFixed(2)}%) daría ${implicito.toFixed(2)} y cotiza ${precio.toFixed(2)} (${(error * 100).toFixed(1)}%)`,
       ]);
       continue;
     }
+    if (error > TOLERANCIA_AVISO) avisos.push([b.ticker, `${(error * 100).toFixed(1)}% de diferencia contra el precio de rava`]);
     pasan.push({ ...b, error, tirPropia: propia });
   }
   return pasan;
@@ -320,6 +377,11 @@ console.log(`\nCER: ${cerOk.length}/${cer.length} pasan el control`);
 for (const b of cerOk) console.log(`  ${b.ticker.padEnd(6)} ${b.vencimiento}  TIR ${b.tirPropia.toFixed(2)}% (rava ${b.tirRava.toFixed(2)}%)  error de precio ${(b.error * 100).toFixed(2)}%`);
 console.log(`Dólar linked: ${dlOk.length}/${dolarLinked.length} pasan el control`);
 for (const b of dlOk) console.log(`  ${b.ticker.padEnd(6)} ${b.vencimiento}  TIR ${b.tirPropia.toFixed(2)}% (rava ${b.tirRava.toFixed(2)}%)  error de precio ${(b.error * 100).toFixed(2)}%`);
+
+if (avisos.length) {
+  console.log("\nEntran, pero con la referencia algo corrida:");
+  for (const [t, motivo] of avisos) console.log(`  ${t.padEnd(6)} ${motivo}`);
+}
 
 if (descartes.length) {
   console.log("\nAfuera:");
@@ -348,7 +410,7 @@ fs.writeFileSync(DESTINO, `/**
  *
  * Cada bono de este archivo pasó el control del generador: descontando este
  * cronograma a la TIR que publica rava se llega al precio al que cotiza, con
- * menos de ${(TOLERANCIA_PRECIO * 100).toFixed(1)}% de error.
+ * menos de ${(TOLERANCIA_DURA * 100).toFixed(0)}% de error.
  *
  * CER de referencia al generar: ${CER_HOY.toFixed(4)} (${fechaCer}) · A3500: ${a3500.valor.toFixed(4)} (${a3500.fecha}).
  */

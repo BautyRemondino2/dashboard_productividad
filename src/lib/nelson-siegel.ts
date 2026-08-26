@@ -91,6 +91,10 @@ export interface AjusteNS {
   pendientePb: number;
   /** Cuánto de la dispersión explica la curva, 0 a 1. */
   r2: number;
+  /** El mismo R² descontando el premio por tener parámetros. Es el que se muestra. */
+  r2Ajustado: number;
+  /** false cuando hubo tan pocos bonos que la curvatura no se estimó. */
+  conJoroba: boolean;
   /** Error típico del ajuste, en puntos básicos. */
   rmsePb: number;
   /** Cuánto se aparta cada bono de la curva. Ordenados de más barato a más caro. */
@@ -112,55 +116,75 @@ function factores(t: number, lambda: number): [number, number] {
   return [f1, f1 - e];
 }
 
-/** Sistema 3×3 por eliminación gaussiana con pivoteo. `null` si es singular. */
-function resolver3(a: number[][], b: number[]): [number, number, number] | null {
-  const m = [
-    [a[0][0], a[0][1], a[0][2], b[0]],
-    [a[1][0], a[1][1], a[1][2], b[1]],
-    [a[2][0], a[2][1], a[2][2], b[2]],
-  ];
+/** Sistema k×k por eliminación gaussiana con pivoteo. `null` si es singular. */
+function resolver(a: number[][], b: number[]): number[] | null {
+  const k = b.length;
+  const m = a.map((fila, i) => [...fila, b[i]]);
 
-  for (let col = 0; col < 3; col++) {
+  for (let col = 0; col < k; col++) {
     let mejor = col;
-    for (let f = col + 1; f < 3; f++) if (Math.abs(m[f][col]) > Math.abs(m[mejor][col])) mejor = f;
+    for (let f = col + 1; f < k; f++) if (Math.abs(m[f][col]) > Math.abs(m[mejor][col])) mejor = f;
     if (Math.abs(m[mejor][col]) < 1e-12) return null;
     [m[col], m[mejor]] = [m[mejor], m[col]];
 
-    for (let f = 0; f < 3; f++) {
+    for (let f = 0; f < k; f++) {
       if (f === col) continue;
       const factor = m[f][col] / m[col][col];
-      for (let c = col; c < 4; c++) m[f][c] -= factor * m[col][c];
+      for (let c = col; c <= k; c++) m[f][c] -= factor * m[col][c];
     }
   }
 
-  return [m[0][3] / m[0][0], m[1][3] / m[1][1], m[2][3] / m[2][2]];
+  // Tras la eliminación la matriz es diagonal: cada incógnita sale de su fila
+  return m.map((fila, i) => fila[k] / fila[i]);
 }
 
-/** Mínimos cuadrados de los tres β con λ fijo. */
-function betasPara(puntos: PuntoAjuste[], lambda: number): [number, number, number] | null {
+/**
+ * Mínimos cuadrados de los β con λ fijo.
+ *
+ * Con `joroba` en false se estiman sólo el nivel y la pendiente, y β2 queda en
+ * cero: es la versión de dos factores, para cuando no hay bonos suficientes
+ * como para estimar también la curvatura.
+ */
+function betasPara(puntos: PuntoAjuste[], lambda: number, joroba: boolean): [number, number, number] | null {
+  const k = joroba ? 3 : 2;
   // Matriz normal XᵀX y vector Xᵀy, con la columna de unos del intercepto
-  const xtx = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  const xty = [0, 0, 0];
+  const xtx = Array.from({ length: k }, () => new Array(k).fill(0));
+  const xty = new Array(k).fill(0);
 
   for (const p of puntos) {
     const [f1, f2] = factores(p.duration, lambda);
-    const x = [1, f1, f2];
-    for (let i = 0; i < 3; i++) {
+    const x = [1, f1, f2].slice(0, k);
+    for (let i = 0; i < k; i++) {
       xty[i] += x[i] * p.tir;
-      for (let j = 0; j < 3; j++) xtx[i][j] += x[i] * x[j];
+      for (let j = 0; j < k; j++) xtx[i][j] += x[i] * x[j];
     }
   }
 
-  return resolver3(xtx, xty);
+  const sol = resolver(xtx, xty);
+  if (!sol) return null;
+  return [sol[0], sol[1], joroba ? sol[2] : 0];
 }
 
 /**
  * Con menos de esto no se ajusta nada.
  *
  * Tres puntos y tres parámetros pasan por los tres exactamente: el ajuste daría
- * R²=1 y no diría nada. Con cuatro ya sobra un grado de libertad.
+ * R²=1 y no diría nada.
  */
 const MINIMO_PUNTOS = 4;
+
+/**
+ * Y con menos de esto no se estima la joroba.
+ *
+ * Contando λ, la versión completa tiene cuatro parámetros: con cuatro bonos no
+ * queda ningún grado de libertad y la curva pasa por todos los puntos diga lo
+ * que diga el mercado. Abajo del umbral se ajusta la versión de dos factores
+ * —nivel y pendiente, sin curvatura—, que es lo que se hace con curvas ralas.
+ *
+ * Con cinco queda un grado de libertad, que es poco pero no es nada: quien
+ * lee el ajuste tiene el R² ajustado al lado, que descuenta exactamente eso.
+ */
+const MINIMO_PARA_JOROBA = 5;
 
 /**
  * Ajusta Nelson-Siegel a una nube de bonos.
@@ -186,11 +210,12 @@ export function ajustarNelsonSiegel(entrada: PuntoAjuste[]): AjusteNS | null {
   const hi = Math.log(Math.max(dMax / 2, 0.3));
   const PASOS = 160;
 
+  const joroba = puntos.length >= MINIMO_PARA_JOROBA;
   let mejor: { lambda: number; betas: [number, number, number]; sse: number } | null = null;
 
   for (let i = 0; i <= PASOS; i++) {
     const lambda = Math.exp(lo + ((hi - lo) * i) / PASOS);
-    const betas = betasPara(puntos, lambda);
+    const betas = betasPara(puntos, lambda, joroba);
     if (!betas) continue;
 
     let sse = 0;
@@ -214,6 +239,14 @@ export function ajustarNelsonSiegel(entrada: PuntoAjuste[]): AjusteNS | null {
   const media = puntos.reduce((s, p) => s + p.tir, 0) / puntos.length;
   const sst = puntos.reduce((s, p) => s + (p.tir - media) ** 2, 0);
   const r2 = sst > 0 ? 1 - mejor.sse / sst : 0;
+
+  // R² ajustado, que descuenta lo que explica el modelo sólo por tener
+  // parámetros. Con cinco bonos y cuatro parámetros —los tres β más λ— el R²
+  // crudo da 0,98 casi sin importar dónde caigan los puntos; el ajustado, 0,92,
+  // que es la lectura honesta de un ajuste con un grado de libertad.
+  const parametros = (joroba ? 3 : 2) + 1;
+  const gl = puntos.length - parametros;
+  const r2Ajustado = gl > 0 ? 1 - (1 - r2) * ((puntos.length - 1) / gl) : r2;
   const rmsePb = Math.sqrt(mejor.sse / puntos.length) * 100;
 
   const residuos = puntos
@@ -244,6 +277,8 @@ export function ajustarNelsonSiegel(entrada: PuntoAjuste[]): AjusteNS | null {
     plazosClave,
     pendientePb: (tasa(dMax) - tasa(dMin)) * 100,
     r2,
+    r2Ajustado,
+    conJoroba: joroba,
     rmsePb,
     residuos,
     n: puntos.length,

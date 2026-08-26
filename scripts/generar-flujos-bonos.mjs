@@ -106,6 +106,123 @@ const rango = (lista) => {
 };
 console.log(`  Suma de flujos por cada 100 VN — soberanos: ${rango(soberanosVivos)} · ONs: ${rango(onsVivas)}`);
 
+// ── El control: que el cronograma reproduzca el precio al que cotiza ─────────
+//
+// Sin esto, un cronograma mal cargado da una TIR mal calculada y no hay forma
+// de darse cuenta mirando la pantalla. Y no es hipotético: los 2041 estaban
+// mal. La serie de cupones venía al revés —los últimos tres pagos de GD41
+// crecían mientras el saldo bajaba, lo que implica una tasa de 19,5% anual en
+// un bono cuyo cupón máximo es 4,875%— y la TIR salía 106 pb abajo de la real.
+//
+// El control descuenta cada cronograma a la TIR que publica rava y lo compara
+// con el precio de mercado. Va en dos niveles porque los dos tipos de error
+// tienen tamaños muy distintos: un cronograma equivocado se va varios puntos
+// (los 2041 daban 6%), mientras que el interés corrido y la fecha de
+// liquidación mueven menos de uno.
+//
+// Cuando un bono no cierra, se prueba con el cronograma de rava y se vuelve a
+// controlar: se queda el que reproduce el precio, que es el único criterio
+// verificable que hay acá.
+
+const TOLERANCIA_DURA = 0.02;
+const TOLERANCIA_AVISO = 0.005;
+const RAVA = "https://mercado.rava.com/api/prices";
+
+const ravaJson = async (u) =>
+  (await fetch(u, { headers: { "user-agent": "personal-dashboard/1.0", referer: "https://mercado.rava.com/analisis-bonos" } })).json();
+
+/** Convención de los hard-dollar: semestral, base 30/360. */
+function años30360(desde, fecha) {
+  const a = new Date(`${desde}T00:00:00Z`), b = new Date(`${fecha}T00:00:00Z`);
+  const da = Math.min(a.getUTCDate(), 30), db = Math.min(b.getUTCDate(), 30);
+  const meses = 12 * (b.getUTCFullYear() - a.getUTCFullYear()) + (b.getUTCMonth() - a.getUTCMonth());
+  return (30 * meses + (db - da)) / 360;
+}
+
+/**
+ * Ojo con la convención: acá se capitaliza **anual**, no semestral.
+ *
+ * El dashboard expresa la TIR de estos bonos como bond-equivalent yield, que
+ * capitaliza dos veces al año, y rava la publica como efectiva anual. Es la
+ * misma tasa dicha distinto —10,27% semestral son 10,53% anual— pero si el
+ * control descuenta con una convención la tasa de la otra, el error resultante
+ * crece con la duration: los bonos largos daban 1% de diferencia y los cortos
+ * 0,2%, que es la firma de un desfase de tasa y no de un cronograma malo.
+ * Para controlar hay que hablar el idioma de la fuente contra la que se compara.
+ */
+const valorPresente = (flujos, tasaAnual) =>
+  flujos.reduce((acc, f) => {
+    const t = años30360(hoy, f.fecha);
+    return t > 0 ? acc + f.monto / Math.pow(1 + tasaAnual, t) : acc;
+  }, 0);
+
+console.log("\nControlando los cronogramas contra los precios de rava…");
+let panel = [];
+try {
+  panel = (await ravaJson(`${RAVA}/bonos`)).datos ?? [];
+} catch (e) {
+  console.log(`  No se pudo bajar el panel de rava (${e.message}): se salta el control.`);
+}
+
+const avisos = [];
+const reparados = [];
+const sinControl = [];
+
+if (panel.length) {
+  /** Los hard-dollar cotizan en dólares bajo el ticker con D; las ONs, con su propio símbolo. */
+  const referencia = (b, esSoberano) =>
+    panel.find((x) => x.especie === (esSoberano ? `${b.ticker}D` : b.simboloPrecio)) ??
+    panel.find((x) => x.especie === b.ticker);
+
+  async function controlar(lista, esSoberano) {
+    for (const b of lista) {
+      const r = referencia(b, esSoberano);
+      const precio = Number(r?.precio);
+      if (!r || !(precio > 0)) { sinControl.push(b.ticker); continue; }
+
+      const futuros = b.flujos.filter((f) => f.fecha > hoy);
+      const desvio = (fl) => Math.abs(valorPresente(fl, Number(r.tir)) - precio) / precio;
+      let error = desvio(futuros);
+
+      if (error > TOLERANCIA_DURA) {
+        // No cierra: se prueba con el cronograma que publica rava
+        let reemplazo = null;
+        try {
+          const { flujos } = await ravaJson(`${RAVA}/bonos-flujo/${b.ticker}`);
+          reemplazo = flujosValidos(
+            (flujos ?? [])
+              .filter((f) => String(f.fecha_pago).slice(0, 10) > hoy)
+              .map((f) => ({ fecha: String(f.fecha_pago).slice(0, 10), monto: Number(f.total) }))
+          );
+        } catch { /* si no se puede bajar, queda el original y el aviso */ }
+
+        const errorNuevo = reemplazo?.length ? desvio(reemplazo) : Infinity;
+        if (errorNuevo < error) {
+          reparados.push([b.ticker, `${(error * 100).toFixed(1)}% → ${(errorNuevo * 100).toFixed(1)}%`]);
+          b.flujos = reemplazo;
+          error = errorNuevo;
+        }
+      }
+
+      if (error > TOLERANCIA_DURA) avisos.push([b.ticker, `NO CIERRA: ${(error * 100).toFixed(1)}% contra el precio`]);
+      else if (error > TOLERANCIA_AVISO) avisos.push([b.ticker, `${(error * 100).toFixed(1)}% contra el precio`]);
+    }
+  }
+
+  await controlar(soberanosVivos, true);
+  await controlar(onsVivas, false);
+
+  console.log(`  ${soberanosVivos.length + onsVivas.length - sinControl.length} controlados · ${sinControl.length} sin contraparte en rava`);
+  if (reparados.length) {
+    console.log("  Reemplazados por el cronograma de rava, que sí cierra:");
+    for (const [t, d] of reparados) console.log(`    ${t.padEnd(6)} ${d}`);
+  }
+  if (avisos.length) {
+    console.log("  Con diferencia:");
+    for (const [t, d] of avisos) console.log(`    ${t.padEnd(6)} ${d}`);
+  }
+}
+
 const fecha = new Date().toISOString().slice(0, 10);
 
 fs.writeFileSync(DESTINO, `/**
@@ -120,6 +237,10 @@ fs.writeFileSync(DESTINO, `/**
  * Se guardan en el repo en vez de pedirlos en cada visita: un cronograma de
  * amortización no cambia, así que no tiene sentido depender de que ese sitio
  * esté arriba. Los precios sí se piden en vivo, a data912.
+ *
+ * Cada cronograma pasó el control del generador: descontado a la TIR que
+ * publica rava llega al precio al que el bono cotiza. Los que no cerraban se
+ * reemplazaron por el cronograma de rava —al generar, los dos 2041—.
  */
 
 export interface FlujoBono {

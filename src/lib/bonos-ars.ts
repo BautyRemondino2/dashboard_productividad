@@ -23,8 +23,9 @@
  * y seis puntos más de lo que cotiza.
  *
  * Los dos rezagos se verificaron contra los rendimientos que publica rava: con
- * ellos, las TIR de este módulo coinciden con las suyas dentro de medio punto
- * de precio en los 27 bonos.
+ * ellos, cada cronograma descontado a la TIR de esa fuente llega al precio al
+ * que el bono cotiza. El control corre en `scripts/generar-flujos-ars.mjs` y
+ * decide qué bonos entran al archivo de cronogramas.
  */
 
 import { CONV_ARS, calcularDuration, calcularTir, precioDe, type FilaData912 } from "@/lib/bonos";

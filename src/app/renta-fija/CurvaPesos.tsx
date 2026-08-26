@@ -32,6 +32,7 @@ export default function CurvaPesos({
 }) {
   const puntos: PuntoNube[] = curva.puntos.map((p) => ({
     ticker: p.ticker,
+    nombre: p.nombre,
     tir: p.tir,
     duration: p.duration,
     detalle: [

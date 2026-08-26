@@ -403,8 +403,11 @@ function FichaAjuste({
         label="pendiente"
         valor={`${ajuste.pendientePb > 0 ? "+" : ""}${Math.round(ajuste.pendientePb)} pb`}
       />
-      <Dato label="R²" valor={fmt(ajuste.r2, 2)} />
+      <Dato label="R² aj." valor={fmt(ajuste.r2Ajustado, 2)} />
       <Dato label="error típico" valor={`${Math.round(ajuste.rmsePb)} pb`} />
+      {!ajuste.conJoroba && (
+        <span className="text-meta-suave">{ajuste.n} bonos: se ajusta sin curvatura</span>
+      )}
       {barato && caro && barato.ticker !== caro.ticker && (
         <span className="text-meta-suave">
           más barato <span className="text-secundario">{barato.ticker}</span> ({barato.pb > 0 ? "+" : ""}
