@@ -28,8 +28,13 @@ const METRICAS: { id: Metrica; label: string; nota: string }[] = [
 
 // ─── Escalas ────────────────────────────────────────────────────────────────
 
-/** Sin dato: gris del fondo, para que no se confunda con un valor bajo. */
-const SIN_DATO = "#1e293b";
+/**
+ * Sin dato: casi el fondo del card, para que se lea como hueco y no como valor.
+ *
+ * Antes era un gris medio y quedaba muy cerca del gris del centro de la rampa
+ * divergente, que significa "no se movió". Dos cosas distintas del mismo color.
+ */
+const SIN_DATO = "#131f33";
 
 /** Secuencial de una sola tonalidad. En fondo oscuro, más claro = más. */
 const AZUL = ["#0d366b", "#184f95", "#256abf", "#3987e5", "#5598e7", "#86b6ef", "#cde2fb"];
@@ -266,35 +271,106 @@ function Escala({ metrica, valores }: { metrica: Metrica; valores: Map<string, n
   const nums = [...valores.values()].filter((v): v is number => v != null);
   if (nums.length === 0) return null;
 
-  const rampa = metrica === "empleo" ? EMPLEO : AZUL;
   const min = Math.min(...nums);
   const max = Math.max(...nums);
+  const sinDato = PROVINCIAS.filter((p) => valores.get(p.iso) == null).length;
 
   const etiqueta = (v: number) =>
     metrica === "empleo" ? fmtPct(v)
     : metrica === "exportaciones" ? `US$${fmt(v / 1000, 1)} mil M`
     : `${fmt(v / 1e6, 1)} M`;
 
+  /**
+   * La rampa divergente se dibuja simétrica porque así se pinta el mapa: el
+   * cero tiene que caer en el centro, si no un +1% se vería del mismo verde que
+   * un +6% según cómo haya venido el año.
+   *
+   * Eso deja tramos de la barra sin datos que los ocupen —acá el empleo cae
+   * hasta -12% pero sólo sube hasta +4%—, así que los extremos reales van
+   * marcados sobre la barra. Antes la barra decía "+4,0%" en la punta derecha,
+   * que es donde estaría un +12,3% que no existe.
+   */
+  if (metrica === "empleo") {
+    const tope = Math.max(...nums.map(Math.abs)) || 1;
+    const pos = (v: number) => ((v / tope + 1) / 2) * 100;
+
+    return (
+      <div>
+        <div className="relative">
+          <div className="flex h-2 rounded-sm overflow-hidden">
+            {EMPLEO.map((c) => (
+              <div key={c} className="flex-1" style={{ background: c }} />
+            ))}
+          </div>
+          {/* Hasta dónde llegan los datos de verdad */}
+          {[min, max].map((v) => (
+            <div
+              key={v}
+              className="absolute -top-[3px] -bottom-[3px] w-px bg-cuerpo"
+              style={{ left: `${pos(v)}%` }}
+            />
+          ))}
+        </div>
+
+        <div className="relative h-4 mt-1">
+          {[min, max].map((v, i) => (
+            <span
+              key={v}
+              className="absolute text-[10px] text-label tabular-nums whitespace-nowrap"
+              style={{ left: `${pos(v)}%`, transform: i === 0 ? "translateX(-6px)" : "translateX(-100%)" }}
+            >
+              {etiqueta(v)}
+            </span>
+          ))}
+        </div>
+
+        <div className="flex justify-between text-[9px] uppercase tracking-[0.1em] text-tenue">
+          <span>cae</span>
+          <span>sin cambio</span>
+          <span>crece</span>
+        </div>
+
+        {sinDato > 0 && <SinDato n={sinDato} />}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex h-2 rounded-sm overflow-hidden">
-        {rampa.map((c) => (
+        {AZUL.map((c) => (
           <div key={c} className="flex-1" style={{ background: c }} />
         ))}
       </div>
       <div className="flex justify-between mt-1">
-        <span className="text-[10px] text-slate-600 tabular-nums">{etiqueta(min)}</span>
-        {metrica === "empleo" && <span className="text-[10px] text-slate-600">0%</span>}
-        <span className="text-[10px] text-slate-600 tabular-nums">{etiqueta(max)}</span>
+        <span className="text-[10px] text-label tabular-nums">{etiqueta(min)}</span>
+        <span className="text-[10px] text-label tabular-nums">{etiqueta(max)}</span>
       </div>
       {metrica === "exportaciones" && (
-        <p className="text-[9px] text-slate-700 mt-1">
+        <p className="text-[9px] text-meta-suave mt-1 leading-relaxed">
           Escala logarítmica: Buenos Aires exporta veinte veces la mediana.
         </p>
       )}
+      {sinDato > 0 && <SinDato n={sinDato} />}
     </div>
   );
 }
+
+/** El hueco se nombra: en gris sin más, se confunde con un valor bajo. */
+function SinDato({ n }: { n: number }) {
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <span
+        className="w-3 h-3 rounded-sm border border-borde shrink-0"
+        style={{ background: SIN_DATO }}
+      />
+      <span className="text-[10px] text-tenue">
+        {n === 1 ? "1 provincia sin dato" : `${n} provincias sin dato`}
+      </span>
+    </div>
+  );
+}
+
 
 // ─── Lectura de la provincia ────────────────────────────────────────────────
 

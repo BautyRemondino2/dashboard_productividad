@@ -126,49 +126,146 @@ const limpiarUrl = (u) => String(u).split("?")[0];
 /**
  * Fotos de los gobernadores, desde la Wikipedia en español.
  *
- * Se usa `prop=pageimages`, que devuelve la miniatura ya redimensionada y
- * acepta **los 24 títulos en un solo pedido**. Antes esto iba contra Wikidata,
- * ficha por ficha, y esa API corta las consultas anónimas: cada corrida
- * resolvía un subconjunto distinto.
+ * Son de Wikimedia Commons, con licencia libre. Los logos partidarios NO se
+ * traen: son marcas registradas y en Wikipedia están bajo uso legítimo, que no
+ * habilita reutilizarlos acá.
  *
- * Son fotos de Wikimedia Commons, con licencia libre. Los logos partidarios NO
- * se traen: son marcas registradas y en Wikipedia están bajo uso legítimo, que
- * no habilita reutilizarlos acá.
+ * Pedir `prop=pageimages` por el nombre y quedarse con lo que venga no alcanza,
+ * y esta corrida arrastró tres errores por eso:
+ *
+ *   - **Desambiguaciones.** "Rogelio Frigerio" y "Ignacio Torres" son páginas
+ *     que listan homónimos. La primera terminó mostrando al abuelo del
+ *     gobernador de Entre Ríos, fotografiado en los años cincuenta.
+ *   - **La búsqueda de respaldo.** Cuando el título no resolvía, se buscaba el
+ *     nombre y se tomaba la imagen del primer resultado con foto. Para Chaco
+ *     eso devolvió el mapa de la elección de 2023.
+ *
+ * Ahora cada candidato se valida: tiene que ser una persona, su artículo tiene
+ * que hablar de la provincia que gobierna, y la imagen no puede ser un mapa,
+ * un escudo ni una bandera.
  */
-async function buscarFotos(nombres) {
-  const salida = new Map();
-  if (nombres.length === 0) return salida;
 
-  const pedir = async (titulos) => {
-    const j = await traer(
-      `${WIKI}?action=query&titles=${titulos.map(encodeURIComponent).join("|")}` +
-      `&prop=pageimages&piprop=thumbnail&pithumbsize=240&redirects=1&format=json&origin=*`
-    );
-    return Object.values(j?.query?.pages ?? {});
+/** Un archivo que no es el retrato de una persona. */
+const NO_ES_RETRATO =
+  /(elecci|mapa|escudo|bandera|logo|coat[_ ]of|flag|map[_ ]of|\.svg)/i;
+
+/** Pide título, imagen, resumen y si es desambiguación, hasta 20 por vez. */
+async function paginas(titulos) {
+  if (titulos.length === 0) return [];
+  const j = await traer(
+    `${WIKI}?action=query&titles=${titulos.map(encodeURIComponent).join("|")}` +
+    `&prop=pageimages|pageprops|extracts&piprop=thumbnail&pithumbsize=240` +
+    `&ppprop=disambiguation&exintro=1&explaintext=1&exsentences=3` +
+    `&redirects=1&format=json&origin=*`
+  );
+  return Object.values(j?.query?.pages ?? {}).map((p) => ({
+    titulo: p.title,
+    url: p.thumbnail?.source ? limpiarUrl(p.thumbnail.source) : null,
+    resumen: (p.extract ?? "").toLowerCase(),
+    desambiguacion: "disambiguation" in (p.pageprops ?? {}),
+  }));
+}
+
+/** Los homónimos que lista una desambiguación. */
+async function homonimos(titulo) {
+  const j = await traer(
+    `${WIKI}?action=query&titles=${encodeURIComponent(titulo)}` +
+    `&prop=links&pllimit=40&plnamespace=0&format=json&origin=*`
+  );
+  const pg = Object.values(j?.query?.pages ?? {})[0];
+  return (pg?.links ?? []).map((l) => l.title);
+}
+
+/**
+ * Si esta página es la del gobernador **en ejercicio** de esa provincia.
+ *
+ * Tres condiciones, y cada una salió de un error concreto:
+ *
+ *   - **El apellido tiene que estar en el título.** Sin esto, buscar "Leandro
+ *     Zdero gobernador Chaco" devolvía el artículo de la Casa de Gobierno del
+ *     Chaco, que menciona al Chaco y a políticos, y su foto es el edificio.
+ *   - **No puede estar muerto.** Rogelio Frigerio, gobernador de Entre Ríos,
+ *     comparte nombre con su abuelo. Los dos artículos nombran Entre Ríos y los
+ *     dos hablan de un político argentino; lo que los separa es que el del
+ *     abuelo abre con "fue" y trae fecha de fallecimiento.
+ *   - **El artículo tiene que hablar de la provincia**, o al menos de un
+ *     político argentino: varios abren con el lugar de nacimiento y recién
+ *     después mencionan el cargo.
+ */
+function esElGobernador(pg, gobernador, provincia) {
+  if (!pg || pg.desambiguacion || !pg.resumen) return false;
+
+  const apellido = gobernador.split(/\s+/).pop().toLowerCase();
+  if (!pg.titulo.toLowerCase().includes(apellido)) return false;
+
+  // "fue un político" o un rango de fechas con muerte: es el homónimo anterior
+  if (/\bfue\s+(un|una)\b/.test(pg.resumen)) return false;
+  if (/\d{4}\s*[-–]\s*\d{1,2}\s+de\s+\w+\s+de\s+\d{4}/.test(pg.resumen)) return false;
+
+  const prov = provincia.toLowerCase().replace("caba", "buenos aires");
+  if (pg.resumen.includes(prov)) return true;
+  return /pol[ií]tic[oa]|gobernador/.test(pg.resumen) && pg.resumen.includes("argentin");
+}
+
+async function buscarFotos(entradas) {
+  const salida = new Map();
+  if (entradas.length === 0) return salida;
+
+  const pendientes = [...entradas];
+  const resolver = (nombre, pg) => {
+    if (!pg?.url || NO_ES_RETRATO.test(decodeURIComponent(pg.url))) return false;
+    salida.set(nombre, pg.url);
+    return true;
   };
 
-  for (let i = 0; i < nombres.length; i += 20) {
+  // 1. Por el nombre, en tandas
+  const porTitulo = new Map();
+  for (let i = 0; i < pendientes.length; i += 20) {
     await dormir(400);
-    for (const pg of await pedir(nombres.slice(i, i + 20))) {
-      if (pg.thumbnail?.source) salida.set(pg.title, limpiarUrl(pg.thumbnail.source));
+    for (const pg of await paginas(pendientes.slice(i, i + 20).map((e) => e.gobernador))) {
+      porTitulo.set(pg.titulo, pg);
     }
   }
 
-  // Los que no resolvieron suelen tener el título desambiguado
-  // ("Ignacio Torres (político)"): se los busca primero.
-  for (const nombre of nombres.filter((n) => !salida.has(n))) {
+  const sinResolver = [];
+  for (const e of pendientes) {
+    const pg = porTitulo.get(e.gobernador);
+    if (esElGobernador(pg, e.gobernador, e.provincia) && resolver(e.gobernador, pg)) continue;
+    sinResolver.push({ ...e, pg });
+  }
+
+  // 2. Los que cayeron en una desambiguación: se abre y se busca al correcto
+  for (const e of sinResolver) {
+    if (!e.pg?.desambiguacion) continue;
+    await dormir(400);
+    const candidatos = await homonimos(e.gobernador);
+    if (!candidatos.length) continue;
+
+    await dormir(400);
+    // El orden en que la API devuelve las páginas no es el pedido, así que se
+    // evalúan todas y no se corta en la primera que "parece"
+    for (const pg of await paginas(candidatos.slice(0, 12))) {
+      if (esElGobernador(pg, e.gobernador, e.provincia) && resolver(e.gobernador, pg)) break;
+    }
+  }
+
+  // 3. Lo que sigue sin resolver: búsqueda por texto, validando igual
+  for (const e of sinResolver) {
+    if (salida.has(e.gobernador)) continue;
     await dormir(400);
     const j = await traer(
-      `${WIKI}?action=query&list=search&srsearch=${encodeURIComponent(`${nombre} gobernador`)}&srlimit=3&format=json&origin=*`
+      `${WIKI}?action=query&list=search&format=json&origin=*&srlimit=5&srsearch=` +
+      encodeURIComponent(`${e.gobernador} gobernador ${e.provincia}`)
     );
     const titulos = (j?.query?.search ?? []).map((x) => x.title);
     if (!titulos.length) continue;
 
     await dormir(400);
-    for (const pg of await pedir(titulos)) {
-      if (pg.thumbnail?.source) { salida.set(nombre, limpiarUrl(pg.thumbnail.source)); break; }
+    for (const pg of await paginas(titulos)) {
+      if (esElGobernador(pg, e.gobernador, e.provincia) && resolver(e.gobernador, pg)) break;
     }
   }
+
   return salida;
 }
 
@@ -283,8 +380,10 @@ console.log("Buscando fotos de los gobernadores en Wikipedia…");
 const fotos = fotosYaGuardadas();
 const previas = fotos.size;
 
+// Cada gobernador va con su provincia: es lo que permite descartar al homónimo
 const nuevas = await buscarFotos(
-  [...new Set(provincias.map((p) => p.ref.gobernador))].filter((n) => !fotos.has(n))
+  [...new Map(provincias.map((p) => [p.ref.gobernador, { gobernador: p.ref.gobernador, provincia: p.nombre }])).values()]
+    .filter((e) => !fotos.has(e.gobernador))
 );
 for (const [n, f] of nuevas) fotos.set(n, f);
 for (const p of provincias) p.foto = fotos.get(p.ref.gobernador) ?? null;

@@ -82,6 +82,14 @@ Commons con licencia libre.
 > esa API corta las consultas anónimas y cada corrida resolvía un subconjunto
 > distinto. Igual el generador acumula —arranca de lo ya guardado y sólo
 > agrega—, así una corrida con la red mal nunca borra lo que ya estaba.
+>
+> **Cada candidato se valida antes de aceptarlo**, porque pedir la imagen por el
+> nombre y quedarse con lo que venga trajo tres fotos equivocadas: el abuelo del
+> gobernador de Entre Ríos —homónimo exacto—, el mapa de la elección del Chaco y
+> después su Casa de Gobierno. Ahora el apellido tiene que estar en el título de
+> la página, la persona no puede figurar como fallecida, y el artículo tiene que
+> hablar de esa provincia. Leandro Zdero no tiene foto en Wikipedia: la ficha
+> muestra sus iniciales, que es mejor que mostrar un edificio.
 
 > **Trampa de los rubros del INDEC:** las manufacturas de origen industrial
 > incluyen *piedras y metales preciosos*, así que San Juan aparece con 87% en
