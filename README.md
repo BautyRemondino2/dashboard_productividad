@@ -255,6 +255,31 @@ Para subir la cuota, registrar un mail en mymemory.translated.net y ponerlo en
 > media descripción en castellano y media en inglés se lee peor que el original
 > completo.
 
+### Los datos provinciales están en el repo
+
+Empleo privado y exportaciones por provincia se generan con:
+
+```bash
+node scripts/generar-datos-provincias.mjs
+```
+
+y quedan en `src/lib/provincias-datos.ts`. **En runtime no se pide nada por
+red.**
+
+Antes se pedían en cada render, y eso son **27 requests secuenciales** a las
+APIs del Estado: el CSV del SSPM, dos catálogos y veintitrés lotes de series.
+El caché vivía en memoria, así que cada arranque en frío los pagaba de nuevo.
+Local eso son 2,4 segundos; desde una función en Vercel, con 200-400 ms de ida
+y vuelta hasta Argentina, entre seis y once, con el mapa en blanco todo ese
+tiempo.
+
+No hace falta pagarlo: el empleo se publica una vez por mes y las exportaciones
+una vez por año. Con el archivo generado, la página abre en 0,6 s en frío y
+73 ms después, y el mapa sigue andando aunque datos.gob.ar esté caído.
+
+> La fecha de generación y el período de cada serie se muestran al pie del
+> mapa. Sin ese renglón, un dato que quedó viejo no se nota.
+
 ### Actualizar el universo
 
 El universo vive en `src/lib/equity-universo.ts` y está generado:

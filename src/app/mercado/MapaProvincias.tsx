@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MAPA_ALTO, MAPA_ANCHO, PROVINCIAS, type Orientacion, type Provincia } from "@/lib/provincias";
-import { RUBRO_LABEL, type DatosProvincia } from "@/lib/macro-provincias";
+import { RUBRO_LABEL, VIGENCIA, type DatosProvincia } from "@/lib/macro-provincias";
 
 /**
  * Mapa de las 24 jurisdicciones.
@@ -242,8 +242,15 @@ export default function MapaProvincias({ datos }: { datos: Record<string, DatosP
       </div>
 
       <p className="px-4 pb-4 -mt-1 text-[10px] text-slate-600 leading-relaxed">
-        Empleo: asalariados registrados del sector privado (SSPM), mensual. Exportaciones:
-        INDEC, último año cerrado. Población: Censo Nacional 2022.
+        Empleo: asalariados registrados del sector privado (SSPM), mes{" "}
+        {VIGENCIA.mesEmpleo.slice(5, 7)}/{VIGENCIA.mesEmpleo.slice(0, 4)}. Exportaciones:
+        INDEC, año {VIGENCIA.anioExportaciones}. Población: Censo Nacional 2022.
+        {/* La fecha de generación va a la vista: estos datos están en el repo y
+            sin este renglón envejecerían sin que se note. */}
+        <br />
+        Bajados el {VIGENCIA.generado.slice(8)}/{VIGENCIA.generado.slice(5, 7)}/
+        {VIGENCIA.generado.slice(0, 4)} · se actualizan con{" "}
+        <code className="text-meta">node scripts/generar-datos-provincias.mjs</code>.
         <br />
         No hay producto bruto geográfico ni empleo público por provincia: Argentina no los
         publica de forma regular ni comparable entre jurisdicciones, y estimarlos sería
