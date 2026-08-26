@@ -15,9 +15,16 @@ export const metadata = { title: "Renta fija · Dashboard" };
 // Los precios cambian con la rueda: la página no puede quedar fija en el build.
 export const dynamic = "force-dynamic";
 
-/** El color de cada curva. Uno por moneda de ajuste, igual en toda la página. */
+/**
+ * El color de cada curva, uno por moneda de ajuste.
+ *
+ * El punto de acento del card lleva el mismo color que la línea del gráfico, así
+ * que los cuatro encabezados funcionan de leyenda de la página entera.
+ */
+const COLOR_SOBERANOS = "#3987e5";
 const COLOR_CER = "#8b5cf6";
 const COLOR_DL = "#0891b2";
+const COLOR_ONS = "#199e70";
 
 function Esqueleto({ alto = 380 }: { alto?: number }) {
   return <div className="animate-pulse bg-encabezado rounded-card" style={{ height: alto }} />;
@@ -86,44 +93,46 @@ export default function RentaFijaPage() {
         derecha={<RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />}
       />
 
-      <div className="space-y-4">
+      {/* Dos por fila: las cuatro curvas comparten ejes y marcas, y en grilla se
+          comparan de un vistazo en vez de scrolleando una debajo de la otra.
+          `items-start` para que cada card mida lo que ocupa: estirado, el de
+          CER quedaba con un palmo de vacío adentro para igualar al de
+          soberanos, que lleva además el spread por ley. */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4 items-start">
         <Card
           titulo="Curva de soberanos"
-          nota="TIR contra duration · capitalización semestral, base 30/360"
-          acento="var(--color-acento-verde)"
-          destacada
+          nota="hard-dollar · capitalización semestral, base 30/360"
+          acento={COLOR_SOBERANOS}
         >
           <CurvaSoberanos puntos={curva} spreads={spreads} validacion={validacion} />
         </Card>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <Card
-            titulo="Curva CER"
-            nota="tasa real: lo que paga el Tesoro por encima de la inflación"
-            acento={COLOR_CER}
-          >
-            <Suspense fallback={<Esqueleto />}>
-              <SeccionCer />
-            </Suspense>
-          </Card>
+        <Card
+          titulo="Curva CER"
+          nota="tasa real: lo que paga el Tesoro por encima de la inflación"
+          acento={COLOR_CER}
+        >
+          <Suspense fallback={<Esqueleto />}>
+            <SeccionCer />
+          </Suspense>
+        </Card>
 
-          <Card
-            titulo="Curva dólar linked"
-            nota="tasa en dólares oficiales: lo que rinde además de la devaluación"
-            acento={COLOR_DL}
-          >
-            <Suspense fallback={<Esqueleto />}>
-              <SeccionDolarLinked />
-            </Suspense>
-          </Card>
-        </div>
+        <Card
+          titulo="Curva dólar linked"
+          nota="tasa en dólares oficiales: lo que rinde además de la devaluación"
+          acento={COLOR_DL}
+        >
+          <Suspense fallback={<Esqueleto />}>
+            <SeccionDolarLinked />
+          </Suspense>
+        </Card>
 
         <Card
           titulo="Obligaciones negociables"
-          nota="corporativas en dólares · lo que rinden por encima del soberano es el riesgo de la empresa"
-          acento="var(--color-acento-rojo)"
+          nota="corporativas en dólares · contra la soberana, el riesgo de la empresa"
+          acento={COLOR_ONS}
         >
-          <Suspense fallback={<Esqueleto alto={420} />}>
+          <Suspense fallback={<Esqueleto />}>
             {/* Sólo la curva ley NY como referencia: mezclar las dos leyes
                 daba una línea en zigzag que no es ninguna de las dos */}
             <SeccionOns
@@ -133,7 +142,9 @@ export default function RentaFijaPage() {
             />
           </Suspense>
         </Card>
+      </div>
 
+      <div>
         <MercadoClient
           instruments={datos.instruments}
           series={datos.series}

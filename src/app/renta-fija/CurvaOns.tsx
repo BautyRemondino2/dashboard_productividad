@@ -1,18 +1,25 @@
 "use client";
 
+import { useMemo } from "react";
 import CurvaNS, { type PuntoNube } from "./CurvaNS";
+import { ajustarNelsonSiegel } from "@/lib/nelson-siegel";
 import type { PuntoOn } from "@/lib/bonos";
 
 /**
  * Curva de obligaciones negociables en dólares.
  *
- * Mismo eje que la de soberanos —TIR contra duration— para que se puedan
- * comparar de un vistazo: lo que una ON rinde por encima del soberano de igual
- * plazo es lo que se cobra por el riesgo de la empresa en vez del riesgo país.
+ * Van dos curvas a propósito. La verde es la nube corporativa con su ajuste; la
+ * azul es la soberana ley NY, que está de referencia: **lo que una ON rinde por
+ * encima de la soberana al mismo plazo es lo que se cobra por el riesgo de la
+ * empresa en vez del riesgo país**, y ese spread es el número por el que se
+ * mira este gráfico. Aparece bono por bono en el detalle.
  *
- * La curva soberana va de referencia, dibujada sin marcas. El spread contra
- * ella se calcula bono por bono y aparece en el detalle: es el número por el
- * que se mira este gráfico.
+ * El spread se mide contra la curva ajustada y no interpolando los soberanos
+ * crudos: la línea azul que se ve dibujada es esa misma función, así que el
+ * número del detalle y la distancia en pantalla son lo mismo. Los soberanos van
+ * de 1,5 a 5,9 años de duration; para una ON fuera de ese tramo no hay contra
+ * qué compararla y el dato no se muestra, en vez de estirar la referencia hasta
+ * donde no llega.
  */
 
 const COLOR = "#199e70";
@@ -40,25 +47,13 @@ export default function CurvaOns({
   /** La curva soberana, para ver el spread corporativo. */
   soberanos: { duration: number; tir: number; ticker: string }[];
 }) {
-  /** Interpola la curva soberana para comparar a igual duration. */
-  const soberanoEn = (d: number): number | null => {
-    const orden = [...soberanos].sort((a, b) => a.duration - b.duration);
-    if (orden.length === 0) return null;
-    if (d <= orden[0].duration) return orden[0].tir;
-    if (d >= orden[orden.length - 1].duration) return orden[orden.length - 1].tir;
-    for (let i = 1; i < orden.length; i++) {
-      if (d <= orden[i].duration) {
-        const a = orden[i - 1];
-        const b = orden[i];
-        const t = (d - a.duration) / (b.duration - a.duration || 1);
-        return a.tir + t * (b.tir - a.tir);
-      }
-    }
-    return null;
-  };
+  const referencia = useMemo(() => ajustarNelsonSiegel(soberanos), [soberanos]);
 
   const nube: PuntoNube[] = puntos.map((p) => {
-    const soberano = soberanoEn(p.duration);
+    const comparable =
+      referencia && p.duration >= referencia.rango.min && p.duration <= referencia.rango.max;
+    const spread = comparable ? (p.tir - referencia.tasa(p.duration)) * 100 : null;
+
     return {
       ticker: p.ticker,
       nombre: p.nombre,
@@ -67,8 +62,8 @@ export default function CurvaOns({
       atenuado: p.duration < DURATION_FRAGIL,
       detalle: [
         { label: "precio", valor: `US$${fmt(p.precio)}` },
-        ...(soberano != null
-          ? [{ label: "sobre el soberano", valor: `${Math.round((p.tir - soberano) * 100)} pb` }]
+        ...(spread != null
+          ? [{ label: "sobre el soberano", valor: `${spread > 0 ? "+" : ""}${Math.round(spread)} pb` }]
           : []),
         { label: "vence", valor: String(p.vencimiento) },
       ],
@@ -80,14 +75,13 @@ export default function CurvaOns({
       series={[
         {
           id: "soberanos",
-          etiqueta: "Curva soberana ley NY",
+          etiqueta: "Soberana ley NY (referencia)",
           color: REFERENCIA,
           soloLinea: true,
           puntos: soberanos.map((s) => ({ ticker: s.ticker, tir: s.tir, duration: s.duration })),
         },
         { id: "ons", etiqueta: "Obligaciones negociables", color: COLOR, puntos: nube },
       ]}
-      alto={340}
       notaDerecha="Apagadas, las que vencen en menos de seis meses"
       vacio="Sin precios de ONs en este momento."
     />
