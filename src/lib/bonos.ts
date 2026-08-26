@@ -64,7 +64,7 @@ export const ESQUEMAS_ON: Record<string, EsquemaBono & { simboloPrecio: string }
 /**
  * Convención 30/360: todos los meses valen 30 días y el año 360.
  *
- * Es la que usan estos bonos. Contra ACT/365 la diferencia es de menos de un
+ * Es la que usan los hard-dollar. Contra ACT/365 la diferencia es de menos de un
  * punto básico, pero no cuesta nada hacerlo bien y evita que alguien tenga que
  * preguntarse por qué el número no coincide con la pantalla del broker.
  */
@@ -76,21 +76,46 @@ function años30360(desde: Date, fecha: string): number {
   return (30 * meses + (d2 - d1)) / 360;
 }
 
+/** Días corridos sobre 365, que es como se miden los plazos en pesos. */
+function añosAct365(desde: Date, fecha: string): number {
+  const d = new Date(`${fecha}T00:00:00Z`);
+  return (d.getTime() - Date.UTC(desde.getUTCFullYear(), desde.getUTCMonth(), desde.getUTCDate())) /
+    (365 * 86_400_000);
+}
+
 /**
- * Valor presente con **capitalización semestral**, que es la convención de
- * estos bonos: pagan renta dos veces al año y su rendimiento se expresa como
- * bond-equivalent yield.
+ * Cómo se anualiza una TIR. No es lo mismo en dólares que en pesos.
  *
- * Capitalizar anual —como estaba antes— daba una TIR unos 17 puntos básicos
- * más alta. Para un asesor que compara contra la pantalla del broker, esa
- * diferencia se nota.
+ * Los hard-dollar y las ONs pagan renta semestral y su rendimiento se publica
+ * como bond-equivalent yield: capitaliza dos veces al año, base 30/360.
+ * Capitalizar anual daba una TIR unos 17 puntos básicos más alta, y para quien
+ * compara contra la pantalla del broker esa diferencia se nota.
+ *
+ * Los CER y los dólar linked se citan como tasa efectiva anual sobre días
+ * corridos. Mezclar las dos convenciones no rompe nada visiblemente —las curvas
+ * siguen saliendo— pero mueve cada TIR unos 20 pb contra lo que publica
+ * cualquier pantalla, que es exactamente el tipo de error que después nadie
+ * encuentra.
  */
-function valorPresente(flujos: Flujo[], tasa: number, hoy: Date): number {
+export interface Convencion {
+  /** Cuántas veces al año capitaliza la tasa. */
+  capitalizacion: 1 | 2;
+  años: (desde: Date, fecha: string) => number;
+}
+
+/** Hard-dollar y ONs: semestral, 30/360. */
+export const CONV_USD: Convencion = { capitalizacion: 2, años: años30360 };
+
+/** CER y dólar linked: efectiva anual, ACT/365. */
+export const CONV_ARS: Convencion = { capitalizacion: 1, años: añosAct365 };
+
+function valorPresente(flujos: Flujo[], tasa: number, hoy: Date, conv: Convencion): number {
+  const c = conv.capitalizacion;
   let vp = 0;
   for (const f of flujos) {
-    const t = años30360(hoy, f.fecha);
+    const t = conv.años(hoy, f.fecha);
     if (t <= 0) continue;
-    vp += f.monto / Math.pow(1 + tasa / 2, 2 * t);
+    vp += f.monto / Math.pow(1 + tasa / c, c * t);
   }
   return vp;
 }
@@ -100,17 +125,22 @@ function valorPresente(flujos: Flujo[], tasa: number, hoy: Date): number {
  * irregulares puede divergir, y la bisección sobre un intervalo acotado siempre
  * converge o dice que no hay solución.
  */
-export function calcularTir(flujos: Flujo[], precio: number, hoy = new Date()): number | null {
+export function calcularTir(
+  flujos: Flujo[],
+  precio: number,
+  hoy = new Date(),
+  conv: Convencion = CONV_USD
+): number | null {
   if (precio <= 0) return null;
 
   let bajo = -0.5;
   let alto = 3.0;
-  if (valorPresente(flujos, bajo, hoy) < precio) return null; // ni al mínimo alcanza
-  if (valorPresente(flujos, alto, hoy) > precio) return null; // ni al máximo baja
+  if (valorPresente(flujos, bajo, hoy, conv) < precio) return null; // ni al mínimo alcanza
+  if (valorPresente(flujos, alto, hoy, conv) > precio) return null; // ni al máximo baja
 
   for (let i = 0; i < 200; i++) {
     const medio = (bajo + alto) / 2;
-    if (valorPresente(flujos, medio, hoy) > precio) bajo = medio;
+    if (valorPresente(flujos, medio, hoy, conv) > precio) bajo = medio;
     else alto = medio;
     if (alto - bajo < 1e-9) break;
   }
@@ -120,22 +150,27 @@ export function calcularTir(flujos: Flujo[], precio: number, hoy = new Date()): 
 /**
  * Duration modificada: cuánto cae el precio por cada punto que sube la tasa.
  *
- * Se divide por (1 + TIR/2) y no por (1 + TIR) porque la capitalización es
- * semestral: la modificada tiene que dividir por uno más la tasa **del
- * período**, no de la tasa anual.
+ * Se divide por uno más la tasa **del período** y no de la tasa anual: con
+ * capitalización semestral eso es (1 + TIR/2), y con anual (1 + TIR).
  */
-export function calcularDuration(flujos: Flujo[], tir: number, hoy = new Date()): number | null {
-  const vp = valorPresente(flujos, tir, hoy);
+export function calcularDuration(
+  flujos: Flujo[],
+  tir: number,
+  hoy = new Date(),
+  conv: Convencion = CONV_USD
+): number | null {
+  const vp = valorPresente(flujos, tir, hoy, conv);
   if (vp <= 0) return null;
 
+  const c = conv.capitalizacion;
   let ponderado = 0;
   for (const f of flujos) {
-    const t = años30360(hoy, f.fecha);
+    const t = conv.años(hoy, f.fecha);
     if (t <= 0) continue;
-    ponderado += (t * f.monto) / Math.pow(1 + tir / 2, 2 * t);
+    ponderado += (t * f.monto) / Math.pow(1 + tir / c, c * t);
   }
   const macaulay = ponderado / vp;
-  return macaulay / (1 + tir / 2);
+  return macaulay / (1 + tir / c);
 }
 
 export interface PuntoCurva {
@@ -284,7 +319,7 @@ export function validarCurva(
 
 const DATA912_CORP = "https://data912.com/live/arg_corp";
 
-interface FilaData912 {
+export interface FilaData912 {
   symbol: string;
   c?: number;
   px_bid?: number;
@@ -292,7 +327,7 @@ interface FilaData912 {
 }
 
 /** El precio de cierre; si no operó, el punto medio de las puntas. */
-function precioDe(r: FilaData912 | undefined): number | null {
+export function precioDe(r: FilaData912 | undefined): number | null {
   if (!r) return null;
   if ((r.c ?? 0) > 0) return r.c!;
   if ((r.px_bid ?? 0) > 0 && (r.px_ask ?? 0) > 0) return (r.px_bid! + r.px_ask!) / 2;
