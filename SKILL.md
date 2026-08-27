@@ -63,6 +63,12 @@ Tres modelos según el dato:
 - Formato es-AR: `1.607,00`, porcentajes con coma. Helpers en
   `src/lib/equity-formato.ts`.
 - `serverExternalPackages: ['better-sqlite3']` en `next.config.ts`.
+- Registro editorial en `/renta-fija` (inspirado en breakeven.ar): títulos
+  serif vía prop `serif` de `Card` y `EncabezadoPagina` (usa `font-serif` ≈
+  Georgia, sin cargar fuente). El resto de la app sigue con headers en
+  versalitas sans. `CurvaNS` acepta `referencias`: líneas horizontales de
+  contexto (Tesoro 10a, TIR implícita del riesgo país) contra las que se lee
+  la altura de la curva.
 
 ## Trampas conocidas
 

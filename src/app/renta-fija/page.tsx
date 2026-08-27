@@ -88,6 +88,7 @@ export default function RentaFijaPage() {
   return (
     <Contenedor>
       <EncabezadoPagina
+        serif
         titulo="Renta fija"
         bajada={`Cuatro curvas ajustadas por Nelson-Siegel: hard-dollar, CER, dólar linked y corporativos · ${total} instrumentos, ${conDatos} con datos`}
         derecha={<RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />}
@@ -100,14 +101,21 @@ export default function RentaFijaPage() {
           soberanos, que lleva además el spread por ley. */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4 items-start">
         <Card
+          serif
           titulo="Curva de soberanos"
           nota="hard-dollar · capitalización semestral, base 30/360"
           acento={COLOR_SOBERANOS}
         >
-          <CurvaSoberanos puntos={curva} spreads={spreads} validacion={validacion} />
+          <CurvaSoberanos
+            puntos={curva}
+            spreads={spreads}
+            validacion={validacion}
+            ust10y={precios["UST10Y"] ?? null}
+          />
         </Card>
 
         <Card
+          serif
           titulo="Curva CER"
           nota="tasa real: lo que paga el Tesoro por encima de la inflación"
           acento={COLOR_CER}
@@ -118,6 +126,7 @@ export default function RentaFijaPage() {
         </Card>
 
         <Card
+          serif
           titulo="Curva dólar linked"
           nota="tasa en dólares oficiales: lo que rinde además de la devaluación"
           acento={COLOR_DL}
@@ -128,6 +137,7 @@ export default function RentaFijaPage() {
         </Card>
 
         <Card
+          serif
           titulo="Obligaciones negociables"
           nota="corporativas en dólares · contra la soberana, el riesgo de la empresa"
           acento={COLOR_ONS}

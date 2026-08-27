@@ -96,10 +96,19 @@ function escalaLinda(min: number, max: number, cortes = 6) {
   return { desde, hasta, ticks, decimales };
 }
 
+/** Una línea horizontal de referencia: un nivel de tasa con su etiqueta. */
+export interface Referencia {
+  /** Nivel de TIR, en %, donde va la línea. */
+  y: number;
+  etiqueta: string;
+  color?: string;
+}
+
 export default function CurvaNS({
   series,
   alto = 320,
   notaDerecha,
+  referencias,
   vacio = "Sin precios en este momento.",
   children,
 }: {
@@ -107,6 +116,11 @@ export default function CurvaNS({
   alto?: number;
   /** Texto chico arriba a la derecha: el índice con que se ajustó, la fecha. */
   notaDerecha?: string;
+  /**
+   * Líneas horizontales de contexto: un plazo fijo, el Tesoro libre de riesgo,
+   * la TIR que implica el riesgo país. La curva se lee contra ellas.
+   */
+  referencias?: Referencia[];
   vacio?: string;
   /** Bloques propios de cada curva: el spread por ley, el spread corporativo. */
   children?: React.ReactNode;
@@ -171,6 +185,9 @@ export default function CurvaNS({
   const tirs = [
     ...series.flatMap((s) => s.puntos.map((p) => p.tir)),
     ...ajustes.flatMap(({ ajuste }) => (ajuste ? ajuste.curva.map((c) => c.tir) : [])),
+    // Las referencias entran a la escala: si el Tesoro cae por debajo del bono
+    // más bajo, su línea igual tiene que quedar dentro del gráfico.
+    ...(referencias?.map((r) => r.y) ?? []),
   ];
   const durations = series.flatMap((s) => s.puntos.map((p) => p.duration));
   const escalaY = escalaLinda(Math.min(...tirs), Math.max(...tirs));
@@ -240,6 +257,24 @@ export default function CurvaNS({
               width={46}
             />
             <ZAxis range={[70, 70]} />
+
+            {/* Referencias de contexto, detrás de todo: el nivel de una tasa
+                conocida contra el que se lee la altura de la curva */}
+            {referencias?.map((r, i) => (
+              <ReferenceLine
+                key={`ref-${i}`}
+                y={r.y}
+                stroke={r.color ?? TENUE}
+                strokeDasharray="5 4"
+                strokeOpacity={0.75}
+                label={{
+                  value: r.etiqueta,
+                  position: "insideTopRight",
+                  fill: r.color ?? GRIS,
+                  fontSize: 10,
+                }}
+              />
+            ))}
 
             {/* Guías del punto que se está mirando: la lectura va sobre el eje */}
             {punto && (

@@ -29,12 +29,29 @@ export default function CurvaSoberanos({
   puntos,
   spreads,
   validacion,
+  ust10y,
 }: {
   puntos: PuntoCurva[];
   spreads: SpreadLey[];
   validacion: Validacion;
+  /** Tasa del Tesoro de EE.UU. a 10 años: el piso libre de riesgo. */
+  ust10y?: number | null;
 }) {
   const sospechoso = (t: string) => validacion.sospechosos.includes(t);
+
+  // Las dos referencias que enmarcan la curva soberana: abajo el libre de
+  // riesgo (Tesoro), arriba lo que el riesgo país dice que debería rendir.
+  const referencias: { y: number; etiqueta: string; color?: string }[] = [];
+  if (ust10y != null && Number.isFinite(ust10y)) {
+    referencias.push({ y: ust10y, etiqueta: `Tesoro EE.UU. 10a: ${fmt(ust10y, 1)}%`, color: "#64748b" });
+  }
+  if (validacion.implicita != null) {
+    referencias.push({
+      y: validacion.implicita,
+      etiqueta: `Riesgo país implica ${fmt(validacion.implicita, 1)}%`,
+      color: "#f59e0b",
+    });
+  }
 
   const aNube = (p: PuntoCurva): PuntoNube => ({
     ticker: p.ticker,
@@ -58,11 +75,7 @@ export default function CurvaSoberanos({
   return (
     <CurvaNS
       series={series}
-      notaDerecha={
-        validacion.implicita != null
-          ? `El riesgo país implica una TIR de ${fmt(validacion.implicita, 1)}%`
-          : undefined
-      }
+      referencias={referencias}
       vacio="Sin precios cargados. Usá ↻ Actualizar para traerlos de las fuentes."
     >
       {spreads.length > 0 && (
