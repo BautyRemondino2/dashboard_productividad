@@ -48,6 +48,11 @@ Tres modelos según el dato:
    `settlementPrice` (TNA de hoy en %, 0 si no operó hoy),
    `previousSettlementPrice` (TNA del cierre anterior, en fracción),
    `tradeVolume`. La caución a 1 día en ARS es la líquida.
+   Integrado (ago-2026): `src/lib/byma.ts` (fetch cacheado, patrón equity, sin
+   DB) → la fuente `byma_caucion` en `fuentes.ts` llena `CAUCION1` (1 día ARS,
+   antes carga manual) y el panel `Cauciones` en `/mercado` muestra la curva
+   ARS + USD por plazo. Próximos endpoints a sumar de la misma base:
+   soberanos (`titulos-publicos`), ONs (`obligaciones-negociables`).
 
 ## Convenciones
 

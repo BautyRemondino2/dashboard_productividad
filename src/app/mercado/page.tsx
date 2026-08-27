@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { cargarPanel } from "@/lib/panel-datos";
 import MercadoClient from "./MercadoClient";
 import { VISTA_MERCADO } from "@/lib/mercado";
@@ -7,6 +8,7 @@ import Gobierno from "./Gobierno";
 import { getDatosProvinciales } from "@/lib/macro-provincias";
 import { Contenedor, EncabezadoPagina } from "@/components/Card";
 import HeroMacro from "./HeroMacro";
+import Cauciones from "./Cauciones";
 
 export const metadata = { title: "Macro Argentina · Dashboard" };
 
@@ -29,6 +31,14 @@ export default function MacroPage() {
       />
 
       <HeroMacro datos={datos} />
+
+      <div className="mt-4">
+        <Suspense
+          fallback={<div className="h-40 rounded-card border border-borde bg-card animate-pulse" />}
+        >
+          <Cauciones />
+        </Suspense>
+      </div>
 
       <div className="mt-4">
         <MercadoClient

@@ -22,6 +22,7 @@
 import YahooFinance from "yahoo-finance2";
 import { defaultMetric } from "@/lib/mercado";
 import type { MarketInstrument } from "@/lib/mercado";
+import { getCaucion1DiaARS } from "@/lib/byma";
 import { localDateStr } from "@/lib/utils";
 
 export interface FetchedValue {
@@ -264,6 +265,23 @@ const plazoFijoFuente: Fuente = {
   },
 };
 
+// ─── BYMA (caución a 1 día en pesos) ────────────────────────────────────────────
+
+/**
+ * Llena CAUCION1 (tasa corta en pesos) con la TNA a 1 día de BYMA. Es el
+ * instrumento que antes se cargaba a mano: ahora se rebaja solo. La curva
+ * completa de cauciones vive en el panel de /mercado (ver `@/lib/byma`).
+ */
+const bymaCaucionFuente: Fuente = {
+  id: "byma_caucion",
+  label: "Caución (BYMA)",
+  async fetchValues() {
+    const tna = await getCaucion1DiaARS();
+    if (tna == null) throw new Error("sin caución operada");
+    return [{ instrumento: "CAUCION1", metrica: "tna", valor: tna, fecha: localDateStr() }];
+  },
+};
+
 // ─── Yahoo (global, commodities, Merval) ───────────────────────────────────────
 
 /**
@@ -334,6 +352,7 @@ const FUENTES: Fuente[] = [
   bcraFuente,
   argentinaDatosFuente,
   plazoFijoFuente,
+  bymaCaucionFuente,
   yahooFuente,
 ];
 
