@@ -29,8 +29,15 @@ const SECTOR_HUE: Record<Sector, number> = {
 const sectorColor = (s: Sector, l = 65) =>
   s === "Otros" ? `oklch(${l}% 0 0)` : `oklch(${l}% 0.11 ${SECTOR_HUE[s]})`;
 
-/** Valor del período en una fila: "dia" vive arriba, el resto en `retornos`. */
-function valorPeriodo(f: FilaConRetornos, p: Periodo): number | null {
+/**
+ * Lo que se puede ordenar: los períodos de retorno más el premercado, que no es
+ * un retorno sino la variación de la sesión extendida.
+ */
+type Orden = Periodo | "premercado";
+
+/** Valor de una columna en una fila: "dia" y "premercado" viven arriba, el resto en `retornos`. */
+function valorPeriodo(f: FilaConRetornos, p: Orden): number | null {
+  if (p === "premercado") return f.premercado;
   return p === "dia" ? f.dia : f.retornos[p];
 }
 
@@ -90,7 +97,21 @@ export default function EquityClient({
   /** Retorno del S&P 500 en cada período, para calcular el alpha. */
   indice: Record<Periodo, number | null>;
 }) {
-  const [periodo, setPeriodo] = useState<Periodo>("mes");
+  // Hay sesión extendida abierta cuando algún papel trae dato de premercado.
+  // En ese caso la vista arranca ordenada por el premercado —que es lo que se
+  // mueve con la rueda cerrada—; el resto del día, por el retorno de un mes.
+  const hayPremercado = useMemo(() => filas.some((f) => f.premercado != null), [filas]);
+  const tipoExtendido = useMemo(() => {
+    let pre = 0, post = 0;
+    for (const f of filas) {
+      if (f.premercadoTipo === "pre") pre++;
+      else if (f.premercadoTipo === "post") post++;
+    }
+    return post > pre ? "post" : "pre";
+  }, [filas]);
+  const labelExtendido = tipoExtendido === "post" ? "After hours" : "Premercado";
+
+  const [periodo, setPeriodo] = useState<Orden>(hayPremercado ? "premercado" : "mes");
   const [subiendo, setSubiendo] = useState(true);
   const [sector, setSector] = useState<Sector | "todos">("todos");
   const [busqueda, setBusqueda] = useState("");
@@ -100,10 +121,11 @@ export default function EquityClient({
 
   /** El número que se muestra: retorno puro, o cuánto le sacó al índice. */
   const valor = useMemo(
-    () => (f: FilaConRetornos, p: Periodo) => {
+    () => (f: FilaConRetornos, p: Orden) => {
       const v = valorPeriodo(f, p);
       if (v == null) return null;
-      if (!contraIndice) return v;
+      // El índice no tiene premercado con el que comparar: ahí no hay alpha.
+      if (!contraIndice || p === "premercado") return v;
       const ref = indice[p];
       return ref == null ? null : v - ref;
     },
@@ -208,6 +230,21 @@ export default function EquityClient({
         {fmtUsd(f.precio)}
       </td>
 
+      {hayPremercado && (
+        <td
+          className={`px-2 py-2 text-right text-[12px] tabular-nums ${colorRetorno(f.premercado)} ${
+            periodo === "premercado" ? "bg-slate-800/30 font-semibold" : ""
+          }`}
+          title={
+            f.premercadoPrecio != null
+              ? `${labelExtendido}: ${fmtUsd(f.premercadoPrecio)} · vs. último cierre`
+              : undefined
+          }
+        >
+          {fmtPct(f.premercado)}
+        </td>
+      )}
+
       {PERIODOS.map((p) => {
         const v = valor(f, p);
         return (
@@ -273,13 +310,22 @@ export default function EquityClient({
     </td>
   );
 
-  const COLUMNAS = 4 + PERIODOS.length + 3;
+  const COLUMNAS = 4 + PERIODOS.length + 3 + (hayPremercado ? 1 : 0);
 
   return (
     <div className="space-y-4">
       {/* ── Períodos ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex items-center gap-1">
+          {hayPremercado && (
+            <button
+              onClick={() => setPeriodo("premercado")}
+              title="Variación en la sesión extendida contra el último cierre regular — lo que se mueve con la rueda cerrada"
+              className={chip(periodo === "premercado")}
+            >
+              {labelExtendido}
+            </button>
+          )}
           {PERIODOS.map((p) => (
             <button key={p} onClick={() => setPeriodo(p)} className={chip(periodo === p)}>
               {PERIODO_LABEL[p]}
@@ -354,6 +400,17 @@ export default function EquityClient({
                 <th className="text-left font-normal pl-4 pr-2 py-2 w-10">#</th>
                 <th className="text-left font-normal px-2 py-2">Empresa</th>
                 <th className="text-right font-normal px-2 py-2">Precio</th>
+                {hayPremercado && (
+                  <th
+                    onClick={() => setPeriodo("premercado")}
+                    title="Variación en la sesión extendida contra el último cierre regular"
+                    className={`text-right font-normal px-2 py-2 cursor-pointer transition-colors whitespace-nowrap ${
+                      periodo === "premercado" ? "text-cuerpo bg-slate-800/50" : "hover:text-cuerpo"
+                    }`}
+                  >
+                    {labelExtendido}
+                  </th>
+                )}
                 {PERIODOS.map((p) => (
                   <th
                     key={p}
@@ -468,6 +525,14 @@ export default function EquityClient({
           ? "Los porcentajes son la diferencia contra el S&P 500 en el mismo período."
           : "Los porcentajes son retornos reales sobre cierres diarios de Yahoo Finance."}{" "}
         El PER es <em>trailing</em> (últimos 12 meses).
+        {hayPremercado && (
+          <>
+            {" "}
+            La columna <em>{labelExtendido}</em> es la variación de la sesión
+            extendida contra el último cierre: lo que se mueve con la rueda
+            cerrada.
+          </>
+        )}
       </p>
     </div>
   );

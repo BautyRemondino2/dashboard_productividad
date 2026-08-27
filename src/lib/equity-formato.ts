@@ -17,6 +17,14 @@ export interface FilaTablero {
   precio: number;
   /** Variación de la rueda, en %. */
   dia: number | null;
+  /** Estado del mercado según Yahoo: PRE, REGULAR, POST, CLOSED… */
+  estadoMercado: string | null;
+  /** Variación en la sesión extendida (pre o after-hours) vs. el último cierre regular, en %. */
+  premercado: number | null;
+  /** Precio en la sesión extendida. */
+  premercadoPrecio: number | null;
+  /** Si el dato extendido es de pre-apertura (`pre`) o after-hours (`post`). */
+  premercadoTipo: "pre" | "post" | null;
   /** Retorno de los últimos 12 meses, en %. */
   año: number | null;
   /** Precio contra su media móvil de 50 ruedas, en %. NO es un retorno. */

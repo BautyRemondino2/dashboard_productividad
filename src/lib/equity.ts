@@ -127,7 +127,51 @@ const CAMPOS_QUOTE = [
   "trailingPE",
   "earningsTimestampStart",
   "isEarningsDateEstimate",
+  // Sesión extendida: con la rueda cerrada, es lo único que se mueve.
+  "marketState",
+  "preMarketPrice",
+  "preMarketChangePercent",
+  "postMarketPrice",
+  "postMarketChangePercent",
 ];
+
+/**
+ * La sesión extendida de un papel: pre-apertura o after-hours.
+ *
+ * Yahoo marca en qué sesión está con `marketState` y publica el precio de esa
+ * sesión en campos aparte. Con la rueda regular abierta no hay sesión extendida
+ * que mostrar (manda la variación del día). Ya cerrada (`CLOSED`) puede quedar
+ * el after-hours de la que terminó o el pre de la que viene: se toma el que
+ * tenga dato. La variación viene contra el último cierre regular, ya en %.
+ */
+function extendidoDe(
+  q: Record<string, unknown>
+): { tipo: "pre" | "post"; precio: number; dia: number | null } | null {
+  // Los campos de sesión extendida no están en todos los miembros de la unión
+  // `Quote`, así que se leen sueltos y se coercionan (igual que en getIndicesReferencia).
+  const preP = numero(q.preMarketPrice as number);
+  const postP = numero(q.postMarketPrice as number);
+  const pre =
+    preP != null
+      ? { tipo: "pre" as const, precio: preP, dia: numero(q.preMarketChangePercent as number) }
+      : null;
+  const post =
+    postP != null
+      ? { tipo: "post" as const, precio: postP, dia: numero(q.postMarketChangePercent as number) }
+      : null;
+
+  switch (q.marketState) {
+    case "PRE":
+    case "PREPRE":
+      return pre ?? post;
+    case "POST":
+    case "POSTPOST":
+    case "CLOSED":
+      return post ?? pre;
+    default: // REGULAR (o desconocido): la sesión extendida no aplica
+      return null;
+  }
+}
 
 /**
  * Todo el universo con sus métricas del día, en lotes de 200.
@@ -150,12 +194,18 @@ export function getTablero(): Promise<FilaTablero[]> {
       for (const q of quotes ?? []) {
         const empresa = POR_TICKER.get(q.symbol);
         if (!empresa || q.regularMarketPrice == null) continue;
+        const qx = q as Record<string, unknown>;
+        const ext = extendidoDe(qx);
         filas.push({
           ticker: q.symbol,
           nombre: empresa.nombre,
           sector: empresa.sector,
           precio: q.regularMarketPrice,
           dia: numero(q.regularMarketChangePercent),
+          estadoMercado: typeof qx.marketState === "string" ? qx.marketState : null,
+          premercado: ext?.dia ?? null,
+          premercadoPrecio: ext?.precio ?? null,
+          premercadoTipo: ext?.tipo ?? null,
           año: numero(q.fiftyTwoWeekChangePercent),
           vsMedia50: aPorcentaje(q.fiftyDayAverageChangePercent),
           vsMedia200: aPorcentaje(q.twoHundredDayAverageChangePercent),
