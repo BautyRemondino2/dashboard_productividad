@@ -111,7 +111,7 @@ export default function EquityClient({
   }, [filas]);
   const labelExtendido = tipoExtendido === "post" ? "After hours" : "Premercado";
 
-  const [periodo, setPeriodo] = useState<Orden>(hayPremercado ? "premercado" : "mes");
+  const [periodo, setPeriodo] = useState<Orden>(hayPremercado ? "premercado" : "dia");
   const [subiendo, setSubiendo] = useState(true);
   const [sector, setSector] = useState<Sector | "todos">("todos");
   const [busqueda, setBusqueda] = useState("");
