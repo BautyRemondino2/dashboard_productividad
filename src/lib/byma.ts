@@ -74,6 +74,8 @@ export interface Caucion {
   plazo: number;
   /** Tasa nominal anual, en %. */
   tna: number;
+  /** Cambio de la TNA vs. el cierre anterior, en puntos porcentuales. Null si no aplica. */
+  variacion: number | null;
   /** Monto operado, en la moneda del contrato. */
   volumen: number;
   /** true = tasa operada hoy; false = cierre anterior (fuera de rueda). */
@@ -108,6 +110,9 @@ function procesar(rows: CaucionCruda[], ccy: "ARS" | "USD"): Caucion[] {
     const c: Caucion = {
       plazo: r.daysToMaturity,
       tna,
+      // La variación es contra el cierre previo de ese contrato: sólo tiene
+      // sentido cuando el dato es de hoy y hay un cierre anterior con el que comparar.
+      variacion: hoy != null && previa != null ? hoy - previa : null,
       volumen: r.tradeVolume ?? 0,
       operadoHoy: hoy != null,
     };

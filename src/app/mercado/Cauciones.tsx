@@ -5,6 +5,9 @@ const fmtTna = (v: number) =>
 
 const fmtPlazo = (d: number) => `${d} ${d === 1 ? "día" : "días"}`;
 
+const fmtVar = (v: number) =>
+  Math.abs(v).toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
 function fmtMonto(v: number, ccy: "ARS" | "USD"): string | null {
   if (!(v > 0)) return null;
   const s = ccy === "USD" ? "US$" : "$";
@@ -40,6 +43,14 @@ function Seccion({
                 {fmtPlazo(c.plazo)}
               </span>
               <span className="text-[13px] font-semibold text-titulo tabular-nums">{fmtTna(c.tna)}</span>
+              {c.variacion != null && c.variacion !== 0 && (
+                <span
+                  className={`text-[10px] tabular-nums ${c.variacion > 0 ? "text-sube" : "text-baja"}`}
+                  title="Variación de la TNA vs. el cierre previo"
+                >
+                  {c.variacion > 0 ? "▲" : "▼"} {fmtVar(c.variacion)} pp
+                </span>
+              )}
               {monto && (
                 <span className="text-[10px] text-meta-suave tabular-nums ml-auto">{monto}</span>
               )}
@@ -71,7 +82,7 @@ export default async function Cauciones() {
     <div className="rounded-card border border-borde bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-borde">
         <h3 className="text-[13px] font-semibold text-titulo">Cauciones</h3>
-        <p className="text-[10px] text-meta-suave mt-0.5">Tasa por plazo · TNA · fuente BYMA</p>
+        <p className="text-[10px] text-meta-suave mt-0.5">TNA por plazo · variación vs cierre previo · BYMA</p>
       </div>
       {secciones.map(([m, lista], i) => (
         <Seccion key={m} moneda={m} lista={lista} conBorde={i > 0} />
