@@ -13,10 +13,18 @@ function fmtMonto(v: number, ccy: "ARS" | "USD"): string | null {
   return `${s}${v.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
-function Columna({ moneda, lista }: { moneda: "ARS" | "USD"; lista: Caucion[] }) {
+function Seccion({
+  moneda,
+  lista,
+  conBorde,
+}: {
+  moneda: "ARS" | "USD";
+  lista: Caucion[];
+  conBorde: boolean;
+}) {
   const previo = lista.every((c) => !c.operadoHoy);
   return (
-    <div>
+    <div className={conBorde ? "border-t border-borde" : ""}>
       <div className="px-4 py-2 flex items-baseline justify-between border-b border-divisor-fino">
         <span className="text-[11px] font-medium text-cuerpo">
           {moneda === "ARS" ? "Pesos" : "Dólares"}
@@ -27,12 +35,14 @@ function Columna({ moneda, lista }: { moneda: "ARS" | "USD"; lista: Caucion[] })
         {lista.map((c) => {
           const monto = fmtMonto(c.volumen, moneda);
           return (
-            <div key={c.plazo} className="px-4 py-2 flex items-center gap-3">
-              <span className="text-[12px] text-secundario tabular-nums w-16 shrink-0">
+            <div key={c.plazo} className="px-4 py-1.5 flex items-center gap-2.5">
+              <span className="text-[12px] text-secundario tabular-nums w-14 shrink-0">
                 {fmtPlazo(c.plazo)}
               </span>
               <span className="text-[13px] font-semibold text-titulo tabular-nums">{fmtTna(c.tna)}</span>
-              {monto && <span className="text-[10px] text-meta-suave tabular-nums ml-auto">{monto}</span>}
+              {monto && (
+                <span className="text-[10px] text-meta-suave tabular-nums ml-auto">{monto}</span>
+              )}
             </div>
           );
         })}
@@ -42,9 +52,9 @@ function Columna({ moneda, lista }: { moneda: "ARS" | "USD"; lista: Caucion[] })
 }
 
 /**
- * La curva de cauciones de BYMA — tasa corta por plazo y moneda. Reemplaza la
- * carga manual de la caución: el dato entra solo. Si BYMA cae, no renderiza y la
- * página sigue.
+ * La curva de cauciones de BYMA — tasa corta por plazo y moneda, como lista
+ * vertical para el sidebar. Reemplaza la carga manual de la caución: el dato
+ * entra solo. Si BYMA cae, no renderiza y la página sigue.
  */
 export default async function Cauciones() {
   let data;
@@ -54,20 +64,18 @@ export default async function Cauciones() {
     return null;
   }
 
-  const cols = ([["ARS", data.ars], ["USD", data.usd]] as const).filter(([, l]) => l.length > 0);
-  if (cols.length === 0) return null;
+  const secciones = ([["ARS", data.ars], ["USD", data.usd]] as const).filter(([, l]) => l.length > 0);
+  if (secciones.length === 0) return null;
 
   return (
     <div className="rounded-card border border-borde bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-borde">
         <h3 className="text-[13px] font-semibold text-titulo">Cauciones</h3>
-        <p className="text-[10px] text-meta-suave mt-0.5">Tasa por plazo y moneda · TNA · fuente BYMA</p>
+        <p className="text-[10px] text-meta-suave mt-0.5">Tasa por plazo · TNA · fuente BYMA</p>
       </div>
-      <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-borde">
-        {cols.map(([m, lista]) => (
-          <Columna key={m} moneda={m} lista={lista} />
-        ))}
-      </div>
+      {secciones.map(([m, lista], i) => (
+        <Seccion key={m} moneda={m} lista={lista} conBorde={i > 0} />
+      ))}
     </div>
   );
 }

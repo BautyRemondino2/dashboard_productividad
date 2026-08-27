@@ -33,19 +33,19 @@ export default function MacroPage() {
       <HeroMacro datos={datos} />
 
       <div className="mt-4">
-        <Suspense
-          fallback={<div className="h-40 rounded-card border border-borde bg-card animate-pulse" />}
-        >
-          <Cauciones />
-        </Suspense>
-      </div>
-
-      <div className="mt-4">
         <MercadoClient
           instruments={datos.instruments}
           series={datos.series}
           definiciones={datos.definiciones}
           vista={VISTA_MERCADO}
+          cauciones={
+            <Suspense
+              key="cauciones"
+              fallback={<div className="h-64 rounded-card border border-borde bg-card animate-pulse" />}
+            >
+              <Cauciones />
+            </Suspense>
+          }
         />
       </div>
 

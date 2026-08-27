@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import Sparkline from "@/components/Sparkline";
 import SeriesModal from "./SeriesModal";
 import DefinicionPopover from "./DefinicionPopover";
@@ -439,12 +439,15 @@ export default function MercadoClient({
   series,
   definiciones,
   vista = VISTA_MERCADO,
+  cauciones,
 }: {
   instruments: MarketInstrument[];
   series: Record<string, MarketSeriesPoint[]>;
   definiciones: Record<string, InstrumentoDef>;
   /** Qué secciones renderiza esta página. */
   vista?: { tiles: Grupo[]; tablas: Grupo[]; tablasPlegadas?: boolean };
+  /** Panel de cauciones (server component) para la columna lateral. */
+  cauciones?: ReactNode;
 }) {
   const [openTicker, setOpenTicker] = useState<string | null>(null);
 
@@ -545,6 +548,7 @@ export default function MercadoClient({
         </div>
 
         <div className="space-y-3 xl:sticky xl:top-6">
+          {cauciones}
           {sinFuente.length > 0 && (
             <CargaPanel instruments={sinFuente} lastByTicker={lastByTicker} />
           )}
