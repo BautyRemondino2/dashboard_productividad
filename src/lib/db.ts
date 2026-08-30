@@ -90,6 +90,30 @@ function initSchema(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_market_cashflows_ticker ON market_cashflows(ticker);
 
+    -- ── Radar ────────────────────────────────────────────────────────────
+    -- Lo que llega por canales de WhatsApp, ya clasificado. Una fila por
+    -- noticia, no por mensaje: un volcado de treinta mensajes puede dar tres
+    -- items útiles y veintisiete de ruido que nunca se guardan.
+    CREATE TABLE IF NOT EXISTS radar_items (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      -- Hash del título normalizado: la misma noticia llega por tres canales
+      -- distintos y sin esto el feed se llena de duplicados.
+      hash        TEXT    NOT NULL UNIQUE,
+      fecha       TEXT    NOT NULL,
+      titulo      TEXT    NOT NULL,
+      resumen     TEXT    NOT NULL,
+      tema        TEXT    NOT NULL,
+      relevancia  INTEGER NOT NULL,
+      tickers     TEXT    NOT NULL DEFAULT '[]',
+      accionable  TEXT,
+      fuente      TEXT,
+      original    TEXT    NOT NULL,
+      leido       INTEGER NOT NULL DEFAULT 0,
+      origen      TEXT    NOT NULL DEFAULT 'pegado',
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_radar_fecha ON radar_items(fecha DESC, relevancia DESC);
+
     -- Bitácora diaria: lectura propia + snapshot de indicadores de esa fecha.
     CREATE TABLE IF NOT EXISTS market_journal (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
