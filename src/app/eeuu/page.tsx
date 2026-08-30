@@ -3,11 +3,13 @@ import { Contenedor, EncabezadoPagina } from "@/components/Card";
 import Card from "@/components/Card";
 import HeroFed from "./HeroFed";
 import PanelSendero from "./PanelSendero";
+import PanelPostura from "./PanelPostura";
 import PanelCurva from "./PanelCurva";
 import PanelInflacion from "./PanelInflacion";
 import { PanelActividad, PanelCondiciones } from "./PanelIndicadores";
 import CalendarioFomc from "./CalendarioFomc";
 import Novedades from "./Novedades";
+import RefrescarEeuu from "./RefrescarEeuu";
 
 export const metadata = { title: "Estados Unidos · Dashboard" };
 
@@ -47,6 +49,7 @@ export default function EstadosUnidosPage() {
       <EncabezadoPagina
         titulo="Estados Unidos"
         bajada="La tasa que descuenta al mundo · Fed, curva del Tesoro, inflación y actividad"
+        derecha={<RefrescarEeuu />}
       />
 
       <Suspense fallback={<Cargando alto={148} />}>
@@ -55,6 +58,9 @@ export default function EstadosUnidosPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 mt-4 items-start">
         <div className="space-y-4 min-w-0">
+          <Suspense fallback={<Cargando alto={300} />}>
+            <PanelPostura />
+          </Suspense>
           <Suspense fallback={<Cargando alto={520} />}>
             <PanelSendero />
           </Suspense>

@@ -63,9 +63,16 @@ export async function memoFred<T>(
   }
 }
 
-/** Vacía el caché de FRED (lo usa el botón de refresco). */
+/**
+ * Vacía el caché entero (lo usa el botón de refresco de `/eeuu`).
+ *
+ * Borra todo y no sólo las claves `fred:` porque `@/lib/fed` guarda acá mismo
+ * el calendario del FOMC, el Board y el sendero de futuros: si el botón dijera
+ * "actualizar" y dejara la mitad de la página congelada por veinticuatro horas,
+ * mentiría. Lo que se vuelve a pedir es barato.
+ */
 export function invalidarFred() {
-  for (const k of [...cache.keys()]) if (k.startsWith("fred:")) cache.delete(k);
+  cache.clear();
 }
 
 // ─── Fetch ───────────────────────────────────────────────────────────────────

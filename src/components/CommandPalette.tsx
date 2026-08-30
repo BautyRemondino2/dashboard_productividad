@@ -29,10 +29,21 @@ function fuzzyScore(query: string, text: string): number {
   return 50;
 }
 
+/**
+ * Las secciones, en el mismo orden que el nav. Se listan a mano y no se derivan
+ * de las rutas porque el subtítulo —qué hay adentro— es la mitad de para qué
+ * sirve la paleta: buscar "fed" o "tasa" tiene que llevar a EE.UU. aunque la
+ * sección no se llame así.
+ */
 const NAV_COMMANDS: CommandPaletteItem[] = [
-  { type: "nav", id: -1, label: "Ir a Mercado",    subtitle: "Panel del día", href: "/mercado" },
-  { type: "nav", id: -2, label: "Ir a Glosario",   subtitle: "Términos financieros", href: "/glossary" },
-  { type: "nav", id: -3, label: "Ir a Efemérides", subtitle: "Feriados y fechas", href: "/efemerides" },
+  { type: "nav", id: -1, label: "Ir a Macro Argentina", subtitle: "Dólar, tasas, inflación, riesgo país", href: "/mercado" },
+  { type: "nav", id: -2, label: "Ir a Renta fija",      subtitle: "Curvas: soberanos, CER, dólar linked, ONs", href: "/renta-fija" },
+  { type: "nav", id: -3, label: "Ir a Equity",          subtitle: "Acciones, CEDEARs y fundamentals", href: "/equity" },
+  { type: "nav", id: -4, label: "Ir a ETF",             subtitle: "Composición y sectores", href: "/etf" },
+  { type: "nav", id: -5, label: "Ir a Estados Unidos",  subtitle: "Fed, tasa, curva del Tesoro, inflación USA", href: "/eeuu" },
+  { type: "nav", id: -6, label: "Ir a Radar",           subtitle: "Lo que llega por los canales, filtrado", href: "/radar" },
+  { type: "nav", id: -7, label: "Ir a Glosario",        subtitle: "Términos financieros", href: "/glossary" },
+  { type: "nav", id: -8, label: "Ir a Efemérides",      subtitle: "Feriados y fechas", href: "/efemerides" },
 ];
 
 export default function CommandPalette() {

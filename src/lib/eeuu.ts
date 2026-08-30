@@ -238,6 +238,77 @@ export async function getInflacionUsa(): Promise<InflacionUsa> {
   };
 }
 
+// ─── Postura de la política monetaria ────────────────────────────────────────
+
+export interface PosturaFed {
+  /** Tasa efectiva nominal, en %. */
+  nominal: number;
+  /** Inflación núcleo del PCE, interanual en %. */
+  inflacionNucleo: number;
+  /** Tasa real: nominal menos inflación núcleo, en %. */
+  real: number;
+  /** Mes del dato de inflación con que se calculó. */
+  fecha: string;
+  /** Serie mensual de la tasa real, para ver contra su propia historia. */
+  serie: { fecha: string; real: number; nominal: number }[];
+}
+
+/**
+ * Qué tan apretada está la política monetaria, de verdad.
+ *
+ * El nivel nominal de la tasa no dice casi nada por sí solo: 3,63% con
+ * inflación de 1% es durísimo y con inflación de 3,5% es prácticamente
+ * neutral. Lo que importa es la diferencia —la tasa real—, y es la lectura que
+ * explica por qué el mercado puede estar descontando **subas** con una tasa
+ * nominal que a primera vista parece alta.
+ *
+ * Se usa el PCE núcleo y no el IPC porque es el índice sobre el que está
+ * definida la meta del 2%: es contra ése que el comité mide su propio trabajo.
+ *
+ * La serie histórica está para que el número se lea contra algo. No se compara
+ * contra una tasa neutral estimada a propósito: r* no se observa, cada modelo
+ * da un número distinto, y poner uno solo como si fuera un dato lo convertiría
+ * en una precisión falsa. La regla de bolsillo —cerca de cero es expansivo,
+ * arriba de 1,5% restrictivo— va escrita como lo que es.
+ */
+export async function getPosturaFed(): Promise<PosturaFed | null> {
+  const s = await fredVarias([
+    { id: "EFFR", desde: desdeHaceAnios(6) },
+    { id: "PCEPILFE", desde: desdeHaceAnios(7) },
+  ]);
+
+  const effr = s.get("EFFR");
+  const pceCore = s.get("PCEPILFE");
+  const ultimaEffr = ultimo(effr);
+  const inflacion = variacionInteranual(pceCore);
+  if (!ultimaEffr || inflacion == null) return null;
+
+  // La EFFR es diaria y la inflación mensual: para la serie se toma, de cada
+  // mes con dato de inflación, el último valor de tasa hasta esa fecha.
+  const ia = serieInteranual(pceCore);
+  const serie: PosturaFed["serie"] = [];
+  let i = 0;
+  let tasaVigente: number | null = null;
+  for (const punto of ia) {
+    while (i < (effr?.length ?? 0) && effr![i].fecha <= punto.fecha) {
+      tasaVigente = effr![i].valor;
+      i++;
+    }
+    if (tasaVigente != null) {
+      serie.push({ fecha: punto.fecha, nominal: tasaVigente, real: tasaVigente - punto.valor });
+    }
+  }
+
+  const fechaInflacion = ultimo(pceCore)!.fecha;
+  return {
+    nominal: ultimaEffr.valor,
+    inflacionNucleo: inflacion,
+    real: ultimaEffr.valor - inflacion,
+    fecha: fechaInflacion,
+    serie: serie.slice(-60),
+  };
+}
+
 // ─── Actividad, empleo y condiciones financieras ─────────────────────────────
 
 export interface IndicadorUsa {
