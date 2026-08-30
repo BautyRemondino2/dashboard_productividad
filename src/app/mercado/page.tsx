@@ -9,6 +9,7 @@ import { getDatosProvinciales } from "@/lib/macro-provincias";
 import { Contenedor, EncabezadoPagina } from "@/components/Card";
 import HeroMacro from "./HeroMacro";
 import Cauciones from "./Cauciones";
+import Panorama from "./Panorama";
 
 export const metadata = { title: "Macro Argentina · Dashboard" };
 
@@ -31,6 +32,12 @@ export default function MacroPage() {
       />
 
       <HeroMacro datos={datos} />
+
+      {/* Cada celda resuelve su propio fetch: la página no espera a FRED ni a
+          data912 para dibujar el panel argentino, que es lo que se mira primero. */}
+      <Suspense fallback={<div className="h-[124px] mt-4 rounded-card border border-borde bg-card animate-pulse" />}>
+        <Panorama />
+      </Suspense>
 
       <div className="mt-4">
         <MercadoClient
