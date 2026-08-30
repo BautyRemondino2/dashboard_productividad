@@ -315,6 +315,8 @@ export interface IndicadorUsa {
   mejor: "alto" | "bajo" | "neutro";
   /** Últimos puntos para el sparkline. */
   serie: number[];
+  /** Término del glosario que explica el indicador, si existe. */
+  termino?: string;
 }
 
 const SPARK = 24;
@@ -384,6 +386,7 @@ export async function getActividadUsa(): Promise<IndicadorUsa[]> {
       mejor: "alto",
       frecuencia: "mensual",
       serie: spark(nominasSerie),
+      termino: "Nóminas no agrícolas",
     },
     {
       clave: "ICSA",
@@ -479,6 +482,7 @@ export async function getCondicionesFinancieras(): Promise<IndicadorUsa[]> {
       nota: "Volatilidad implícita del S&P a 30 días. Arriba de 25, el mercado se pone defensivo.",
       mejor: "bajo",
       frecuencia: "diaria",
+      termino: "VIX",
       serie: spark(s.get("VIXCLS")),
     },
     {
@@ -491,6 +495,7 @@ export async function getCondicionesFinancieras(): Promise<IndicadorUsa[]> {
       nota: "Prima del corporativo basura sobre el Tesoro. Es el termómetro del apetito por riesgo.",
       mejor: "bajo",
       frecuencia: "diaria",
+      termino: "Spread high yield",
       serie: spark(hy).map((v) => v * 100),
     },
     {
@@ -515,6 +520,7 @@ export async function getCondicionesFinancieras(): Promise<IndicadorUsa[]> {
       nota: "Dólar contra la canasta amplia de socios. Un dólar fuerte aprieta a los emergentes.",
       mejor: "neutro",
       frecuencia: "diaria",
+      termino: "DXY",
       serie: spark(s.get("DTWEXBGS")),
     },
     {
@@ -527,6 +533,7 @@ export async function getCondicionesFinancieras(): Promise<IndicadorUsa[]> {
       nota: "Activos totales. Su caída (QT) drena liquidez aunque la tasa no se mueva.",
       mejor: "neutro",
       frecuencia: "semanal",
+      termino: "Quantitative tightening",
       serie: spark(balance).map((v) => v / 1000),
     },
   ];

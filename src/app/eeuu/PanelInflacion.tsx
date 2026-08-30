@@ -1,6 +1,7 @@
 import Card from "@/components/Card";
 import { getInflacionUsa } from "@/lib/eeuu";
 import InflacionChart from "./InflacionChart";
+import LinkGlosario from "./LinkGlosario";
 
 /** El mes del dato en castellano: "julio 2026". */
 function mesLargo(iso: string | null): string {
@@ -21,7 +22,7 @@ function Dato({
 }: {
   label: string;
   valor: number | null;
-  sub: string;
+  sub: React.ReactNode;
   destacado?: boolean;
 }) {
   // Contra la meta del 2%: arriba tiñe, abajo o en línea queda neutro. Es la
@@ -79,8 +80,25 @@ export default async function PanelInflacion() {
           }
         />
         <Dato label="IPC núcleo" valor={inf.coreIa} sub="sin alimentos ni energía" />
-        <Dato label="PCE núcleo" valor={inf.pceCoreIa} sub={`la meta de la Fed · ${mesLargo(inf.fechaPce)}`} />
-        <Dato label="Breakeven 10a" valor={inf.breakeven10} sub="lo que descuentan los TIPS" />
+        <Dato
+          label="PCE núcleo"
+          valor={inf.pceCoreIa}
+          sub={
+            <>
+              <LinkGlosario termino="PCE núcleo">la meta de la Fed</LinkGlosario> ·{" "}
+              {mesLargo(inf.fechaPce)}
+            </>
+          }
+        />
+        <Dato
+          label="Breakeven 10a"
+          valor={inf.breakeven10}
+          sub={
+            <LinkGlosario termino="Breakeven de inflación">
+              lo que descuentan los TIPS
+            </LinkGlosario>
+          }
+        />
         <Dato label="Forward 5a5a" valor={inf.forward5y5y} sub="el ancla de largo plazo" />
       </div>
 

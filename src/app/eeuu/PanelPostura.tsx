@@ -1,6 +1,7 @@
 import Card from "@/components/Card";
 import { getPosturaFed } from "@/lib/eeuu";
 import PosturaChart from "./PosturaChart";
+import LinkGlosario from "./LinkGlosario";
 
 const pct = (v: number, dec = 2) =>
   `${v.toLocaleString("es-AR", { minimumFractionDigits: dec, maximumFractionDigits: dec })}%`;
@@ -31,7 +32,7 @@ function Termino({
   tono = "text-num",
 }: {
   valor: string;
-  label: string;
+  label: React.ReactNode;
   grande?: boolean;
   tono?: string;
 }) {
@@ -77,7 +78,10 @@ export default async function PanelPostura() {
       <div className="flex items-end gap-3 flex-wrap">
         <Termino valor={pct(p.nominal)} label="efectiva" />
         <Operador>−</Operador>
-        <Termino valor={pct(p.inflacionNucleo)} label="inflación núcleo" />
+        <Termino
+          valor={pct(p.inflacionNucleo)}
+          label={<LinkGlosario termino="PCE núcleo">inflación núcleo</LinkGlosario>}
+        />
         <Operador>=</Operador>
         <Termino
           valor={`${p.real > 0 ? "+" : ""}${pct(p.real)}`}

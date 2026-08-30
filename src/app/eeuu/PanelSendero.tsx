@@ -2,6 +2,7 @@ import Card from "@/components/Card";
 import { getSenderoFed } from "@/lib/fed";
 import SenderoChart, { type FilaSendero } from "./SenderoChart";
 import { fmtFecha } from "@/lib/equity-formato";
+import LinkGlosario from "./LinkGlosario";
 
 const fmtPb = (v: number) =>
   `${v > 0 ? "+" : ""}${v.toLocaleString("es-AR", { maximumFractionDigits: 0 })} pb`;
@@ -113,7 +114,11 @@ export default async function PanelSendero() {
               {sendero.rangoFinal.alto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}%
             </>
           )}
-          . La probabilidad supone un único movimiento de 25 pb por reunión.
+. Sale de los{" "}
+          <LinkGlosario termino="Futuros de fondos federales">
+            futuros de fondos federales
+          </LinkGlosario>
+          , y la probabilidad supone un único movimiento de 25 pb por reunión.
         </p>
       </div>
     </Card>

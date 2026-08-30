@@ -2,8 +2,17 @@ import Card from "@/components/Card";
 import { getCurvaTesoro } from "@/lib/eeuu";
 import CurvaTesoroChart from "./CurvaTesoroChart";
 import { fmtFecha } from "@/lib/equity-formato";
+import LinkGlosario from "./LinkGlosario";
 
-function Spread({ label, valor, nota }: { label: string; valor: number | null; nota: string }) {
+function Spread({
+  label,
+  valor,
+  nota,
+}: {
+  label: string;
+  valor: number | null;
+  nota: React.ReactNode;
+}) {
   const invertida = valor != null && valor < 0;
   return (
     <div className="flex-1 min-w-[150px]">
@@ -47,7 +56,13 @@ export default async function PanelCurva() {
         <Spread
           label="Pendiente 10a − 2a"
           valor={curva.spread10y2y}
-          nota="Negativa = curva invertida: el mercado espera recortes por enfriamiento."
+          nota={
+            <>
+              Negativa ={" "}
+              <LinkGlosario termino="Curva invertida">curva invertida</LinkGlosario>: el mercado
+              espera recortes por enfriamiento.
+            </>
+          }
         />
         <Spread
           label="Pendiente 10a − 3m"

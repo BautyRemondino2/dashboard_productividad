@@ -1,4 +1,5 @@
 import Sparkline from "@/components/Sparkline";
+import LinkGlosario from "./LinkGlosario";
 import { fmtFecha } from "@/lib/equity-formato";
 import type { IndicadorUsa } from "@/lib/eeuu";
 
@@ -91,7 +92,13 @@ export default function Tiles({ indicadores }: { indicadores: IndicadorUsa[] }) 
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-[11px] text-label truncate">{ind.label}</div>
+              <div className="text-[11px] text-label truncate">
+                {ind.termino ? (
+                  <LinkGlosario termino={ind.termino}>{ind.label}</LinkGlosario>
+                ) : (
+                  ind.label
+                )}
+              </div>
               <div className="text-[21px] font-semibold text-num tabular-nums mt-1 leading-none">
                 {fmtValor(ind.valor, ind.unidad)}
               </div>

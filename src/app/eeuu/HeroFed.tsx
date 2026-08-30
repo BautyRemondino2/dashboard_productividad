@@ -1,6 +1,7 @@
 import Card from "@/components/Card";
 import { getTasaFed, getSenderoFed, getProximasReuniones, getAutoridadesFed } from "@/lib/fed";
 import { fmtNivel } from "@/lib/equity-formato";
+import LinkGlosario from "./LinkGlosario";
 
 /** "mié 16 de septiembre". El día de semana importa: las reuniones cierran miércoles. */
 function fechaLarga(iso: string): string {
@@ -26,7 +27,7 @@ function Bloque({
   children,
   nota,
 }: {
-  label: string;
+  label: React.ReactNode;
   children: React.ReactNode;
   nota?: React.ReactNode;
 }) {
@@ -69,7 +70,7 @@ export default async function HeroFed() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y xl:divide-y-0 xl:divide-x md:divide-x divide-divisor">
         <div className="p-[18px]">
           <Bloque
-            label="Rango objetivo"
+            label={<LinkGlosario termino="Tasa de fondos federales">Rango objetivo</LinkGlosario>}
             nota={
               tasa && (
                 <>
@@ -93,15 +94,18 @@ export default async function HeroFed() {
 
         <div className="p-[18px]">
           <Bloque
-            label="Próxima reunión"
+            label={<LinkGlosario termino="FOMC">Próxima reunión del FOMC</LinkGlosario>}
             nota={
               proxima && (
                 <>
                   {dias === 0 ? "es hoy" : dias === 1 ? "es mañana" : `faltan ${dias} días`}
                   {proxima.conProyecciones && (
-                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-badge border border-outline text-secundario whitespace-nowrap">
+                    <LinkGlosario
+                      termino="Dot plot"
+                      className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-badge border border-outline text-secundario whitespace-nowrap no-underline"
+                    >
                       con proyecciones
-                    </span>
+                    </LinkGlosario>
                   )}
                 </>
               )
