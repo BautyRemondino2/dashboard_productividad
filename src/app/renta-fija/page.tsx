@@ -11,6 +11,7 @@ import CurvaSoberanos from "./CurvaSoberanos";
 import CurvaOns from "./CurvaOns";
 import CurvaPesos from "./CurvaPesos";
 import CurvaTasaFija from "./CurvaTasaFija";
+import CalendarioPagos from "./CalendarioPagos";
 import Card, { Contenedor, EncabezadoPagina } from "@/components/Card";
 
 export const metadata = { title: "Renta fija · Dashboard" };
@@ -238,6 +239,18 @@ export default function RentaFijaPage() {
           </Suspense>
         </Card>
       </div>
+
+      <Card
+        serif
+        titulo="Próximos pagos"
+        nota="qué cobra una tenencia en los próximos 90 días · por cada 100 de valor nominal"
+        cuerpo={false}
+        className="mb-4"
+      >
+        <Suspense fallback={<Esqueleto alto={280} />}>
+          <CalendarioPagos />
+        </Suspense>
+      </Card>
 
       <div>
         <MercadoClient

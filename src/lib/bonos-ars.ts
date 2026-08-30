@@ -169,6 +169,23 @@ function vigente(serie: Map<string, number>, hoy: string, rezago: number): Refer
   return valor == null ? null : { etiqueta: "", fecha, valor };
 }
 
+/**
+ * Los dos índices con los que se ajustan los pagos, ya rezagados.
+ *
+ * Lo usa el calendario de pagos para estimar en pesos lo que va a cobrar un
+ * bono CER o dólar linked. Es una estimación y no un dato: el pago real usa el
+ * índice de su propia fecha, que todavía no existe.
+ */
+export async function getReferenciasArs(
+  hoy = new Date()
+): Promise<{ cer: Referencia; fx: Referencia } | null> {
+  const ajustes = await getAjustes();
+  const cer = vigente(ajustes.cer, iso(hoy), REZAGO_CER_HABILES);
+  const fx = vigente(ajustes.fx, iso(hoy), REZAGO_FX_HABILES);
+  if (!cer || !fx) return null;
+  return { cer: { ...cer, etiqueta: "CER" }, fx: { ...fx, etiqueta: "A3500" } };
+}
+
 // ─── Curvas ─────────────────────────────────────────────────────────────────
 
 /** Un bono listo para entrar a la curva: cronograma, precio y coeficiente. */
