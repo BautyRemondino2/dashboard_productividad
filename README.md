@@ -346,6 +346,127 @@ ningún rubro caen en "Otros".
 > Los sectores están en su propio archivo porque los usa la UI: si la lista de
 > 500 empresas viviera ahí, se iría entera al bundle del navegador (son 44 KB).
 
+## Estados Unidos — la Fed, la curva y la inflación
+
+`/eeuu` es la sección que faltaba. El resto del dashboard mira Argentina, que es
+donde se opera, pero la mitad de lo que mueve a un Global o a una ON hard dollar
+se decide en Washington. La página contesta, sin salir de acá: en cuánto está la
+tasa, **quién** la decide, cuándo se vuelven a reunir y qué descuenta el mercado
+para esa reunión.
+
+El orden es el de una lectura, no el de una base de datos: primero la decisión,
+después las expectativas, y recién ahí los datos que explican por qué.
+
+### Todo sin una sola API key
+
+| Qué | De dónde | Detalle |
+|---|---|---|
+| Series macro | **FRED**, vía el CSV del graficador | `fredgraph.csv?id=DGS10&cosd=…` es público. La API oficial pide clave por mail; esto es la misma data sin trámite |
+| Sendero de tasa | **Futuros de fondos federales** (CME, vía Yahoo) | `ZQU26.CBT` y compañía. Tasa implícita = `100 − precio` |
+| Calendario del FOMC | **federalreserve.gov** | Del HTML del calendario oficial: las fechas se publican con dos años de anticipación y no hay feed |
+| Autoridades | **federalreserve.gov** | Los links de biografías. Se lee **en vivo**: la presidencia cambió en 2026 y un panel con el nombre viejo es peor que uno sin nombre |
+| Discursos y comunicados | **RSS de la Fed** | La fuente primaria de lo que después llega interpretado por WhatsApp |
+
+> **Ojo con FRED multi-serie.** Acepta varias series en un mismo `id=` separadas
+> por coma, pero sólo si comparten frecuencia *exacta*. Si se mezclan —incluso
+> dos semanales con distinto día de corte— responde un **ZIP** binario en vez de
+> CSV, sin ningún error. Por eso se pide una serie por request.
+
+### El sendero implícito, bien resuelto
+
+El panel "Lo que descuenta el mercado" hace la misma cuenta que el FedWatch de
+CME, que no tiene API abierta. El contrato ZQ de un mes liquida contra el
+**promedio diario de la tasa efectiva de ese mes**, así que si hay una reunión
+que termina el día D de n, ese promedio mezcla los dos regímenes:
+
+```
+tasa_implícita(mes) = (D/n) · tasa_previa + ((n−D)/n) · tasa_nueva
+```
+
+La tentación es despejar `tasa_nueva` mes a mes y encadenar. **No funciona**, y
+cómo falla vale la pena documentarlo: cuando la reunión cae cerca de fin de mes
+—28 de octubre, 28 de abril— el régimen nuevo ocupa dos días del contrato, el
+divisor `(n − D)` se hace chiquito y un décimo de punto básico de ruido en el
+precio se amplifica quince veces. Daba saltos de 280 pb en una sola reunión.
+
+La forma correcta es plantear el sistema entero —una ecuación por contrato, con
+la tasa efectiva de hoy como dato conocido— y resolverlo por **mínimos
+cuadrados**. Así la reunión del 28 de octubre queda determinada sobre todo por
+el contrato de noviembre, que la contiene entera, que es exactamente de donde
+hay que leerla.
+
+### La postura, no el nivel
+
+El nivel nominal de la tasa no dice casi nada solo. Con 3,63% efectiva e
+inflación núcleo de 3,3%, la tasa **real** es 0,3%: la política monetaria no
+está apretando nada. Es la resta que explica que el mercado pueda estar
+descontando subas con una tasa que a primera vista suena alta, y es lo que hay
+que poder contestar cuando un cliente pregunta si la Fed "ya terminó".
+
+Se usa el PCE núcleo y no el IPC porque la meta del 2% está definida sobre el
+PCE: es contra ése que el comité mide su propio trabajo. No se compara contra
+una tasa neutral estimada — r\* no se observa y cada modelo da un número
+distinto; poner uno solo como si fuera un dato sería una precisión falsa.
+
+### El spread de cada Global, contra el Tesoro que le corresponde
+
+La curva del Tesoro también alimenta `/renta-fija`. Antes se dibujaba el 10 años
+como una línea horizontal, que sobrestima el spread de los bonos cortos: un AL30
+con duration 2,5 no compite contra un bono a diez años del Tesoro.
+
+Ahora se dibuja la curva entera, convertida al mismo eje de duration. Para un
+bono a la par con cupón semestral, la duration modificada sale cerrada:
+
+```
+duration = [1 − (1 + y/2)^(−2n)] / y
+```
+
+Con el 10 años al 4,67% da 7,9, que es la duration que efectivamente tiene. Con
+las dos curvas en el mismo eje, la distancia vertical entre ellas **es** el
+spread de crédito, y cada soberano informa el suyo interpolado a su propia
+duration. Eso es el riesgo país desagregado: el EMBI que se publica es el
+promedio de esa lista.
+
+---
+
+## Radar — el flujo de WhatsApp, filtrado
+
+Un asesor está en seis canales que tiran cien mensajes por día, y adentro hay
+cinco que cambian lo que le dice a un cliente. `/radar` es el filtro: entra el
+volcado crudo, sale un feed ordenado por relevancia, con el ticker involucrado y
+una línea de qué implica para una cartera.
+
+Claude descarta saludos, publicidad, opiniones sin dato y precios sueltos —el
+dashboard ya los tiene en vivo—, y se queda con decisiones de política, datos
+que se publican, licitaciones, cambios regulatorios, resultados y emisiones.
+
+### Dos entradas, la misma función
+
+1. **La caja de pegado** en `/radar`.
+2. **`POST /api/radar/ingest`** con header `x-radar-token`, para un Atajo de iOS
+   en la hoja de compartir: seleccionar los mensajes en WhatsApp → Compartir →
+   ya están clasificados.
+
+El Atajo son tres acciones: recibir texto desde la hoja de compartir; *Obtener
+contenido de URL* con método POST, los headers `x-radar-token` y
+`content-type: application/json`, y cuerpo JSON `{"texto": <Texto de la
+entrada>}`; y mostrar el campo `mensaje` de la respuesta en una notificación.
+
+> **Por qué no es más automático que esto.** WhatsApp no tiene API de canales —
+> ni oficial ni razonable. Cualquier cosa que pretenda leerlos sola implica
+> automatizar un cliente web, que rompe los términos del servicio y se cae en
+> cuanto cambia el markup. Que compartir sea un gesto y el resto pase solo es el
+> límite real de lo automatizable.
+
+### La deduplicación
+
+La misma noticia llega reenviada por tres canales. Dos defensas: al clasificador
+se le pasan los títulos de los últimos siete días para que no repita, y cada
+item se guarda con el hash de su título normalizado —sin acentos, sin
+puntuación— con un `UNIQUE` encima. No es un deduplicador semántico: dos
+redacciones distintas de la misma noticia entran las dos. El reenvío literal,
+que es el caso frecuente, colapsa en uno.
+
 ---
 
 ## Deploy
@@ -355,8 +476,10 @@ llegó a dashboard-productividad-eight.vercel.app sin correr ningún comando de
 deploy. (Este README decía lo contrario; estaba desactualizado.)
 
 Lo que **no** viaja con el push son las variables de entorno. `ANTHROPIC_API_KEY`
-se carga aparte y hasta que esté, la ficha muestra las descripciones en inglés y
-oculta el panel de investigación:
+se carga aparte y hasta que esté, la ficha muestra las descripciones en inglés,
+oculta el panel de investigación y el radar no puede clasificar. `RADAR_TOKEN`
+es la otra: sin ella el endpoint de ingesta queda cerrado con un 503, que es
+preferible a dejar abierto algo que escribe en la base y gasta tokens de API.
 
 ```bash
 vercel env add ANTHROPIC_API_KEY production
