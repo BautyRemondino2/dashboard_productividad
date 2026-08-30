@@ -9,9 +9,17 @@ import { getDb } from "@/lib/db";
 import { defaultMetric } from "@/lib/mercado";
 import type { MarketInstrument, MarketSeriesPoint } from "@/lib/mercado";
 import { TERMINO_POR_TICKER, type InstrumentoDef } from "@/lib/glosario-instrumentos";
+import { tieneFuenteAutomatica } from "@/lib/fuentes";
 
 export interface PanelDatos {
   instruments: MarketInstrument[];
+  /**
+   * Tickers que ninguna fuente automática cubre: los únicos que tiene sentido
+   * cargar a mano. Se resuelve acá y no en el cliente porque `@/lib/fuentes`
+   * —que es donde está la verdad de qué fuente cubre qué— importa
+   * yahoo-finance2 y no puede viajar al bundle del navegador.
+   */
+  sinFuente: string[];
   series: Record<string, MarketSeriesPoint[]>;
   definiciones: Record<string, InstrumentoDef>;
   /** Último refresh automático, para el auto-update al abrir la página. */
@@ -113,6 +121,10 @@ export function cargarPanel(): PanelDatos {
 
   return {
     instruments: allInstruments,
+    // Sobre los instrumentos reales y no sobre `allInstruments`: los derivados
+    // (BRECHA, MERVAL_USD, con id negativo) se calculan al leer y no se cargan
+    // a mano, así que colarlos acá dibujaba la tarjeta de carga vacía.
+    sinFuente: instruments.filter((i) => !tieneFuenteAutomatica(i)).map((i) => i.ticker),
     series,
     definiciones,
     lastUpdate: last.ts ? last.ts.replace(" ", "T") + "Z" : null,

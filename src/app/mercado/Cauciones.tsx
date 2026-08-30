@@ -65,7 +65,17 @@ function Seccion({
 /**
  * La curva de cauciones de BYMA — tasa corta por plazo y moneda, como lista
  * vertical para el sidebar. Reemplaza la carga manual de la caución: el dato
- * entra solo. Si BYMA cae, no renderiza y la página sigue.
+ * entra solo.
+ *
+ * Dos formas distintas de no tener datos, y se tratan distinto a propósito:
+ *
+ *  - **BYMA no contesta** (timeout, error HTTP): no se renderiza nada. No hay
+ *    forma de saber si hay rueda o no, y afirmar cualquiera de las dos cosas
+ *    sería inventar.
+ *  - **BYMA contesta con la lista vacía**: eso *sí* es información. Es lo que
+ *    devuelve los sábados, domingos y feriados, cuando no hay rueda. Antes el
+ *    panel desaparecía sin decir nada y parecía que algo se había roto, así que
+ *    ahora la tarjeta queda con la explicación.
  */
 export default async function Cauciones() {
   let data;
@@ -76,7 +86,21 @@ export default async function Cauciones() {
   }
 
   const secciones = ([["ARS", data.ars], ["USD", data.usd]] as const).filter(([, l]) => l.length > 0);
-  if (secciones.length === 0) return null;
+
+  if (secciones.length === 0) {
+    return (
+      <div className="rounded-card border border-borde bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-borde">
+          <h3 className="text-[13px] font-semibold text-titulo">Cauciones</h3>
+          <p className="text-[10px] text-meta-suave mt-0.5">TNA por plazo · BYMA</p>
+        </div>
+        <p className="px-4 py-3 text-[11.5px] text-meta leading-relaxed">
+          Sin rueda: BYMA no publica cauciones los fines de semana ni los feriados. La curva vuelve
+          sola con la próxima rueda.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-card border border-borde bg-card overflow-hidden">

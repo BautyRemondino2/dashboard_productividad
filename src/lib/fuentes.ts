@@ -510,6 +510,39 @@ export async function fetchBackfill(): Promise<FuenteResult[]> {
   return results;
 }
 
+/**
+ * Qué instrumentos cubre alguna fuente automática.
+ *
+ * Existe para que el panel de carga manual sepa qué **no** ofrecer. Antes lo
+ * deducía de otra cosa —"si no tiene ni un dato histórico, entonces no tiene
+ * fuente"—, y esa equivalencia es falsa justo cuando más molesta: un instrumento
+ * recién automatizado, o uno cuya fuente no publica los fines de semana, no
+ * tiene historial y aparecía pidiendo carga a mano como si nadie lo cubriera.
+ * Es lo que le pasa a CAUCION1 en el deploy los sábados y domingos, cuando BYMA
+ * devuelve la lista de cauciones vacía.
+ *
+ * Los tickers se derivan de las constantes de cada fuente y no de una lista
+ * escrita aparte: agregar una serie al BCRA o a Yahoo la registra acá sola.
+ */
+const TIPOS_CON_FUENTE = new Set<string>(["soberano_usd", "lecap", "cer", "on", "cedear"]);
+
+const TICKERS_CON_FUENTE = new Set<string>([
+  ...Object.values(DOLAR_CASAS),
+  ...BCRA_VARS.map((v) => v.ticker),
+  ...AD_SERIES.map((s) => s.ticker),
+  ...YAHOO_SYMS.map((y) => y.ticker),
+  "RIESGO_PAIS", // argentinadatos, fuera de AD_SERIES por tener endpoint propio
+  "PLAZOFIJO",
+  "CAUCION1",
+  "FED_FUNDS",
+  "CPI_USA",
+  "VIX",
+]);
+
+export function tieneFuenteAutomatica(inst: Pick<MarketInstrument, "tipo" | "ticker">): boolean {
+  return TIPOS_CON_FUENTE.has(inst.tipo) || TICKERS_CON_FUENTE.has(inst.ticker);
+}
+
 export async function fetchAllFuentes(instruments: MarketInstrument[]): Promise<FuenteResult[]> {
   const ctx: FuenteCtx = {
     instruments: new Map(instruments.map((i) => [i.ticker, i])),

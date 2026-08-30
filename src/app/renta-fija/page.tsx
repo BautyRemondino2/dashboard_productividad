@@ -214,6 +214,7 @@ export default function RentaFijaPage() {
           instruments={datos.instruments}
           series={datos.series}
           definiciones={datos.definiciones}
+          sinFuente={datos.sinFuente}
           vista={VISTA_RENTA_FIJA}
         />
       </div>

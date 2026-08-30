@@ -142,6 +142,15 @@ Tres modelos según el dato:
 
 ## Trampas conocidas
 
+- **"Sin historial" no es lo mismo que "sin fuente".** El panel de carga manual
+  deducía qué ofrecer de `series[ticker].length === 0`, y esa equivalencia
+  falla justo cuando molesta: un instrumento recién automatizado, o uno cuya
+  fuente no publica los fines de semana, aparecía pidiendo carga a mano como si
+  nadie lo cubriera (le pasaba a CAUCION1 en el deploy los sábados). Ahora la
+  lista sale de `tieneFuenteAutomatica()` en `fuentes.ts` —derivada de las
+  constantes de cada fuente, así que no se desincroniza— y viaja por
+  `PanelDatos.sinFuente`, porque `fuentes.ts` importa yahoo-finance2 y no puede
+  ir al bundle del navegador.
 - **`seedGlossary` sólo corre con la tabla vacía.** Agregar términos ahí no hace
   nada en una instalación que ya viene andando. Para sumar términos hay dos
   seeds incrementales que insertan sólo lo que falta y nunca pisan una edición

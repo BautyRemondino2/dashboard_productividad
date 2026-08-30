@@ -37,6 +37,7 @@ export default function MacroPage() {
           instruments={datos.instruments}
           series={datos.series}
           definiciones={datos.definiciones}
+          sinFuente={datos.sinFuente}
           vista={VISTA_MERCADO}
           cauciones={
             <Suspense

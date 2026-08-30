@@ -438,12 +438,15 @@ export default function MercadoClient({
   instruments,
   series,
   definiciones,
+  sinFuente = [],
   vista = VISTA_MERCADO,
   cauciones,
 }: {
   instruments: MarketInstrument[];
   series: Record<string, MarketSeriesPoint[]>;
   definiciones: Record<string, InstrumentoDef>;
+  /** Tickers que ninguna fuente automática cubre (los calcula `cargarPanel`). */
+  sinFuente?: string[];
   /** Qué secciones renderiza esta página. */
   vista?: { tiles: Grupo[]; tablas: Grupo[]; tablasPlegadas?: boolean };
   /** Panel de cauciones (server component) para la columna lateral. */
@@ -486,8 +489,15 @@ export default function MercadoClient({
     return instruments.filter((i) => visibles.has(GRUPOS.includes(i.grupo) ? i.grupo : "riesgo"));
   }, [instruments, vista]);
 
-  // Solo lo que ninguna fuente automática cubre necesita carga a mano
-  const sinFuente = deLaVista.filter((i) => (series[i.ticker] ?? []).length === 0);
+  // Sólo lo que ninguna fuente automática cubre necesita carga a mano. La lista
+  // la arma el servidor a partir de las fuentes registradas: deducirla de "no
+  // tiene ni un dato histórico" fallaba justo cuando importa —un instrumento
+  // recién automatizado, o uno cuya fuente no publica los fines de semana,
+  // aparecía pidiendo carga a mano como si nadie lo cubriera—.
+  const paraCargar = useMemo(() => {
+    const set = new Set(sinFuente);
+    return deLaVista.filter((i) => set.has(i.ticker));
+  }, [deLaVista, sinFuente]);
 
   const sinDatos = deLaVista.length > 0 && deLaVista.every((i) => !computed[i.ticker].ind.last);
 
@@ -549,8 +559,8 @@ export default function MercadoClient({
 
         <div className="space-y-3 xl:sticky xl:top-6">
           {cauciones}
-          {sinFuente.length > 0 && (
-            <CargaPanel instruments={sinFuente} lastByTicker={lastByTicker} />
+          {paraCargar.length > 0 && (
+            <CargaPanel instruments={paraCargar} lastByTicker={lastByTicker} />
           )}
           <AddInstrument />
         </div>
