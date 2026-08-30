@@ -548,6 +548,11 @@ function seedMercado(db: Database.Database) {
 
     // ── Global (todo en USD) ───────────────────────────────────────────────
     ["UST10Y", "UST 10 años",       "macro", "USD", null, "%",   "global"],
+    // La tasa de la Fed y la inflación de EE.UU. dan la escala para leer el
+    // resto del panel: el riesgo país es un spread *sobre* esa tasa.
+    ["FED_FUNDS", "Tasa Fed (techo)", "tasa",  "USD", null, "%",   "global"],
+    ["CPI_USA",   "Inflación EE.UU.", "macro", "USD", null, "%",   "global"],
+    ["VIX",       "VIX",              "macro", "USD", null, "idx", "global"],
     ["SPX",    "S&P 500",           "macro", "USD", null, "idx", "global"],
     ["DXY",    "Índice dólar DXY",  "macro", "USD", null, "idx", "global"],
     ["BRL",    "Real brasileño",    "macro", "USD", null, "idx", "global"],

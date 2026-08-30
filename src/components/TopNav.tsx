@@ -18,6 +18,7 @@ const PRIMARIAS = [
   { href: "/renta-fija", label: "Renta fija" },
   { href: "/equity", label: "Equity" },
   { href: "/etf", label: "ETF" },
+  { href: "/eeuu", label: "EE.UU." },
 ];
 
 const SECUNDARIAS = [

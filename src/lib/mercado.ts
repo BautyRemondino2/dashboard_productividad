@@ -140,7 +140,7 @@ export function defaultMetric(tipo: InstrumentoTipo): string {
 }
 
 /** Tickers seedeados donde una baja es una mejora (colorear delta invertido). */
-export const LOWER_IS_BETTER = new Set(["RIESGO_PAIS", "IPC", "BRECHA"]);
+export const LOWER_IS_BETTER = new Set(["RIESGO_PAIS", "IPC", "BRECHA", "CPI_USA", "VIX"]);
 
 // ─── Deltas ─────────────────────────────────────────────────────────────────
 

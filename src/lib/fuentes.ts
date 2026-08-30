@@ -23,6 +23,7 @@ import YahooFinance from "yahoo-finance2";
 import { defaultMetric } from "@/lib/mercado";
 import type { MarketInstrument } from "@/lib/mercado";
 import { getCaucion1DiaARS } from "@/lib/byma";
+import { fredSerie, ultimo, variacionInteranual, desdeHaceAnios } from "@/lib/fred";
 import { localDateStr } from "@/lib/utils";
 
 export interface FetchedValue {
@@ -282,6 +283,55 @@ const bymaCaucionFuente: Fuente = {
   },
 };
 
+// ─── FRED (tasa de la Fed e inflación de EE.UU.) ───────────────────────────────
+
+/**
+ * Los tres datos de EE.UU. que merecen entrar al panel argentino y no quedarse
+ * sólo en `/eeuu`: la tasa de la Fed, la inflación norteamericana y el VIX.
+ *
+ * Es lo que da la escala para leer el resto. Un riesgo país de 500 pb significa
+ * una cosa con el Tesoro a 4,7% y otra bien distinta con el Tesoro a 2%, porque
+ * lo que paga el bono es la suma de los dos.
+ *
+ * La serie va a `market_series` como cualquier otra: así queda el histórico para
+ * los deltas de 30 y 90 días del panel, que es lo que `@/lib/fred` —pensado para
+ * consulta en vivo— no guarda.
+ */
+const fredFuente: Fuente = {
+  id: "fred",
+  label: "Fed & EE.UU.",
+  async fetchValues() {
+    const out: FetchedValue[] = [];
+
+    // Cada serie aislada: si FRED se cae para una, las otras entran igual.
+    const [tasa, cpi, vix] = await Promise.allSettled([
+      fredSerie("DFEDTARU", desdeHaceAnios(1)),
+      fredSerie("CPIAUCSL", desdeHaceAnios(2)),
+      fredSerie("VIXCLS", desdeHaceAnios(1)),
+    ]);
+
+    if (tasa.status === "fulfilled") {
+      const u = ultimo(tasa.value);
+      if (u) out.push({ instrumento: "FED_FUNDS", metrica: "tna", valor: u.valor, fecha: u.fecha });
+    }
+    if (cpi.status === "fulfilled") {
+      const u = ultimo(cpi.value);
+      const ia = variacionInteranual(cpi.value);
+      // FRED publica el nivel del índice: la inflación hay que calcularla.
+      if (u && ia != null) {
+        out.push({ instrumento: "CPI_USA", metrica: "valor", valor: ia, fecha: u.fecha });
+      }
+    }
+    if (vix.status === "fulfilled") {
+      const u = ultimo(vix.value);
+      if (u) out.push({ instrumento: "VIX", metrica: "valor", valor: u.valor, fecha: u.fecha });
+    }
+
+    if (out.length === 0) throw new Error("sin datos de FRED");
+    return out;
+  },
+};
+
 // ─── Yahoo (global, commodities, Merval) ───────────────────────────────────────
 
 /**
@@ -353,6 +403,7 @@ const FUENTES: Fuente[] = [
   argentinaDatosFuente,
   plazoFijoFuente,
   bymaCaucionFuente,
+  fredFuente,
   yahooFuente,
 ];
 
