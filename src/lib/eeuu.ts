@@ -223,6 +223,68 @@ export async function getInflacionUsa(): Promise<InflacionUsa> {
   };
 }
 
+// ─── Tasas en el mundo ───────────────────────────────────────────────────────
+
+export interface TasaPais {
+  pais: string;
+  /** Qué instrumento es la tasa corta de ese bloque. */
+  etiquetaCorta: string;
+  corta: number | null;
+  fechaCorta: string | null;
+  /** Rendimiento del bono soberano a 10 años. */
+  larga: number | null;
+  fechaLarga: string | null;
+  /** Diferencial del 10 años contra el Tesoro norteamericano, en pb. */
+  vsTesoro: number | null;
+}
+
+const BLOQUES: { pais: string; etiquetaCorta: string; corta: string; larga: string }[] = [
+  { pais: "Estados Unidos", etiquetaCorta: "efectiva Fed", corta: "EFFR", larga: "DGS10" },
+  { pais: "Zona euro", etiquetaCorta: "depósito BCE", corta: "ECBDFR", larga: "IRLTLT01DEM156N" },
+  { pais: "Reino Unido", etiquetaCorta: "SONIA", corta: "IUDSOIA", larga: "IRLTLT01GBM156N" },
+  { pais: "Japón", etiquetaCorta: "call money", corta: "IRSTCI01JPM156N", larga: "IRLTLT01JPM156N" },
+];
+
+/**
+ * El precio del dinero en los cuatro bloques que mueven el capital global.
+ *
+ * No está por completismo. El diferencial de tasas largas entre EE.UU. y
+ * Alemania es de lo que más explica el movimiento del dólar contra el euro, y
+ * el 10 años japonés importa por una razón que no es obvia: durante décadas
+ * Japón exportó ahorro al mundo porque en casa no pagaban nada. A medida que el
+ * JGB rinde más, ese dinero vuelve, y presiona hacia arriba las tasas largas de
+ * todos lados —incluida la que descuenta a un bono argentino—.
+ *
+ * Las tasas largas de Europa y Japón se publican con frecuencia mensual, así
+ * que cada fila viaja con la fecha de su propio dato: mezclarlas con las
+ * diarias de EE.UU. sin decirlo haría comparar cosas de meses distintos.
+ */
+export async function getTasasMundo(): Promise<TasaPais[]> {
+  const s = await fredVarias([
+    ...BLOQUES.map((b) => b.corta),
+    ...BLOQUES.map((b) => b.larga),
+  ]);
+
+  const ust10 = ultimo(s.get("DGS10"))?.valor ?? null;
+
+  return BLOQUES.map((b) => {
+    const corta = ultimo(s.get(b.corta));
+    const larga = ultimo(s.get(b.larga));
+    return {
+      pais: b.pais,
+      etiquetaCorta: b.etiquetaCorta,
+      corta: corta?.valor ?? null,
+      fechaCorta: corta?.fecha ?? null,
+      larga: larga?.valor ?? null,
+      fechaLarga: larga?.fecha ?? null,
+      // La fila de EE.UU. es la referencia: un "0 pb" contra sí misma sólo
+      // agrega ruido a la columna.
+      vsTesoro:
+        b.larga !== "DGS10" && larga && ust10 != null ? (larga.valor - ust10) * 100 : null,
+    };
+  });
+}
+
 // ─── Postura de la política monetaria ────────────────────────────────────────
 
 export interface PosturaFed {

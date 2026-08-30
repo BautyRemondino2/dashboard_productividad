@@ -7,6 +7,7 @@ import PanelPostura from "./PanelPostura";
 import PanelCurva from "./PanelCurva";
 import PanelInflacion from "./PanelInflacion";
 import { PanelActividad, PanelCondiciones } from "./PanelIndicadores";
+import PanelMundo from "./PanelMundo";
 import CalendarioFomc from "./CalendarioFomc";
 import Novedades from "./Novedades";
 import RefrescarEeuu from "./RefrescarEeuu";
@@ -88,6 +89,10 @@ export default function EstadosUnidosPage() {
               <CalendarioFomc />
             </Suspense>
           </Card>
+
+          <Suspense fallback={<Cargando alto={240} />}>
+            <PanelMundo />
+          </Suspense>
 
           <Card titulo="Qué dijo la Fed" nota="Discursos y comunicados, de la fuente" cuerpo={false}>
             <Suspense fallback={<div className="h-64 animate-pulse" />}>
