@@ -1,6 +1,7 @@
 import { cargarPanel, contarPorGrupos } from "@/lib/panel-datos";
 import { armarCurva, getCurvaOns, spreadsPorLey, validarCurva } from "@/lib/bonos";
 import { getCurvaCer, getCurvaDolarLinked } from "@/lib/bonos-ars";
+import { breakevenInflacion, getCurvaTasaFija } from "@/lib/bonos-tasa-fija";
 import { getCurvaTesoroDuration, tesoroEnDuration } from "@/lib/eeuu";
 import { Suspense } from "react";
 import MercadoClient from "@/app/mercado/MercadoClient";
@@ -9,6 +10,7 @@ import RefreshButton from "@/app/mercado/RefreshButton";
 import CurvaSoberanos from "./CurvaSoberanos";
 import CurvaOns from "./CurvaOns";
 import CurvaPesos from "./CurvaPesos";
+import CurvaTasaFija from "./CurvaTasaFija";
 import Card, { Contenedor, EncabezadoPagina } from "@/components/Card";
 
 export const metadata = { title: "Renta fija · Dashboard" };
@@ -26,6 +28,7 @@ const COLOR_SOBERANOS = "#3987e5";
 const COLOR_CER = "#8b5cf6";
 const COLOR_DL = "#0891b2";
 const COLOR_ONS = "#199e70";
+const COLOR_TASA_FIJA = "#e0912f";
 
 function Esqueleto({ alto = 380 }: { alto?: number }) {
   return <div className="animate-pulse bg-encabezado rounded-card" style={{ height: alto }} />;
@@ -84,6 +87,22 @@ async function SeccionOns({ soberanos }: { soberanos: { duration: number; tir: n
  * Las dos curvas en pesos dependen de data912 y del BCRA a la vez. Si alguna de
  * las dos fuentes no responde no se dibuja media curva: se dice que falta.
  */
+/**
+ * La curva de tasa fija necesita además la CER para el breakeven, así que pide
+ * las dos. Si la CER no viene, la curva se dibuja igual y el breakeven se
+ * omite: es un extra, no la razón de ser del panel.
+ */
+async function SeccionTasaFija() {
+  const [datos, cer] = await Promise.all([
+    getCurvaTasaFija().catch(() => null),
+    getCurvaCer().catch(() => null),
+  ]);
+  if (!datos) return <SinDatos que="data912 con los precios de las letras" />;
+
+  const breakevens = cer ? breakevenInflacion(datos.puntos, cer.puntos) : [];
+  return <CurvaTasaFija datos={datos} breakevens={breakevens} />;
+}
+
 async function SeccionCer() {
   const curva = await getCurvaCer().catch(() => null);
   if (!curva) return <SinDatos que="el CER del BCRA o los precios de data912" />;
@@ -166,6 +185,17 @@ export default function RentaFijaPage() {
               validacion={validacion}
               ust10y={precios["UST10Y"] ?? null}
             />
+          </Suspense>
+        </Card>
+
+        <Card
+          serif
+          titulo="Curva de tasa fija en pesos"
+          nota="Lecaps y Boncaps · lo que paga el Tesoro sin ajuste"
+          acento={COLOR_TASA_FIJA}
+        >
+          <Suspense fallback={<Esqueleto />}>
+            <SeccionTasaFija />
           </Suspense>
         </Card>
 
