@@ -1,6 +1,7 @@
 import { cargarPanel, contarPorGrupos } from "@/lib/panel-datos";
 import { armarCurva, getCurvaOns, spreadsPorLey, validarCurva } from "@/lib/bonos";
 import { getCurvaCer, getCurvaDolarLinked } from "@/lib/bonos-ars";
+import { getCurvaTesoroDuration, tesoroEnDuration } from "@/lib/eeuu";
 import { Suspense } from "react";
 import MercadoClient from "@/app/mercado/MercadoClient";
 import { VISTA_RENTA_FIJA } from "@/lib/mercado";
@@ -28,6 +29,49 @@ const COLOR_ONS = "#199e70";
 
 function Esqueleto({ alto = 380 }: { alto?: number }) {
   return <div className="animate-pulse bg-encabezado rounded-card" style={{ height: alto }} />;
+}
+
+/**
+ * La curva soberana, con el Tesoro de EE.UU. dibujado abajo.
+ *
+ * El spread de cada bono se calcula acá, del lado del servidor, y no en el
+ * componente: interpolar la curva del Tesoro necesita `@/lib/eeuu`, que trae
+ * `fetch` y no tiene por qué viajar al navegador.
+ *
+ * Se compara contra el Tesoro **a la misma duration** y no contra el 10 años.
+ * Un AL30 con duration 2,5 no compite con un bono a diez años del Tesoro: su
+ * alternativa libre de riesgo rinde bastante menos, y medirlo contra el 10a
+ * subestimaba su spread de crédito.
+ */
+async function SeccionSoberanos({
+  curva,
+  spreads,
+  validacion,
+  ust10y,
+}: {
+  curva: ReturnType<typeof armarCurva>;
+  spreads: ReturnType<typeof spreadsPorLey>;
+  validacion: ReturnType<typeof validarCurva>;
+  ust10y: number | null;
+}) {
+  const tesoro = await getCurvaTesoroDuration().catch(() => []);
+
+  const spreadsTesoro: Record<string, number> = {};
+  for (const p of curva) {
+    const base = tesoroEnDuration(tesoro, p.duration);
+    if (base != null) spreadsTesoro[p.ticker] = (p.tir - base) * 100;
+  }
+
+  return (
+    <CurvaSoberanos
+      puntos={curva}
+      spreads={spreads}
+      validacion={validacion}
+      ust10y={ust10y}
+      tesoro={tesoro}
+      spreadsTesoro={spreadsTesoro}
+    />
+  );
 }
 
 /** Los precios de las ONs se piden en vivo: van en su propio Suspense. */
@@ -106,12 +150,23 @@ export default function RentaFijaPage() {
           nota="hard-dollar · capitalización semestral, base 30/360"
           acento={COLOR_SOBERANOS}
         >
-          <CurvaSoberanos
-            puntos={curva}
-            spreads={spreads}
-            validacion={validacion}
-            ust10y={precios["UST10Y"] ?? null}
-          />
+          <Suspense
+            fallback={
+              <CurvaSoberanos
+                puntos={curva}
+                spreads={spreads}
+                validacion={validacion}
+                ust10y={precios["UST10Y"] ?? null}
+              />
+            }
+          >
+            <SeccionSoberanos
+              curva={curva}
+              spreads={spreads}
+              validacion={validacion}
+              ust10y={precios["UST10Y"] ?? null}
+            />
+          </Suspense>
         </Card>
 
         <Card

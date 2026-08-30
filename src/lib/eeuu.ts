@@ -96,6 +96,75 @@ export async function getCurvaTesoro(): Promise<CurvaTesoro> {
   };
 }
 
+/**
+ * Duration modificada aproximada de un bono del Tesoro que cotiza a la par.
+ *
+ * FRED publica la curva de **vencimientos constantes**: el rendimiento de un
+ * bono a la par a 10 años. Pero la curva de soberanos argentinos se grafica
+ * contra **duration**, porque los Globales amortizan y su plazo efectivo es
+ * bastante más corto que su vencimiento. Comparar 10 años del Tesoro contra 10
+ * años de un GD41 sería comparar dos cosas distintas.
+ *
+ * Para un bono a la par con cupón semestral y TIR `y`, la duration modificada
+ * sale cerrada: `[1 − (1 + y/2)^(−2n)] / y`. Con el 10 años al 4,67% da 7,9 —
+ * que es la duration que efectivamente tiene el Tesoro a 10 años.
+ */
+export function durationPar(anios: number, tirPct: number): number {
+  const y = tirPct / 100;
+  if (!(y > 0)) return anios;
+  return (1 - Math.pow(1 + y / 2, -2 * anios)) / y;
+}
+
+export interface PuntoTesoro {
+  label: string;
+  anios: number;
+  /** Duration modificada, para poder cruzarla contra la curva argentina. */
+  duration: number;
+  /** TIR en %. */
+  tir: number;
+}
+
+/**
+ * La curva del Tesoro expresada en duration: el mismo eje que usan las curvas
+ * de renta fija argentina, así que las dos se pueden dibujar juntas y la
+ * distancia vertical entre ellas *es* el spread de crédito.
+ */
+export async function getCurvaTesoroDuration(): Promise<PuntoTesoro[]> {
+  const curva = await getCurvaTesoro();
+  return curva.puntos
+    .filter((p): p is PuntoCurva & { hoy: number } => p.hoy != null)
+    .map((p) => ({
+      label: p.label,
+      anios: p.anios,
+      duration: durationPar(p.anios, p.hoy),
+      tir: p.hoy,
+    }))
+    .sort((a, b) => a.duration - b.duration);
+}
+
+/**
+ * El rendimiento del Tesoro a una duration dada, interpolado linealmente.
+ *
+ * Fuera del rango de la curva devuelve `null` en vez de extrapolar: una TIR del
+ * Tesoro inventada más allá de los 15 años de duration se convertiría en un
+ * spread inventado, y un spread es exactamente el número que después se le
+ * muestra a un cliente.
+ */
+export function tesoroEnDuration(curva: PuntoTesoro[], duration: number): number | null {
+  if (curva.length < 2) return null;
+  if (duration < curva[0].duration || duration > curva[curva.length - 1].duration) return null;
+
+  for (let i = 1; i < curva.length; i++) {
+    const a = curva[i - 1];
+    const b = curva[i];
+    if (duration <= b.duration) {
+      const t = (duration - a.duration) / (b.duration - a.duration || 1);
+      return a.tir + t * (b.tir - a.tir);
+    }
+  }
+  return null;
+}
+
 // ─── Inflación ───────────────────────────────────────────────────────────────
 
 export interface InflacionUsa {
