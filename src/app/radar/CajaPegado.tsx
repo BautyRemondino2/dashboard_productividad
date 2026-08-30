@@ -9,8 +9,12 @@ import { procesarPegado } from "./actions";
  * Arranca colapsada porque el radar se usa mucho más para leer que para cargar.
  * El resultado no dice sólo cuántas noticias entraron: dice también cuántos
  * mensajes se descartaron, que es la medida de para qué sirve esto.
+ *
+ * Si falta la clave de la API se avisa **antes** de pegar. Enterarse recién
+ * después de haber pegado cien mensajes y esperado la clasificación es la peor
+ * forma de descubrir un problema de configuración.
  */
-export default function CajaPegado() {
+export default function CajaPegado({ sinClave = false }: { sinClave?: boolean }) {
   const [abierta, setAbierta] = useState(false);
   const [texto, setTexto] = useState("");
   const [resultado, setResultado] = useState<string | null>(null);
@@ -67,6 +71,13 @@ export default function CajaPegado() {
       </div>
 
       <div className="p-[18px]">
+        {sinClave && (
+          <p className="text-[11px] text-amber-500/85 border border-amber-900/50 rounded-chip px-3 py-2 mb-3 leading-relaxed">
+            Falta <code className="text-amber-400/90">ANTHROPIC_API_KEY</code> en el entorno: sin
+            ella no se puede clasificar. En local va en un <code>.env.local</code> en la raíz; en
+            Vercel, en Settings → Environment Variables.
+          </p>
+        )}
         <textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}

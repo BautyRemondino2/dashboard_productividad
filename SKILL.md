@@ -65,6 +65,14 @@ Tres modelos según el dato:
      binario en vez de CSV. Por eso `fredSerie()` pide **una serie por request**.
      Las series usadas están listadas en `eeuu.ts`; ojo que el CPI y el PCE se
      publican como **nivel del índice**: la inflación hay que calcularla.
+     La ventana de historia de cada serie vive en `VENTANA_ANIOS` (en `fred.ts`)
+     y **no** se pasa por parámetro: el `cosd` forma parte de la clave del caché,
+     así que dos paneles que pedían la misma serie con ventanas distintas hacían
+     dos requests por el mismo dato.
+     Tasas de otros bloques que sí están al día (ago-2026): `ECBDFR` (depósito
+     BCE), `IUDSOIA` (SONIA), `IRSTCI01JPM156N` (call money Japón) y los 10 años
+     `IRLTLT01{DE,GB,JP}M156N`. Las de Brasil (`IRSTCB01BRM156N`) y el Bank Rate
+     del Reino Unido (`BOERUKM`) están discontinuadas: no usarlas.
    - **Futuros de fondos federales** (Yahoo, ya en el proyecto):
      `ZQ{código de mes}{AA}.CBT` — F=ene, G=feb, H=mar, J=abr, K=may, M=jun,
      N=jul, Q=ago, U=sep, V=oct, X=nov, Z=dic. Tasa implícita = `100 − precio`.
@@ -133,6 +141,14 @@ Tres modelos según el dato:
   mercado descuente subas con una tasa nominal que parece alta.
 
 ## Trampas conocidas
+
+- **`seedGlossary` sólo corre con la tabla vacía.** Agregar términos ahí no hace
+  nada en una instalación que ya viene andando. Para sumar términos hay dos
+  seeds incrementales que insertan sólo lo que falta y nunca pisan una edición
+  manual: `seedGlosarioInstrumentos` (los que mapean a un ticker del panel, en
+  `glosario-instrumentos.ts`) y `seedGlosarioFed` (conceptos sueltos, en
+  `glosario-fed.ts`). Un instrumento nuevo en el panel **necesita** su entrada en
+  `glosario-instrumentos.ts` o queda sin popover.
 
 - **`.fade-up` + `position: fixed`**: la animación deja un `transform` aplicado
   que vuelve al elemento contenedor de sus hijos `fixed`. Todo overlay

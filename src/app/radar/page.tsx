@@ -196,7 +196,7 @@ export default async function RadarPage({
       />
 
       <div className="space-y-4">
-        <CajaPegado />
+        <CajaPegado sinClave={!process.env.ANTHROPIC_API_KEY} />
 
         {DB_IS_EPHEMERAL && (
           <p className="text-[11px] text-amber-500/80 border border-amber-900/50 rounded-chip px-3 py-2">
