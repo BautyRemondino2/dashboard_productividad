@@ -75,13 +75,44 @@ export function invalidarFred() {
   cache.clear();
 }
 
+// ─── Ventanas ────────────────────────────────────────────────────────────────
+
+/**
+ * Cuántos años de historia se piden de cada serie.
+ *
+ * Vive acá y no en cada llamada a propósito. Cuando la ventana era un argumento,
+ * dos paneles que necesitaban la misma serie la pedían con `cosd` distinto —el
+ * de la tasa quería un año de EFFR y el de la postura seis— y como el `cosd`
+ * forma parte de la clave del caché, terminaban siendo dos requests a FRED por
+ * el mismo dato. Con la ventana atada a la serie eso no puede volver a pasar.
+ *
+ * Sólo se listan las que necesitan más que el default: los índices de precios y
+ * la tasa efectiva, porque de ellos se calculan variaciones interanuales y hay
+ * que traer un año extra antes del primer punto que se va a mostrar.
+ */
+const VENTANA_ANIOS: Record<string, number> = {
+  CPIAUCSL: 7,
+  CPILFESL: 7,
+  PCEPI: 7,
+  PCEPILFE: 7,
+  EFFR: 7,
+  CES0500000003: 7,
+  RSAFS: 7,
+  INDPRO: 7,
+  A191RL1Q225SBEA: 7,
+};
+
+/** Con cinco años alcanza para cualquier gráfico de la sección. */
+const VENTANA_DEFECTO = 5;
+
 // ─── Fetch ───────────────────────────────────────────────────────────────────
 
 /**
- * La serie completa desde `desde`. Los valores faltantes vienen como "." (feriados,
- * meses sin publicar) y se descartan: el consumidor recibe sólo puntos con dato.
+ * La serie completa. Los valores faltantes vienen como "." (feriados, meses sin
+ * publicar) y se descartan: el consumidor recibe sólo puntos con dato.
  */
-export function fredSerie(id: string, desde: string): Promise<PuntoSerie[]> {
+export function fredSerie(id: string): Promise<PuntoSerie[]> {
+  const desde = desdeHaceAnios(VENTANA_ANIOS[id] ?? VENTANA_DEFECTO);
   return memoFred(`fred:${id}:${desde}`, TTL_SEGUNDOS, async () => {
     const url = `${BASE}?id=${encodeURIComponent(id)}&cosd=${desde}`;
     const res = await fetch(url, {
@@ -113,13 +144,11 @@ export function fredSerie(id: string, desde: string): Promise<PuntoSerie[]> {
  * Varias series a la vez. Una que falle no voltea al resto: devuelve `null` en
  * su lugar y el panel que la usa muestra "s/d" en vez de no renderizar.
  */
-export async function fredVarias(
-  pedidos: { id: string; desde: string }[]
-): Promise<Map<string, PuntoSerie[] | null>> {
-  const settled = await Promise.allSettled(pedidos.map((p) => fredSerie(p.id, p.desde)));
+export async function fredVarias(ids: string[]): Promise<Map<string, PuntoSerie[] | null>> {
+  const settled = await Promise.allSettled(ids.map((id) => fredSerie(id)));
   const out = new Map<string, PuntoSerie[] | null>();
   settled.forEach((r, i) => {
-    out.set(pedidos[i].id, r.status === "fulfilled" && r.value.length > 0 ? r.value : null);
+    out.set(ids[i], r.status === "fulfilled" && r.value.length > 0 ? r.value : null);
   });
   return out;
 }

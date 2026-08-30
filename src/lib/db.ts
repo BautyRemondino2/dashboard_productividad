@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import { DEFINICIONES_INSTRUMENTOS } from "@/lib/glosario-instrumentos";
+import { TERMINOS_FED } from "@/lib/glosario-fed";
 
 // El bundle de una función serverless es read-only: abrir la DB del repo ahí
 // hace fallar cualquier escritura con SQLITE_READONLY (incluido el schema init).
@@ -640,6 +641,33 @@ function seedGlosarioInstrumentos(db: Database.Database) {
   insertMany(faltantes);
 }
 
+/**
+ * Suma los términos de la Fed y la macro de EE.UU. que todavía no existan.
+ *
+ * Va aparte de `seedGlossary`, que sólo corre con la tabla vacía y por eso no
+ * sirve para agregar términos a una instalación que ya viene andando. Acá se
+ * inserta sólo lo que falta, así que la edición manual desde la UI nunca se
+ * pisa: si el término ya existe, no se toca.
+ */
+function seedGlosarioFed(db: Database.Database) {
+  const existentes = new Set(
+    (db.prepare("SELECT term FROM glossary_terms").all() as { term: string }[]).map((r) => r.term)
+  );
+  const faltantes = TERMINOS_FED.filter((t) => !existentes.has(t.term));
+  if (faltantes.length === 0) return;
+
+  const ins = db.prepare(
+    `INSERT INTO glossary_terms (term, category, short_def, detail, example, ticker, term_type)
+     VALUES (?, ?, ?, ?, ?, NULL, ?)`
+  );
+  const insertMany = db.transaction((items: typeof faltantes) => {
+    for (const t of items) {
+      ins.run(t.term, t.category, t.short_def, t.detail, t.example, t.term_type);
+    }
+  });
+  insertMany(faltantes);
+}
+
 export function getDb(): Database.Database {
   if (!global.__db) {
     if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
@@ -649,6 +677,7 @@ export function getDb(): Database.Database {
     seedGlossary(global.__db);
     seedMercado(global.__db);
     seedGlosarioInstrumentos(global.__db);
+    seedGlosarioFed(global.__db);
   }
   return global.__db;
 }

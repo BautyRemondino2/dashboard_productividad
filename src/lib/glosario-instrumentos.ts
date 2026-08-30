@@ -177,6 +177,45 @@ export const DEFINICIONES_INSTRUMENTOS: DefinicionInstrumento[] = [
     },
   },
   {
+    ticker: "FED_FUNDS",
+    term: "Tasa de fondos federales",
+    seed: {
+      category: "Tasas & Curvas",
+      term_type: "metrica",
+      short_def: "La tasa de política monetaria de EE.UU.: el techo del rango objetivo que fija la Reserva Federal.",
+      detail:
+        "La Fed no fija un número sino un rango de 25 puntos básicos —por ejemplo 3,50%-3,75%— dentro del cual quiere que se opere el préstamo overnight entre bancos. La tasa que efectivamente resulta de esas operaciones es la *effective federal funds rate*, y suele quedar unos pocos puntos básicos por debajo del techo. La decide el FOMC en ocho reuniones al año, cuatro de las cuales publican además las proyecciones de sus miembros (el \"dot plot\"). Es la tasa desde la que se arma toda la curva en dólares, así que mueve el precio de cualquier activo que se descuente en esa moneda, incluidos los bonos argentinos. Ojo con leer el nivel nominal solo: lo que mide cuánto aprieta la política es la tasa **real**, esto menos la inflación núcleo.",
+      example:
+        "Con el rango en 3,50%-3,75% y la inflación núcleo del PCE en 3,3%, la tasa real es de apenas 0,3%: pese a un nivel nominal que suena alto, la política monetaria casi no está frenando. Por eso el mercado puede estar descontando subas y no recortes.",
+    },
+  },
+  {
+    ticker: "CPI_USA",
+    term: "Inflación de EE.UU.",
+    seed: {
+      category: "General",
+      term_type: "metrica",
+      short_def: "Variación interanual del índice de precios al consumidor norteamericano.",
+      detail:
+        "Es el dato que más condiciona a la Reserva Federal y, por esa vía, al precio de todo lo que cotiza en dólares. Se publica mensualmente y se mira en dos versiones: el general, que incluye alimentos y energía, y el núcleo, que los excluye porque son los componentes más volátiles y menos sensibles a la tasa de interés. Conviene tener presente que la meta del 2% de la Fed **no** está definida sobre este índice sino sobre el PCE núcleo, que se publica un mes más tarde y suele correr algo por debajo del IPC. Para un asesor argentino el canal es indirecto pero fuerte: más inflación en EE.UU. implica una Fed más dura, tasas largas más altas y bonos emergentes más baratos.",
+      example:
+        "IPC general en 3,3% interanual y núcleo en 2,5%: la brecha de ocho décimas es energía y alimentos. Si el núcleo empieza a subir, la Fed reacciona; si sube sólo el general por un salto del petróleo, suele dejarlo pasar.",
+    },
+  },
+  {
+    ticker: "VIX",
+    term: "VIX",
+    seed: {
+      category: "General",
+      term_type: "metrica",
+      short_def: "Volatilidad implícita del S&P 500 a 30 días: el termómetro del miedo del mercado.",
+      detail:
+        "Se calcula a partir de los precios de las opciones sobre el S&P 500 y expresa, anualizada, la magnitud de movimiento que el mercado está pagando para los próximos treinta días. No dice hacia dónde va a moverse el índice, sólo cuánto. Por debajo de 15 indica calma; entre 15 y 25, normalidad; arriba de 25 el mercado se pone defensivo y arriba de 35 suele haber ventas forzadas. Importa acá porque el apetito por riesgo es el canal por el que las decisiones de la Fed llegan a un bono argentino: cuando el VIX salta, los emergentes se venden primero, incluso sin ninguna noticia local.",
+      example:
+        "VIX en 14,5 con el spread high yield en 263 pb: condiciones benignas, apetito por riesgo intacto. En un episodio de estrés el VIX salta a 30 y ese spread se abre 150 pb; los Globales caen aunque el riesgo país argentino no haya cambiado por nada propio.",
+    },
+  },
+  {
     ticker: "UST10Y",
     term: "UST 10 años",
     seed: {

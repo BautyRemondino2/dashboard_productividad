@@ -24,7 +24,6 @@ import {
   variacionMensual,
   serieInteranual,
   cambioUltimo,
-  desdeHaceAnios,
   type PuntoSerie,
 } from "@/lib/fred";
 
@@ -64,12 +63,7 @@ export interface CurvaTesoro {
 }
 
 export async function getCurvaTesoro(): Promise<CurvaTesoro> {
-  const desde = desdeHaceAnios(2);
-  const s = await fredVarias([
-    ...TENORES.map((t) => ({ id: t.id, desde })),
-    { id: "T10Y2Y", desde },
-    { id: "T10Y3M", desde },
-  ]);
+  const s = await fredVarias([...TENORES.map((t) => t.id), "T10Y2Y", "T10Y3M"]);
 
   const puntos: PuntoCurva[] = TENORES.map((t) => {
     const serie = s.get(t.id);
@@ -191,16 +185,7 @@ export interface InflacionUsa {
 }
 
 export async function getInflacionUsa(): Promise<InflacionUsa> {
-  const desdeMensual = desdeHaceAnios(6);
-  const desdeDiario = desdeHaceAnios(2);
-  const s = await fredVarias([
-    { id: "CPIAUCSL", desde: desdeMensual },
-    { id: "CPILFESL", desde: desdeMensual },
-    { id: "PCEPI", desde: desdeMensual },
-    { id: "PCEPILFE", desde: desdeMensual },
-    { id: "T10YIE", desde: desdeDiario },
-    { id: "T5YIFR", desde: desdeDiario },
-  ]);
+  const s = await fredVarias(["CPIAUCSL", "CPILFESL", "PCEPI", "PCEPILFE", "T10YIE", "T5YIFR"]);
 
   const cpi = s.get("CPIAUCSL");
   const core = s.get("CPILFESL");
@@ -272,10 +257,7 @@ export interface PosturaFed {
  * arriba de 1,5% restrictivo— va escrita como lo que es.
  */
 export async function getPosturaFed(): Promise<PosturaFed | null> {
-  const s = await fredVarias([
-    { id: "EFFR", desde: desdeHaceAnios(6) },
-    { id: "PCEPILFE", desde: desdeHaceAnios(7) },
-  ]);
+  const s = await fredVarias(["EFFR", "PCEPILFE"]);
 
   const effr = s.get("EFFR");
   const pceCore = s.get("PCEPILFE");
@@ -359,16 +341,9 @@ function cambioIa(s: PuntoSerie[] | null | undefined): number | null {
 }
 
 export async function getActividadUsa(): Promise<IndicadorUsa[]> {
-  const desdeM = desdeHaceAnios(5);
   const s = await fredVarias([
-    { id: "UNRATE", desde: desdeM },
-    { id: "PAYEMS", desde: desdeM },
-    { id: "ICSA", desde: desdeHaceAnios(2) },
-    { id: "CES0500000003", desde: desdeM },
-    { id: "A191RL1Q225SBEA", desde: desdeHaceAnios(6) },
-    { id: "RSAFS", desde: desdeM },
-    { id: "INDPRO", desde: desdeM },
-    { id: "UMCSENT", desde: desdeM },
+    "UNRATE", "PAYEMS", "ICSA", "CES0500000003",
+    "A191RL1Q225SBEA", "RSAFS", "INDPRO", "UMCSENT",
   ]);
 
   const payems = s.get("PAYEMS");
@@ -488,14 +463,7 @@ export async function getActividadUsa(): Promise<IndicadorUsa[]> {
 }
 
 export async function getCondicionesFinancieras(): Promise<IndicadorUsa[]> {
-  const desde = desdeHaceAnios(3);
-  const s = await fredVarias([
-    { id: "VIXCLS", desde },
-    { id: "BAMLH0A0HYM2", desde },
-    { id: "NFCI", desde },
-    { id: "DTWEXBGS", desde },
-    { id: "WALCL", desde },
-  ]);
+  const s = await fredVarias(["VIXCLS", "BAMLH0A0HYM2", "NFCI", "DTWEXBGS", "WALCL"]);
 
   const hy = s.get("BAMLH0A0HYM2");
   const balance = s.get("WALCL");

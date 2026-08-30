@@ -23,7 +23,7 @@ import YahooFinance from "yahoo-finance2";
 import { defaultMetric } from "@/lib/mercado";
 import type { MarketInstrument } from "@/lib/mercado";
 import { getCaucion1DiaARS } from "@/lib/byma";
-import { fredSerie, ultimo, variacionInteranual, desdeHaceAnios } from "@/lib/fred";
+import { fredSerie, ultimo, variacionInteranual } from "@/lib/fred";
 import { localDateStr } from "@/lib/utils";
 
 export interface FetchedValue {
@@ -305,9 +305,9 @@ const fredFuente: Fuente = {
 
     // Cada serie aislada: si FRED se cae para una, las otras entran igual.
     const [tasa, cpi, vix] = await Promise.allSettled([
-      fredSerie("DFEDTARU", desdeHaceAnios(1)),
-      fredSerie("CPIAUCSL", desdeHaceAnios(2)),
-      fredSerie("VIXCLS", desdeHaceAnios(1)),
+      fredSerie("DFEDTARU"),
+      fredSerie("CPIAUCSL"),
+      fredSerie("VIXCLS"),
     ]);
 
     if (tasa.status === "fulfilled") {

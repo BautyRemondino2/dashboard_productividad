@@ -17,7 +17,7 @@
  */
 
 import YahooFinance from "yahoo-finance2";
-import { fredVarias, memoFred, ultimo, desdeHaceAnios, type PuntoSerie } from "@/lib/fred";
+import { fredVarias, memoFred, ultimo, type PuntoSerie } from "@/lib/fred";
 
 const TIMEOUT_MS = 10_000;
 
@@ -63,13 +63,7 @@ export interface TasaFed {
 }
 
 export async function getTasaFed(): Promise<TasaFed | null> {
-  const desde = desdeHaceAnios(1);
-  const s = await fredVarias([
-    { id: "DFEDTARL", desde },
-    { id: "DFEDTARU", desde },
-    { id: "EFFR", desde },
-    { id: "SOFR", desde },
-  ]);
+  const s = await fredVarias(["DFEDTARL", "DFEDTARU", "EFFR", "SOFR"]);
 
   const bajo = ultimo(s.get("DFEDTARL"));
   const alto = ultimo(s.get("DFEDTARU"));
