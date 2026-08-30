@@ -139,8 +139,18 @@ export function defaultMetric(tipo: InstrumentoTipo): string {
   }
 }
 
-/** Tickers seedeados donde una baja es una mejora (colorear delta invertido). */
-export const LOWER_IS_BETTER = new Set(["RIESGO_PAIS", "IPC", "BRECHA", "CPI_USA", "VIX"]);
+/**
+ * Tickers donde una baja es una mejora, para colorear el delta invertido.
+ *
+ * El UST 10 años entra acá desde la mirada de este dashboard, que es la de una
+ * cartera de renta fija en dólares: cuando la tasa del Tesoro sube, el precio de
+ * cualquier bono en dólares baja, y el tenedor de un Global pierde por una
+ * decisión tomada en Washington. Visto desde una cartera de acciones el signo
+ * sería discutible, pero acá lo que se sigue son bonos.
+ */
+export const LOWER_IS_BETTER = new Set([
+  "RIESGO_PAIS", "IPC", "BRECHA", "CPI_USA", "VIX", "UST10Y",
+]);
 
 // ─── Deltas ─────────────────────────────────────────────────────────────────
 

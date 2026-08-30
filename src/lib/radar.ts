@@ -142,6 +142,23 @@ export function conteoPorTema(dias = 30): Record<string, number> {
   return Object.fromEntries(filas.map((f) => [f.tema, f.n]));
 }
 
+/**
+ * Cuántas noticias sin leer que valen la pena hay en la última semana.
+ *
+ * Es lo que lleva el punto del nav. Se cuentan sólo las de relevancia 3 o más:
+ * un contador que sume todo se convierte en un número permanentemente alto que
+ * se deja de mirar, que es exactamente el problema que el radar viene a
+ * resolver.
+ */
+export function contarPendientes(dias = 7, minRelevancia = 3): number {
+  const fila = getDb()
+    .prepare(
+      "SELECT COUNT(*) as n FROM radar_items WHERE leido = 0 AND relevancia >= ? AND fecha >= ?"
+    )
+    .get(minRelevancia, localDateStr(-dias)) as { n: number };
+  return fila.n;
+}
+
 export function marcarLeido(id: number, leido: boolean) {
   getDb().prepare("UPDATE radar_items SET leido = ? WHERE id = ?").run(leido ? 1 : 0, id);
 }

@@ -48,6 +48,10 @@ const CELDAS: { ticker: string; label: string; unidad: Unidad }[] = [
   { ticker: "CCL", label: "Dólar CCL", unidad: "ARS" },
   { ticker: "BRECHA", label: "Brecha", unidad: "%" },
   { ticker: "RIESGO_PAIS", label: "Riesgo país", unidad: "pb" },
+  // Va pegado al riesgo país porque los dos se leen juntos: lo que rinde un
+  // Global es esta tasa más ese spread. Un riesgo país que baja 20 pb con el
+  // Tesoro subiendo 20 deja al bono exactamente donde estaba.
+  { ticker: "UST10Y", label: "UST 10a", unidad: "%" },
   { ticker: "TAMAR", label: "TAMAR", unidad: "%" },
   { ticker: "MERVAL_USD", label: "Merval USD", unidad: "idx" },
   { ticker: "SPX", label: "S&P 500", unidad: "idx" },

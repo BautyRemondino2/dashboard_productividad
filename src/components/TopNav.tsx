@@ -35,10 +35,13 @@ function horaDe(iso: string): string {
 export default function TopNav({
   ephemeral = false,
   actualizado = null,
+  radarPendientes = 0,
 }: {
   ephemeral?: boolean;
   /** ISO del último dato automático. Se muestra como sello a la derecha. */
   actualizado?: string | null;
+  /** Noticias del radar sin leer con relevancia 3+, para el punto del nav. */
+  radarPendientes?: number;
 }) {
   const pathname = usePathname();
 
@@ -73,7 +76,14 @@ export default function TopNav({
       <span className="w-px h-4 bg-separador mx-[10px] shrink-0" />
 
       {SECUNDARIAS.map((s) => (
-        <ItemNav key={s.href} href={s.href} label={s.label} activo={activo(s.href)} secundaria />
+        <ItemNav
+          key={s.href}
+          href={s.href}
+          label={s.label}
+          activo={activo(s.href)}
+          secundaria
+          contador={s.href === "/radar" ? radarPendientes : 0}
+        />
       ))}
 
       <div className="ml-auto flex items-center gap-3.5 shrink-0">
@@ -101,11 +111,14 @@ function ItemNav({
   label,
   activo,
   secundaria = false,
+  contador = 0,
 }: {
   href: string;
   label: string;
   activo: boolean;
   secundaria?: boolean;
+  /** Si es mayor que cero se dibuja al lado del label. */
+  contador?: number;
 }) {
   return (
     <Link
@@ -119,6 +132,14 @@ function ItemNav({
       }`}
     >
       {label}
+      {contador > 0 && (
+        <span
+          title={`${contador} sin leer con relevancia 3 o más`}
+          className="ml-1.5 text-[10px] font-medium tabular-nums px-1 py-px rounded-badge bg-[color:var(--color-marca)] text-titulo"
+        >
+          {contador}
+        </span>
+      )}
     </Link>
   );
 }
