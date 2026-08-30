@@ -346,6 +346,49 @@ ningún rubro caen en "Otros".
 > Los sectores están en su propio archivo porque los usa la UI: si la lista de
 > 500 empresas viviera ahí, se iría entera al bundle del navegador (son 44 KB).
 
+### La curva de tasa fija, que era el hueco más grande
+
+`/renta-fija` tenía las curvas de soberanos, CER, dólar linked y ONs — pero no
+la de **tasa fija en pesos**, que es de lejos lo más operado del mercado local y
+lo que se le ofrece a un cliente que quiere quedarse en pesos sin ajuste.
+
+El gráfico va en TIREA para poder compararlo contra las otras tres, pero la
+lista de abajo va en **tasa efectiva mensual**, que es como se cotizan de verdad
+y como se le explica a un cliente: "la de octubre paga 2,00% por mes".
+
+Y con las dos curvas en pesos aparece el número que justifica tenerlas: elegir
+entre una Lecap y un Boncer es una apuesta sobre la inflación aunque no se diga.
+
+```
+inflación implícita = (1 + tasa nominal) / (1 + tasa real) − 1
+```
+
+La tasa real sale del **ajuste** de la curva CER y no del Boncer más cercano:
+los vencimientos de las dos familias no coinciden, y comparar una Lecap de
+noviembre contra un Boncer de marzo metería la pendiente de la curva adentro del
+breakeven. Y sólo se calcula dentro del rango donde la curva CER tiene bonos de
+verdad: un breakeven extrapolado se lee como un dato sin serlo.
+
+> **Esto caduca.** Las Lecaps rotan con cada licitación, así que
+> `src/lib/bonos-flujos-tasa-fija.ts` hay que regenerarlo cada tanto con
+> `node scripts/generar-flujos-tasa-fija.mjs`. La curva avisa en pantalla
+> cuántos instrumentos ya vencieron en vez de irse adelgazando en silencio.
+
+### Próximos pagos
+
+Los cronogramas estaban en el repo desde que se armaron las curvas, pero se
+usaban sólo para sacar la TIR: las fechas y los montos —que es lo que le importa
+a quien tiene el bono— se descartaban. Ahora hay un calendario de los próximos
+90 días con las cinco familias juntas, agrupado por mes y por cada 100 de valor
+nominal.
+
+Los pagos de CER y dólar linked van marcados con asterisco a propósito: pagan su
+cupón multiplicado por el índice de la **fecha de pago**, que todavía no existe.
+Lo que se muestra es la estimación con el índice de hoy, y el pago real va a ser
+mayor. Un número de pesos sin esa aclaración se lee como una promesa.
+
+---
+
 ## Estados Unidos — la Fed, la curva y la inflación
 
 `/eeuu` es la sección que faltaba. El resto del dashboard mira Argentina, que es
@@ -426,6 +469,22 @@ las dos curvas en el mismo eje, la distancia vertical entre ellas **es** el
 spread de crédito, y cada soberano informa el suyo interpolado a su propia
 duration. Eso es el riesgo país desagregado: el EMBI que se publica es el
 promedio de esa lista.
+
+---
+
+## Panorama — todo a mano al abrir
+
+Desde que hay cinco secciones, la mitad de lo que se necesita a la mañana está a
+un click: la tasa de la Fed, lo que paga una Lecap, qué inflación descuenta el
+mercado, qué llegó por los canales. La franja de **Panorama**, arriba de todo en
+`/mercado`, los trae a la home con el número de hoy y cada celda linkea a su
+sección.
+
+No repite nada de lo que ya está más abajo, a propósito: un resumen que vuelva a
+mostrar el dólar y el riesgo país no ahorra ninguna navegación, sólo alarga la
+página. Y cada celda resuelve y falla por su cuenta dentro de un `Suspense`, así
+que el panel argentino —que es lo que se mira primero— no espera a FRED ni a
+data912 para dibujarse.
 
 ---
 

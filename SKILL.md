@@ -40,7 +40,13 @@ Tres modelos según el dato:
 2. **Datos live sin DB** (patrón equity, `src/lib/equity.ts`) → Yahoo Finance
    con caché en memoria del proceso + TTL. No toca SQLite. Para lo que se rebaja
    solo y no necesita histórico.
-3. **BYMA open data** (agregado ago-2026) — `open.bymadata.com.ar`, la mejor
+3. **rava** (`mercado.rava.com/api/prices/…`) — la base de los cronogramas.
+   `/bonos` devuelve todas las especies con vencimiento, TIR y precio;
+   `/bonos-flujo/{ticker}`, el cronograma. Pide `user-agent` y `referer`. **No se
+   consulta en runtime**: alimenta los tres generadores de `scripts/`, que
+   escriben los cronogramas al repo. Un cronograma de amortización no cambia, y
+   así el panel no depende de que ese sitio esté arriba.
+4. **BYMA open data** (agregado ago-2026) — `open.bymadata.com.ar`, la mejor
    base para renta fija argentina. API REST bajo
    `/vanoms-be-core/rest/api/bymadata/free/`. POST con body `{}`, cert válido
    (el `fetch` de Node entra directo, sin `-k`). `/cauciones` devuelve una fila
@@ -53,7 +59,7 @@ Tres modelos según el dato:
    antes carga manual) y el panel `Cauciones` en `/mercado` muestra la curva
    ARS + USD por plazo. Próximos endpoints a sumar de la misma base:
    soberanos (`titulos-publicos`), ONs (`obligaciones-negociables`).
-4. **EE.UU. / Fed** (agregado ago-2026) — `src/lib/fred.ts` + `src/lib/fed.ts` +
+5. **EE.UU. / Fed** (agregado ago-2026) — `src/lib/fred.ts` + `src/lib/fed.ts` +
    `src/lib/eeuu.ts`, todo con caché en memoria (patrón equity), sin DB, así que
    anda igual en el deploy efímero.
    - **FRED sin API key**: el endpoint del graficador es público →
@@ -73,6 +79,11 @@ Tres modelos según el dato:
      BCE), `IUDSOIA` (SONIA), `IRSTCI01JPM156N` (call money Japón) y los 10 años
      `IRLTLT01{DE,GB,JP}M156N`. Las de Brasil (`IRSTCB01BRM156N`) y el Bank Rate
      del Reino Unido (`BOERUKM`) están discontinuadas: no usarlas.
+   - **Callejones sin salida ya probados, no reintentar**: los futuros de dólar
+     no tienen fuente abierta (BYMA devuelve 401 en `/futuros` y derivados;
+     MatbaRofex pide credenciales), y los FCI de argentinadatos sólo publican
+     `/ultimo` sin serie histórica, así que no se puede calcular el rendimiento
+     de un money market.
    - **Futuros de fondos federales** (Yahoo, ya en el proyecto):
      `ZQ{código de mes}{AA}.CBT` — F=ene, G=feb, H=mar, J=abr, K=may, M=jun,
      N=jul, Q=ago, U=sep, V=oct, X=nov, Z=dic. Tasa implícita = `100 − precio`.
@@ -88,7 +99,7 @@ Tres modelos según el dato:
      User-Agent) y `fred.stlouisfed.org/releases/calendar` no responde. No
      volver a intentarlo: lo verificable es el calendario del FOMC y la fecha
      del último dato de cada serie.
-5. **Radar / WhatsApp** — `src/lib/radar.ts`, tabla `radar_items`. Clasifica un
+6. **Radar / WhatsApp** — `src/lib/radar.ts`, tabla `radar_items`. Clasifica un
    volcado crudo con el SDK de Anthropic (`claude-opus-5`, `output_config` con
    `effort: "medium"` y `format: json_schema`) y guarda sólo lo que sobrevive.
    Entra por la caja de pegado de `/radar` o por `POST /api/radar/ingest` con
@@ -118,6 +129,34 @@ Tres modelos según el dato:
   contexto (Tesoro 10a, TIR implícita del riesgo país) contra las que se lee
   la altura de la curva.
 
+## Curvas y cronogramas
+
+Cuatro curvas en `/renta-fija`, cada una con su generador en `scripts/`. Los
+tres generadores comparten el mismo control y **no es decorativo**: se descuenta
+el cronograma propio a la TIR que publica rava y si no reproduce el precio de
+mercado, el instrumento no entra. Un vencimiento mal deducido de un ticker da
+una TIR mal calculada, y eso es peor que no mostrar el instrumento.
+
+| Curva | Cronogramas | Generador |
+|---|---|---|
+| Soberanos hard-dollar y ONs | `bonos-flujos.ts` | `generar-flujos-bonos.mjs` |
+| CER y dólar linked | `bonos-flujos-ars.ts` | `generar-flujos-ars.mjs` |
+| Tasa fija (Lecaps/Boncaps) | `bonos-flujos-tasa-fija.ts` | `generar-flujos-tasa-fija.mjs` |
+
+**Las familias se reconocen por el patrón del ticker** y mezclarlas rompe la
+curva: `S…`/`T…` + día + mes en letra + año son tasa fija; `TX`/`TZX`/`X…` son
+CER; `TZV`/`D…` dólar linked; **`TXM…` es TAMAR**, comparte prefijo con los
+Boncer y rinde 40% nominal contra 10% real.
+
+**Los archivos de tasa fija caducan.** Las Lecaps rotan con cada licitación, así
+que hay que volver a correr el generador cada tanto. La curva avisa en pantalla
+cuántos instrumentos ya vencieron en vez de irse adelgazando en silencio.
+
+Los mismos cronogramas alimentan el calendario de próximos pagos
+(`calendario-pagos.ts`). Los CER y dólar linked se muestran ahí estimados con el
+índice de hoy y **marcados**: pagan por el índice de su fecha de pago, que
+todavía no existe, así que el pago real va a ser mayor.
+
 ## Cuentas que vale la pena no volver a derivar
 
 - **Sendero implícito de tasa (FedWatch casero).** El contrato ZQ de un mes
@@ -136,6 +175,16 @@ Tres modelos según el dato:
   (10 años al 4,67% → 7,9). Con eso las dos curvas comparten eje y el spread de
   cada Global se interpola a su propia duration en vez de leerse contra el 10
   años, que sobrestimaba el spread de los bonos cortos.
+- **Breakeven de inflación**: Fisher entre la curva de tasa fija y la CER —
+  `(1+nominal)/(1+real) − 1`—. La tasa real se lee del **ajuste** de la curva CER
+  y no del Boncer más cercano: los vencimientos de las dos familias no coinciden
+  y comparar una Lecap de noviembre contra un Boncer de marzo mete la pendiente
+  de la curva adentro del número. Sólo dentro del rango donde la CER tiene bonos:
+  un breakeven extrapolado se lee como un dato sin serlo.
+- **TEM**: las Lecaps se cotizan en tasa efectiva **mensual**, no anual —
+  `(1+TIREA)^(1/12) − 1`—. El gráfico va en anual para poder compararlo contra
+  las otras curvas, pero la lista va en mensual, que es como se le explica a un
+  cliente.
 - **Tasa real de política**: efectiva menos PCE núcleo interanual (no IPC: la
   meta del 2% está definida sobre el PCE). Es la lectura que explica que el
   mercado descuente subas con una tasa nominal que parece alta.
