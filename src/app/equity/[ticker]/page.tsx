@@ -17,6 +17,8 @@ import {
   fmtCap, fmtFecha, fmtPct, fmtUsd,
 } from "@/lib/equity-formato";
 import GraficoTradingView from "@/components/GraficoTradingView";
+import { getFichaAnalisis } from "@/lib/equity-ficha-db";
+import { avanceDe } from "@/lib/equity-ficha";
 import Logo from "./Logo";
 import { PanelNoticias } from "./Investigacion";
 import Card from "@/components/Card";
@@ -128,6 +130,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
   const ficha = await getFicha(ticker);
   if (!ficha) notFound();
 
+  const avance = avanceDe(getFichaAnalisis(ticker));
   const { analistas: ana, earnings } = ficha;
   const upside =
     ana.precioObjetivo && ficha.precio ? (ana.precioObjetivo / ficha.precio - 1) * 100 : null;
@@ -182,6 +185,41 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
           </div>
         </div>
       </div>
+
+      {/* La ficha de análisis va antes que todo lo demás y no en el sidebar:
+          es el trabajo propio sobre esta empresa, y lo de abajo son insumos
+          para escribirla. Muestra el avance para que se note cuál está a medio
+          hacer sin tener que entrar. */}
+      <Link
+        href={`/equity/${ficha.ticker}/ficha`}
+        className="group flex items-center gap-4 px-[18px] py-3 mb-5 rounded-card border border-borde bg-card hover:border-outline transition-colors"
+      >
+        <div className="min-w-0">
+          <div className="font-serif text-[15px] text-titulo">Ficha de análisis</div>
+          <p className="text-[11px] text-meta mt-0.5">
+            {avance.completos === 0
+              ? "Sin empezar · negocio, moat, management, números, tesis y kill criteria"
+              : `${avance.completos} de ${avance.total} campos escritos`}
+          </p>
+        </div>
+
+        <div className="ml-auto flex items-center gap-3.5 shrink-0">
+          {avance.completos > 0 && (
+            <>
+              <span className="text-[13px] text-cuerpo tabular-nums">{avance.porcentaje}%</span>
+              <div className="w-24 h-[3px] rounded-full bg-divisor overflow-hidden hidden sm:block">
+                <div
+                  className="h-full rounded-full bg-sube/70"
+                  style={{ width: `${avance.porcentaje}%` }}
+                />
+              </div>
+            </>
+          )}
+          <span className="text-[12px] text-tenue group-hover:text-secundario transition-colors">
+            {avance.completos === 0 ? "empezar →" : "abrir →"}
+          </span>
+        </div>
+      </Link>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
         {/* ── Columna principal ─────────────────────────────────────── */}

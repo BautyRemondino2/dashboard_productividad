@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getBenchmarks, getRanking, getRetornosIndice } from "@/lib/equity";
 import { UNIVERSO } from "@/lib/equity-universo";
+import { tickersConFicha } from "@/lib/equity-ficha-db";
 import EquityClient from "./EquityClient";
 import Referencias from "./Referencias";
 import FranjaEtf from "./FranjaEtf";
@@ -29,10 +30,17 @@ async function Ranking() {
     getBenchmarks(),
   ]);
 
+  // Qué empresas ya tienen ficha empezada: se marca en el listado para no
+  // tener que entrar a cada una para acordarse de cuáles se miraron.
+  const fichas = Object.fromEntries(
+    [...tickersConFicha()].map(([t, v]) => [t, v.porcentaje])
+  );
+
   return (
     <EquityClient
       filas={filas}
       indice={{ dia: benchmarks[0]?.dia ?? null, ...retornosIndice }}
+      fichas={fichas}
     />
   );
 }

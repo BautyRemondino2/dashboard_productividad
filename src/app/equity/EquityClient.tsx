@@ -92,10 +92,13 @@ const PRESETS: Preset[] = [
 export default function EquityClient({
   filas,
   indice,
+  fichas = {},
 }: {
   filas: FilaConRetornos[];
   /** Retorno del S&P 500 en cada período, para calcular el alpha. */
   indice: Record<Periodo, number | null>;
+  /** Ticker → % de la ficha de análisis escrito, para marcar las empezadas. */
+  fichas?: Record<string, number>;
 }) {
   // Hay sesión extendida abierta cuando algún papel trae dato de premercado.
   // En ese caso la vista arranca ordenada por el premercado —que es lo que se
@@ -302,6 +305,14 @@ export default function EquityClient({
           <span className="text-[13px] font-medium text-titulo group-hover:text-white">
             {f.ticker}
           </span>
+          {fichas[f.ticker] != null && (
+            <span
+              className="ml-1.5 text-[9px] text-sube/80 align-middle"
+              title={`Ficha de análisis empezada · ${fichas[f.ticker]}% de los campos`}
+            >
+              ●
+            </span>
+          )}
           <span className="block text-[10px] text-meta-suave truncate max-w-[190px]">
             {f.nombre}
           </span>

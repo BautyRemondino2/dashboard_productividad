@@ -359,6 +359,11 @@ export interface Ficha {
     deudaSobrePatrimonio: number | null;
     capitalizacion: number | null;
     dividendo: number | null;
+    /** Capitalización + deuda − caja: lo que cuesta comprar el negocio entero. */
+    enterpriseValue: number | null;
+    evSobreEbitda: number | null;
+    /** Sensibilidad al índice. Entra en el costo del capital propio (CAPM). */
+    beta: number | null;
   };
   analistas: {
     precioObjetivo: number | null;
@@ -441,6 +446,9 @@ export function getFicha(ticker: string): Promise<Ficha | null> {
         deudaSobrePatrimonio: numero(finanzas?.debtToEquity),
         capitalizacion: numero(precio?.marketCap),
         dividendo: aPorcentaje(detalle?.dividendYield),
+        enterpriseValue: numero(stats?.enterpriseValue),
+        evSobreEbitda: numero(stats?.enterpriseToEbitda),
+        beta: numero(stats?.beta),
       },
       analistas: {
         precioObjetivo: numero(finanzas?.targetMeanPrice),
@@ -845,6 +853,243 @@ export function getHistoriaFinanciera(ticker: string): Promise<AñoFinanciero[]>
       })
       .filter((a) => a.año && a.ventas);
   });
+}
+
+// ─── Serie financiera completa (la que llena la ficha de análisis) ──────────
+
+/** Un ejercicio con todo lo que la ficha pide en su cuadro de números. */
+export interface PeriodoFinanciero {
+  /** "2024" para un ejercicio anual, "UDM" para los últimos doce meses. */
+  periodo: string;
+  esUdm: boolean;
+  ventas: number | null;
+  /** Contra el ejercicio anterior, en %. Null en el primero y en la UDM. */
+  crecimiento: number | null;
+  margenBruto: number | null;
+  margenEbitda: number | null;
+  margenEbit: number | null;
+  neto: number | null;
+  /** Flujo de caja operativo. */
+  fco: number | null;
+  /** Inversión en bienes de capital, en positivo. */
+  capex: number | null;
+  fcf: number | null;
+  /** Cuánto del EBITDA se convierte en caja. La prueba de que el margen es real. */
+  fcoSobreEbitda: number | null;
+  deudaNeta: number | null;
+  dnSobreEbitda: number | null;
+  /** EBIT sobre intereses pagados: cuántas veces cubre el resultado la deuda. */
+  coberturaIntereses: number | null;
+  roic: number | null;
+  roe: number | null;
+  /** Días de inventario + días de cobro − días de pago. */
+  cicloConversion: number | null;
+}
+
+export interface SerieFinanciera {
+  periodos: PeriodoFinanciero[];
+  /** Deuda total y patrimonio del último balance: entran en el WACC. */
+  deudaTotal: number | null;
+  patrimonio: number | null;
+  /** Del último ejercicio, para estimar el costo de la deuda. */
+  interesesPagados: number | null;
+  tasaImpositiva: number | null;
+  /** Cuántos ejercicios anuales llegaron. Yahoo publica hasta cinco. */
+  ejercicios: number;
+}
+
+type FilaYahoo = Record<string, unknown>;
+
+const n = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
+/** a/b en %, sin dividir por cero ni por null. */
+const ratio = (a: number | null, b: number | null): number | null =>
+  a != null && b != null && b !== 0 ? (a / b) * 100 : null;
+
+/** Días que tarda en rotar una partida del balance contra su flujo anual. */
+const dias = (saldo: number | null, flujo: number | null): number | null =>
+  saldo != null && flujo != null && flujo !== 0 ? (saldo / flujo) * 365 : null;
+
+/** Indexa las filas de un módulo por año de cierre. */
+function porAño(filas: FilaYahoo[] | null): Map<string, FilaYahoo> {
+  const m = new Map<string, FilaYahoo>();
+  for (const f of filas ?? []) {
+    const año = aFechaISO(f.date)?.slice(0, 4);
+    if (año) m.set(año, f);
+  }
+  return m;
+}
+
+/**
+ * Arma un período de la ficha con las tres piezas del mismo cierre.
+ *
+ * El EBITDA se toma normalizado cuando está: el reportado se ensucia con los
+ * cargos de una sola vez, y un margen que sube por un extraordinario no es un
+ * margen que suba.
+ */
+function armarPeriodo(
+  periodo: string,
+  esUdm: boolean,
+  ing: FilaYahoo | undefined,
+  bal: FilaYahoo | undefined,
+  caja: FilaYahoo | undefined,
+  ventasPrevias: number | null
+): PeriodoFinanciero {
+  const ventas = n(ing?.totalRevenue) ?? n(ing?.operatingRevenue);
+  const ebitda = n(ing?.normalizedEBITDA) ?? n(ing?.EBITDA);
+  const ebit = n(ing?.EBIT) ?? n(ing?.operatingIncome);
+  const bruto = n(ing?.grossProfit);
+  const neto = n(ing?.netIncome) ?? n(ing?.netIncomeCommonStockholders);
+  const intereses = n(ing?.interestExpense) ?? n(ing?.interestExpenseNonOperating);
+  const impuestos = n(ing?.taxRateForCalcs);
+
+  const fco = n(caja?.operatingCashFlow) ?? n(caja?.cashFlowFromContinuingOperatingActivities);
+  const capexCrudo = n(caja?.capitalExpenditure);
+  const capex = capexCrudo == null ? null : Math.abs(capexCrudo);
+  const fcf = n(caja?.freeCashFlow) ?? (fco != null && capex != null ? fco - capex : null);
+
+  const deudaNeta =
+    n(bal?.netDebt) ??
+    (n(bal?.totalDebt) != null
+      ? n(bal!.totalDebt)! - (n(bal?.cashAndCashEquivalents) ?? 0)
+      : null);
+  const patrimonio = n(bal?.stockholdersEquity) ?? n(bal?.commonStockEquity);
+  const capitalInvertido = n(bal?.investedCapital);
+
+  // NOPAT sobre capital invertido: el retorno del negocio, sin la estructura
+  // de financiamiento adentro. Sin tasa efectiva no se estima: se deja vacío.
+  const nopat = ebit != null && impuestos != null ? ebit * (1 - impuestos) : null;
+
+  // La UDM no tiene "período anterior" contra el cual crecer: son doce meses
+  // que se solapan con el último ejercicio.
+  const crecimiento =
+    esUdm || ventas == null || !ventasPrevias
+      ? null
+      : ((ventas - ventasPrevias) / Math.abs(ventasPrevias)) * 100;
+
+  return {
+    periodo,
+    esUdm,
+    ventas,
+    crecimiento,
+    margenBruto: ratio(bruto, ventas),
+    margenEbitda: ratio(ebitda, ventas),
+    margenEbit: ratio(ebit, ventas),
+    neto,
+    fco,
+    capex,
+    fcf,
+    fcoSobreEbitda: ratio(fco, ebitda),
+    deudaNeta,
+    dnSobreEbitda: deudaNeta != null && ebitda ? deudaNeta / ebitda : null,
+    coberturaIntereses: ebit != null && intereses ? ebit / Math.abs(intereses) : null,
+    roic: ratio(nopat, capitalInvertido),
+    roe: ratio(neto, patrimonio),
+    cicloConversion:
+      (() => {
+        const cmv = n(ing?.costOfRevenue);
+        const inv = dias(n(bal?.inventory), cmv);
+        const cobro = dias(n(bal?.receivables) ?? n(bal?.accountsReceivable), ventas);
+        const pago = dias(n(bal?.payables) ?? n(bal?.accountsPayable), cmv);
+        return inv != null && cobro != null && pago != null ? inv + cobro - pago : null;
+      })(),
+  };
+}
+
+/**
+ * La serie de números de la ficha de análisis: márgenes, caja, deuda y retornos
+ * por ejercicio, más la UDM.
+ *
+ * Son cinco requests —tres módulos anuales y dos de la UDM— y por eso se cachea
+ * un día: el balance de una empresa no cambia entre dos visitas a la página.
+ * Van con `allSettled` porque un módulo que falta no puede tapar a los otros
+ * dos: media tabla es mucho mejor que ninguna.
+ *
+ * **Yahoo publica cinco ejercicios anuales, no diez.** Pedirle desde 2014 y
+ * desde 2021 devuelve lo mismo. La ficha lo dice en pantalla en vez de dejar
+ * pensar que la empresa no tiene más historia: para los años que faltan hay que
+ * ir a los balances.
+ *
+ * La UDM no tiene balance propio —un balance es una foto, no un acumulado—, así
+ * que sus ratios de deuda y retorno se calculan contra el último cierre anual.
+ */
+export function getSerieFinanciera(ticker: string): Promise<SerieFinanciera> {
+  return memo(`serie-financiera:${ticker}`, 86400, async () => {
+    const anual = (module: "financials" | "balance-sheet" | "cash-flow") =>
+      yf.fundamentalsTimeSeries(
+        ticker,
+        { period1: "2018-01-01", type: "annual", module },
+        { validateResult: false }
+      ) as Promise<FilaYahoo[]>;
+
+    const udm = (module: "financials" | "cash-flow") =>
+      yf.fundamentalsTimeSeries(
+        ticker,
+        { period1: desdeHaceUnAño(), type: "trailing", module },
+        { validateResult: false }
+      ) as Promise<FilaYahoo[]>;
+
+    const r = await Promise.allSettled([
+      anual("financials"),
+      anual("balance-sheet"),
+      anual("cash-flow"),
+      udm("financials"),
+      udm("cash-flow"),
+    ]);
+    const dato = (i: number) => (r[i].status === "fulfilled" ? (r[i] as PromiseFulfilledResult<FilaYahoo[]>).value : null);
+
+    const ingresos = porAño(dato(0));
+    const balances = porAño(dato(1));
+    const cajas = porAño(dato(2));
+    const ultimaDe = (filas: FilaYahoo[] | null) => filas?.[filas.length - 1];
+
+    // El eje son los años de los tres módulos juntos: cada uno llega hasta
+    // donde llega. Yahoo además devuelve filas de relleno —el año más viejo
+    // suele venir sin estado de resultados—, así que después se tiran los
+    // períodos que no tienen ningún dato: una columna entera de guiones no es
+    // información, es ruido que corre la tabla.
+    const años = [...new Set([...ingresos.keys(), ...balances.keys(), ...cajas.keys()])].sort();
+    const periodos: PeriodoFinanciero[] = [];
+    let previas: number | null = null;
+
+    for (const año of años) {
+      const p = armarPeriodo(año, false, ingresos.get(año), balances.get(año), cajas.get(año), previas);
+      if (p.ventas == null && p.neto == null && p.fco == null && p.deudaNeta == null) continue;
+      periodos.push(p);
+      previas = p.ventas;
+    }
+
+    // La UDM se apoya en el último balance anual, que es el que hay.
+    const ultimoAño = periodos[periodos.length - 1]?.periodo ?? años[años.length - 1];
+    const udmIngresos = ultimaDe(dato(3));
+    const udmCaja = ultimaDe(dato(4));
+    if (udmIngresos || udmCaja) {
+      periodos.push(
+        armarPeriodo("UDM", true, udmIngresos, balances.get(ultimoAño), udmCaja, null)
+      );
+    }
+
+    const balanceUltimo = balances.get(ultimoAño);
+    const ingresoUltimo = ingresos.get(ultimoAño);
+
+    return {
+      periodos,
+      deudaTotal: n(balanceUltimo?.totalDebt),
+      patrimonio: n(balanceUltimo?.stockholdersEquity) ?? n(balanceUltimo?.commonStockEquity),
+      interesesPagados: n(ingresoUltimo?.interestExpense) ?? n(ingresoUltimo?.interestExpenseNonOperating),
+      tasaImpositiva: n(ingresoUltimo?.taxRateForCalcs),
+      // Sin contar la UDM: son los ejercicios cerrados que llegaron.
+      ejercicios: periodos.filter((p) => !p.esUdm).length,
+    };
+  });
+}
+
+/** Un año atrás en ISO: el piso que necesita el pedido de la UDM. */
+function desdeHaceUnAño(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 // ─── Noticias ───────────────────────────────────────────────────────────────

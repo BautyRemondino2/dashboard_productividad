@@ -115,6 +115,22 @@ function initSchema(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_radar_fecha ON radar_items(fecha DESC, relevancia DESC);
 
+    -- ── Equity ───────────────────────────────────────────────────────────
+    -- La ficha de análisis de una empresa: el trabajo propio del analista,
+    -- lo único del dashboard que no se puede volver a bajar de una fuente.
+    --
+    -- Va en un JSON y no en sesenta columnas a propósito: es un documento, no
+    -- un dataset. La plantilla se va a seguir moviendo —una sección nueva, un
+    -- campo que se parte en dos— y cada cambio sería una migración. Las claves
+    -- viven en equity-ficha.ts, que es donde se lee qué significa cada una.
+    CREATE TABLE IF NOT EXISTS equity_fichas (
+      ticker      TEXT PRIMARY KEY,
+      -- { campos: {clave: texto}, tablas: {clave: [[celda]]}, checks: {clave: bool} }
+      datos_json  TEXT NOT NULL DEFAULT '{}',
+      actualizado TEXT NOT NULL DEFAULT (datetime('now')),
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     -- Bitácora diaria: lectura propia + snapshot de indicadores de esa fecha.
     CREATE TABLE IF NOT EXISTS market_journal (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,

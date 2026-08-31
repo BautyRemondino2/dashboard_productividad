@@ -11,8 +11,9 @@ y global, fácil y rápido de leer. Next.js 16 + TypeScript + Tailwind v4 +
 better-sqlite3 + Recharts + Anthropic SDK.
 
 - Correr local: `npm run dev -- -p 3001` → http://localhost:3001
-- `/` redirige a `/mercado`. Módulos: mercado, renta-fija, equity, etf, **eeuu**,
-  **radar**, glossary, efemerides.
+- `/` redirige a `/mercado`. Módulos: mercado, renta-fija, equity (con la
+  **ficha de análisis** por empresa), etf, **eeuu**, **radar**, glossary,
+  efemerides.
 
 ## Deploy (IMPORTANTE — corregido 27-ago-2026)
 
@@ -187,6 +188,64 @@ Los mismos cronogramas alimentan el calendario de próximos pagos
 índice de hoy y **marcados**: pagan por el índice de su fecha de pago, que
 todavía no existe, así que el pago real va a ser mayor.
 
+## Ficha de análisis (equity)
+
+`/equity/[ticker]/ficha` — la plantilla de trabajo del analista sobre una
+empresa: negocio, moat, management, números, deuda, valuación, tesis y kill
+criteria. Es **lo único del dashboard que no se puede volver a bajar de una
+fuente**: todo lo demás se recupera solo, esto es criterio propio.
+
+- **Plantilla como dato.** Las diez secciones se declaran en
+  `src/lib/equity-ficha.ts` (`SECCIONES`) y la pantalla las recorre. Agregar un
+  campo es una línea; la completitud se cuenta sola.
+- **Dos módulos, no uno.** `equity-ficha.ts` es puro (plantilla, tipos,
+  `avanceDe`, `estimarWacc`) porque lo importa el componente cliente;
+  `equity-ficha-db.ts` tiene la persistencia. Es la misma trampa que
+  `fuentes.ts`: un import de `better-sqlite3` en el bundle del navegador no
+  compila.
+- **Un JSON, no sesenta columnas** (tabla `equity_fichas`). Es un documento, no
+  un dataset: la plantilla se va a seguir moviendo y cada cambio sería una
+  migración.
+- **Autoguardado al salir del campo, sin revalidar la ruta.** El borrador vive
+  en el cliente; revalidar en cada blur volvería a pedirle a Yahoo la serie
+  financiera entera para redibujar un párrafo. El sello de guardado se muestra
+  siempre: autoguardar sin señal es peor que un botón.
+- **Lo que el dashboard ya sabe no se pregunta.** Precio, market cap, EV, el
+  cuadro entero de la sección 5, los múltiplos contra los pares y la fecha del
+  próximo balance se completan solos (`Bloques.tsx`). Una ficha que pide tipear
+  el margen bruto de cinco años no se llena nunca, y peor: se llena mal.
+
+### La serie financiera
+
+`getSerieFinanciera()` en `equity.ts`: cinco requests a `fundamentalsTimeSeries`
+—`financials`, `balance-sheet` y `cash-flow` anuales, más `financials` y
+`cash-flow` en `trailing` para la UDM—, cacheados un día y con `allSettled`
+(media tabla es mucho mejor que ninguna).
+
+- **Yahoo publica cinco ejercicios, no diez.** Pedir desde 2014 devuelve lo
+  mismo que pedir desde 2021. La ficha lo dice en pantalla en vez de dejar
+  pensar que la empresa no tiene más historia.
+- **Devuelve filas de relleno**: el año más viejo suele venir sin estado de
+  resultados. El eje sale de la unión de los tres módulos y después se tiran los
+  períodos sin ningún dato — una columna entera de guiones corre la tabla y no
+  informa nada.
+- **La UDM no tiene balance propio** (un balance es una foto, no un acumulado):
+  sus ratios de deuda y retorno se calculan contra el último cierre anual.
+- Claves útiles: `normalizedEBITDA` (mejor que `EBITDA`: el reportado se ensucia
+  con cargos de una sola vez), `EBIT`, `investedCapital`, `taxRateForCalcs`,
+  `netDebt`, `freeCashFlow`, `interestExpense`, `receivables`/`payables`/
+  `inventory` (ciclo de conversión).
+
+### WACC estimado
+
+CAPM en `estimarWacc()`, con los tres supuestos a la vista en el tooltip porque
+ninguno es "el correcto": tasa libre = Tesoro a 10 años de FRED, prima de
+mercado = 5% (orden de magnitud de Damodaran para EE.UU.), costo de deuda =
+intereses pagados sobre deuda total del último balance —la tasa que paga hoy, no
+la que conseguiría emitiendo ahora—. El peso va a valor de mercado del equity
+contra deuda contable, que es la convención práctica. Es la vara del ROIC: un
+negocio que rinde 9% y se financia al 11% destruye valor por más que gane plata.
+
 ## Cuentas que vale la pena no volver a derivar
 
 - **Sendero implícito de tasa (FedWatch casero).** El contrato ZQ de un mes
@@ -248,6 +307,17 @@ todavía no existe, así que el pago real va a ser mayor.
 - **`.fade-up` + `position: fixed`**: la animación deja un `transform` aplicado
   que vuelve al elemento contenedor de sus hijos `fixed`. Todo overlay
   (paneles, popovers, modales) va por `createPortal` al `body`.
+- **Una tabla nueva no aparece sin reiniciar el dev server.** `getDb()` cachea la
+  conexión en `globalThis`, así que `initSchema` ya corrió: agregar un
+  `CREATE TABLE IF NOT EXISTS` y recargar da `no such table`. O se reinicia el
+  server, o se corre el DDL contra `data/dashboard.db` desde afuera (con WAL, un
+  segundo proceso escribe sin problema). En producción no pasa: cada arranque en
+  frío copia el snapshot y corre el schema entero.
+- **Una tabla de filas fijas nunca está "vacía".** La primera columna es la
+  etiqueta que pone la plantilla ("< 12 m"), no algo que haya escrito nadie: si
+  cuenta para decidir si la tabla tiene contenido, una tabla intacta parece
+  llena y la sección figura como empezada. Al guardar y al contar el avance se
+  saltea esa columna.
 - **DB versionada**: `/data/` está en `.gitignore` pero `dashboard.db` sigue
   trackeado de antes de esa regla. Para commitear datos: `git add -u` (un
   `git add data/…` se rechaza). Normalmente **no** commitear los cambios de la DB.
