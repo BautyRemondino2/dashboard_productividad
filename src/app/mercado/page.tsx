@@ -10,6 +10,7 @@ import { Contenedor, EncabezadoPagina } from "@/components/Card";
 import HeroMacro from "./HeroMacro";
 import Cauciones from "./Cauciones";
 import Panorama from "./Panorama";
+import Rem from "./Rem";
 
 export const metadata = { title: "Macro Argentina · Dashboard" };
 
@@ -37,6 +38,13 @@ export default function MacroPage() {
           data912 para dibujar el panel argentino, que es lo que se mira primero. */}
       <Suspense fallback={<div className="h-[124px] mt-4 rounded-card border border-borde bg-card animate-pulse" />}>
         <Panorama />
+      </Suspense>
+
+      {/* La inflación esperada del mes en curso: el complemento del IPC del panel,
+          que siempre es del mes cerrado. Va antes de los tiles porque contesta la
+          pregunta que el dato de INDEC deja abierta —cómo viene este mes—. */}
+      <Suspense fallback={<div className="h-[196px] mt-4 rounded-card border border-borde bg-card animate-pulse" />}>
+        <Rem />
       </Suspense>
 
       <div className="mt-4">

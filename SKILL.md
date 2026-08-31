@@ -99,7 +99,37 @@ Tres modelos según el dato:
      User-Agent) y `fred.stlouisfed.org/releases/calendar` no responde. No
      volver a intentarlo: lo verificable es el calendario del FOMC y la fecha
      del último dato de cada serie.
-6. **Radar / WhatsApp** — `src/lib/radar.ts`, tabla `radar_items`. Clasifica un
+6. **REM del BCRA** (agregado ago-2026) — `src/lib/rem.ts`, caché en memoria
+   6 h, sin DB. La inflación que el mercado espera para el **mes en curso**, que
+   es lo que el IPC de INDEC no puede contestar todavía. Se muestra en `/mercado`
+   (`Rem.tsx`), arriba de los tiles.
+   - **No hay API.** Dos caminos probados y descartados: la **API v4.0 del BCRA**
+     sólo publica la variable 29 (mediana i.a. esperada a 12 meses), sin sendero
+     mensual; y **apis.datos.gob.ar** tiene el dataset del REM completo
+     (`430.1_REM_IPC_NAL_T_M_0_0_25_28` y familia) pero **congelado en dic-2025**,
+     así que para "el mes en curso" no sirve. No volver a intentarlos.
+   - Queda el **xlsx de resultados** del propio BCRA, que sí está al día. El link
+     se lee de la portada (`/relevamiento-expectativas-mercado-rem/`, la vieja
+     `.asp` redirige ahí): el nombre del archivo lleva el mes
+     (`tablas-…-jul-2026.xlsx`), así que hardcodearlo lo deja viejo en la próxima
+     publicación. `fetch` pelado de Node, sin user-agent.
+   - **El xlsx se parsea a mano, sin dependencias**: un .xlsx es un zip con XML,
+     y son ~60 líneas entre el directorio central y `inflateRawSync`. En la
+     columna B las fechas son series de Excel (días desde el 30/12/1899, siempre
+     fin de mes: leerlas en UTC) y los textos viven en `sharedStrings` con
+     `t="s"` en la celda. Si el cuadro cambia de forma, el parseo tira y la
+     tarjeta no se dibuja: nunca inventa un número.
+   - **El REM no es una proyección del BCRA** —lo aclara el propio banco arriba
+     de la publicación—: es la mediana de lo que pronostican consultoras, centros
+     de investigación y bancos. La tarjeta lo dice al pie, porque leerlo como
+     meta oficial cambia lo que significa. Por lo mismo va con el rango p25–p75:
+     una mediana sin dispersión no se puede interpretar.
+   - Se releva los últimos 3 días hábiles del mes y se publica en los primeros
+     del siguiente, así que **el dato del mes en curso siempre sale del REM
+     anterior** (el de julio trae ago-26). El cuadro cubre de `t` a `t+6`: el mes
+     corriente siempre está.
+
+7. **Radar / WhatsApp** — `src/lib/radar.ts`, tabla `radar_items`. Clasifica un
    volcado crudo con el SDK de Anthropic (`claude-opus-5`, `output_config` con
    `effort: "medium"` y `format: json_schema`) y guarda sólo lo que sobrevive.
    Entra por la caja de pegado de `/radar` o por `POST /api/radar/ingest` con
@@ -207,6 +237,13 @@ todavía no existe, así que el pago real va a ser mayor.
   `glosario-instrumentos.ts`) y `seedGlosarioFed` (conceptos sueltos, en
   `glosario-fed.ts`). Un instrumento nuevo en el panel **necesita** su entrada en
   `glosario-instrumentos.ts` o queda sin popover.
+
+- **`divide-x` en una grilla que envuelve deja líneas sueltas.** El separador se
+  aplica a todos los hijos menos el primero, no al primero de cada fila: si la
+  grilla cambia de columnas por breakpoint, aparece una raya vertical pegada al
+  borde izquierdo en las filas 2 en adelante. Los separadores salen del `gap`
+  sobre el fondo (`gap-px bg-divisor` + celdas `bg-card`), que anda igual con
+  cualquier cantidad de columnas.
 
 - **`.fade-up` + `position: fixed`**: la animación deja un `transform` aplicado
   que vuelve al elemento contenedor de sus hijos `fixed`. Todo overlay
