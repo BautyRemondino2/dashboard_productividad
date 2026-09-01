@@ -7,11 +7,20 @@ import { getFichaAnalisis } from "@/lib/equity-ficha-db";
 import { estimarWacc } from "@/lib/equity-ficha";
 import { DB_IS_EPHEMERAL } from "@/lib/db";
 import { fredSerie, ultimo } from "@/lib/fred";
+import { getFinviz } from "@/lib/finviz";
+import { radiografiar } from "@/lib/finviz-lectura";
 import { fmtCap, fmtFecha, fmtUsd } from "@/lib/equity-formato";
-import { Contenedor } from "@/components/Card";
+import Card, { Contenedor } from "@/components/Card";
 import Logo from "../Logo";
 import FichaClient from "./FichaClient";
-import { BloqueDeuda, BloqueMultiplos, BloqueNumeros, BloqueSeguimiento } from "./Bloques";
+import Radiografia from "./Radiografia";
+import {
+  BloqueDeuda,
+  BloqueInsiders,
+  BloqueMultiplos,
+  BloqueNumeros,
+  BloqueSeguimiento,
+} from "./Bloques";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +36,18 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
 // lento de la página. `getSerieFinanciera` está memoizada, así que los tres
 // cuadros comparten los mismos cinco requests.
 
-async function Numeros({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
+/**
+ * El WACC lo piden dos bloques —el cuadro de números y la radiografía, que lee
+ * el ROIC contra él—. Las dos fuentes que necesita están memoizadas, así que
+ * calcularlo dos veces no cuesta un request: cuesta una multiplicación.
+ */
+async function waccDe(ticker: string, ficha: Ficha) {
   const [serie, tasaLarga] = await Promise.all([
     getSerieFinanciera(ticker),
     fredSerie("DGS10").then(ultimo).catch(() => null),
   ]);
 
-  const wacc = estimarWacc({
+  return estimarWacc({
     beta: ficha.fundamentals.beta,
     capitalizacion: ficha.fundamentals.capitalizacion,
     deudaTotal: serie.deudaTotal,
@@ -41,8 +55,43 @@ async function Numeros({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
     tasaImpositiva: serie.tasaImpositiva,
     tasaLibre: tasaLarga?.valor ?? null,
   });
+}
 
+async function Numeros({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
+  const [serie, wacc] = await Promise.all([getSerieFinanciera(ticker), waccDe(ticker, ficha)]);
   return <BloqueNumeros serie={serie} wacc={wacc} />;
+}
+
+/**
+ * La lectura de mercado. Es lo único de la ficha que puede no estar: si Finviz
+ * no contesta o cambió el HTML, el panel no se dibuja y la ficha sigue entera.
+ * Preferible a un panel con números que no se sabe de dónde salieron.
+ */
+async function LecturaMercado({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
+  const [metricas, wacc] = await Promise.all([
+    getFinviz(ticker).catch(() => null),
+    waccDe(ticker, ficha).catch(() => null),
+  ]);
+  if (!metricas) return null;
+
+  const lectura = radiografiar(metricas, {
+    ticker,
+    precio: ficha.precio,
+    wacc: wacc?.wacc ?? null,
+    proximoBalance: ficha.earnings.fecha,
+    sector: ficha.sector,
+  });
+
+  return (
+    <Card
+      titulo="Radiografía"
+      nota="Qué está pasando con el papel hoy · datos de Finviz"
+      serif
+      className="mb-4"
+    >
+      <Radiografia lectura={lectura} />
+    </Card>
+  );
 }
 
 async function Deuda({ ticker }: { ticker: string }) {
@@ -50,11 +99,16 @@ async function Deuda({ ticker }: { ticker: string }) {
 }
 
 async function Multiplos({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
-  const [serie, comparacion] = await Promise.all([
+  const [serie, comparacion, finviz] = await Promise.all([
     getSerieFinanciera(ticker),
     getComparacion(ticker).catch(() => null),
+    getFinviz(ticker).catch(() => null),
   ]);
-  return <BloqueMultiplos ficha={ficha} serie={serie} comparacion={comparacion} />;
+  return <BloqueMultiplos ficha={ficha} serie={serie} comparacion={comparacion} finviz={finviz} />;
+}
+
+async function Insiders({ ticker }: { ticker: string }) {
+  return <BloqueInsiders finviz={await getFinviz(ticker).catch(() => null)} />;
 }
 
 function Esqueleto({ alto }: { alto: number }) {
@@ -130,6 +184,15 @@ export default async function FichaAnalisisPage({
         )}
       </div>
 
+      {/* Antes de las diez secciones: es el estado de situación desde el que se
+          escribe todo lo demás, y lo primero que se quiere ver al volver a una
+          ficha vieja. */}
+      <Suspense
+        fallback={<div className="h-[220px] mb-4 rounded-card border border-borde bg-card animate-pulse" />}
+      >
+        <LecturaMercado ticker={ticker} ficha={ficha} />
+      </Suspense>
+
       <FichaClient
         ticker={ticker}
         inicial={analisis}
@@ -147,6 +210,11 @@ export default async function FichaAnalisisPage({
           multiplos: (
             <Suspense fallback={<Esqueleto alto={92} />}>
               <Multiplos ticker={ticker} ficha={ficha} />
+            </Suspense>
+          ),
+          insiders: (
+            <Suspense fallback={<Esqueleto alto={92} />}>
+              <Insiders ticker={ticker} />
             </Suspense>
           ),
           seguimiento: <BloqueSeguimiento ficha={ficha} />,

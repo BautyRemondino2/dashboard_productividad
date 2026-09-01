@@ -1,6 +1,7 @@
 import type { Comparacion, Ficha, SerieFinanciera } from "@/lib/equity";
+import type { MetricasFinviz } from "@/lib/finviz";
 import type { Wacc } from "@/lib/equity-ficha";
-import { fmtCap, fmtFecha, fmtNivel, fmtNumero, fmtUsd } from "@/lib/equity-formato";
+import { fmtCap, fmtFecha, fmtNivel, fmtNumero, fmtPct, fmtUsd } from "@/lib/equity-formato";
 
 /**
  * Los bloques que la ficha no pregunta porque ya los sabe.
@@ -236,16 +237,62 @@ export function BloqueDeuda({ serie }: { serie: SerieFinanciera }) {
   );
 }
 
+// ─── Sección 4: quién tiene el papel ─────────────────────────────────────────
+
+/**
+ * Tenencia y movimiento de insiders e institucionales, que es el campo de la
+ * plantilla que ninguna API gratuita de fundamentals contesta. Finviz lo
+ * publica; lo que queda para escribir es qué significa en esta empresa.
+ */
+export function BloqueInsiders({ finviz }: { finviz: MetricasFinviz | null }) {
+  if (!finviz) return null;
+
+  const datos = [
+    { label: "Insiders — tenencia", valor: fmtNivel(finviz.insiderTenencia) },
+    {
+      label: "Insiders — último trimestre",
+      valor: fmtPct(finviz.insiderMovimiento),
+      tono: tono(finviz.insiderMovimiento, (v) => v > -5),
+    },
+    { label: "Institucionales — tenencia", valor: fmtNivel(finviz.institucionalTenencia) },
+    {
+      label: "Institucionales — último trimestre",
+      valor: fmtPct(finviz.institucionalMovimiento),
+      tono: tono(finviz.institucionalMovimiento, (v) => v > -2),
+    },
+  ];
+
+  return (
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-divisor border border-divisor rounded-card overflow-hidden">
+        {datos.map((d) => (
+          <div key={d.label} className="bg-card px-3.5 py-2.5">
+            <div className="text-[10px] uppercase tracking-[0.12em] text-tenue leading-snug">{d.label}</div>
+            <div className={`text-[14px] tabular-nums mt-1 ${d.tono ?? "text-cuerpo"}`}>{d.valor}</div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10.5px] text-meta-suave leading-relaxed">
+        Movimiento del último trimestre, de Finviz. Una venta de insiders puede ser un plan
+        programado o puede no serlo: es de las pocas cosas que conviene verificar en la fuente
+        —los formularios 4 de la SEC— antes de escribir una conclusión acá abajo.
+      </p>
+    </div>
+  );
+}
+
 // ─── Sección 8: múltiplos ────────────────────────────────────────────────────
 
 export function BloqueMultiplos({
   ficha,
   serie,
   comparacion,
+  finviz,
 }: {
   ficha: Ficha;
   serie: SerieFinanciera;
   comparacion: Comparacion | null;
+  finviz: MetricasFinviz | null;
 }) {
   const f = ficha.fundamentals;
   const udm = [...serie.periodos].reverse().find((p) => p.esUdm) ?? serie.periodos[serie.periodos.length - 1];
@@ -268,9 +315,24 @@ export function BloqueMultiplos({
     },
   ];
 
+  // PEG y P/FCF salen de Finviz: son los dos múltiplos que faltaban para leer el
+  // precio contra el crecimiento y contra la caja, no sólo contra la ganancia.
+  if (finviz?.peg != null) {
+    filas.push({ label: "PEG", valor: fmtVeces(finviz.peg), par: null, propio: finviz.peg, caroAlto: true });
+  }
+  if (finviz?.precioFcf != null) {
+    filas.push({
+      label: "P / FCF",
+      valor: fmtVeces(finviz.precioFcf),
+      par: null,
+      propio: finviz.precioFcf,
+      caroAlto: true,
+    });
+  }
+
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-divisor border border-divisor rounded-card overflow-hidden">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-px bg-divisor border border-divisor rounded-card overflow-hidden">
         {filas.map((m) => {
           const dif = m.par != null && m.propio != null ? (m.propio / m.par - 1) * 100 : null;
           return (

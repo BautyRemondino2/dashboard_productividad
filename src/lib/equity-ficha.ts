@@ -65,7 +65,7 @@ export interface Seccion {
   /** El checklist de la sección 7. */
   checklist?: string[];
   /** Bloque de datos calculados que la pantalla inserta en esta sección. */
-  auto?: "numeros" | "multiplos" | "deuda" | "seguimiento";
+  auto?: "numeros" | "multiplos" | "deuda" | "seguimiento" | "insiders";
 }
 
 export const SECCIONES: Seccion[] = [
@@ -184,6 +184,7 @@ export const SECCIONES: Seccion[] = [
     numero: 4,
     titulo: "Management",
     bajada: "Quién decide, qué hizo con la plata y si cumple lo que promete",
+    auto: "insiders",
     campos: [
       { clave: "controlante", label: "Controlante / estructura accionaria", tipo: "linea" },
       { clave: "free_float", label: "Free float", tipo: "linea", pista: "% y liquidez diaria." },
@@ -332,6 +333,13 @@ export const SECCIONES: Seccion[] = [
     titulo: "Tesis",
     bajada: "Qué se compra, por qué el mercado no lo ve y cuándo se abandona",
     campos: [
+      {
+        clave: "postura",
+        label: "Postura",
+        tipo: "linea",
+        pista: "La decisión, en una palabra. El panel de arriba describe; esto lo firma el analista.",
+        opciones: ["Comprar", "Acumular", "Mantener", "Mirar de afuera", "Vender"],
+      },
       {
         clave: "tesis",
         label: "Tesis",

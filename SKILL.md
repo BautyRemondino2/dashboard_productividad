@@ -215,6 +215,41 @@ fuente**: todo lo demás se recupera solo, esto es criterio propio.
   próximo balance se completan solos (`Bloques.tsx`). Una ficha que pide tipear
   el margen bruto de cinco años no se llena nunca, y peor: se llena mal.
 
+### Radiografía: qué está pasando con el papel (Finviz)
+
+Arriba de las diez secciones. `src/lib/finviz.ts` baja la tabla de
+`finviz.com/quote.ashx?t=TICKER` —`robots.txt` la permite; sí bloquea
+`/export`, `/screener?*` y los gráficos— y `finviz-lectura.ts` la convierte en
+una lectura. Caché de 30 minutos, sin DB.
+
+- **Trae lo que Yahoo no da**: PEG, crecimiento esperado a 5 años del consenso,
+  short float y short ratio, insiders e institucionales (tenencia y movimiento
+  del trimestre), posición contra SMA20/50/200, RSI, sorpresa del último
+  balance y precio objetivo.
+- **Formatos a desarmar**: sufijos `B/M/K` en escala inglesa, celdas con dos
+  valores (`344.57 -5.33%`, `39.86% 18.41%`), dividendo como `2.10 (0.36%)`. Un
+  `-` es **sin dato**, no cero: `Number("-")` da NaN, y una empresa sin
+  dividendo no es igual a una que lo cortó.
+- **Es scraping y se asume**: si el HTML cambia, `getFinviz` exige un mínimo de
+  40 métricas y tira; el panel no se dibuja y la ficha sigue entera. Mejor sin
+  panel que con números de origen desconocido.
+
+**Lo que hace útil al panel son las tensiones, no las métricas.** Noventa
+números con otra tipografía no son un análisis; el hallazgo es el cruce que no
+cierra. El caso que ordenó el módulo fue META (1-sep-2026): ventas +27,7% con
+ganancia por acción −5%, EV/EBITDA 13,7 contra P/FCF 36, y 27% abajo del máximo
+con el consenso en compra fuerte. Cada número solo no dice nada; los tres juntos
+dicen que está gastando en algo que todavía no rinde, y de qué depende la tesis.
+
+- **Los umbrales son sectoriales y hay que gatearlos.** Deuda/patrimonio de 3
+  en un banco es el negocio, no una alarma: `esApalancadaPorDiseño()` apaga las
+  reglas de apalancamiento y de capex para `Financials` y `Real Estate`. Sin
+  eso, NU disparaba "la deuda manda sobre el resultado" — ruido con formato de
+  hallazgo. Cualquier regla nueva se piensa contra un banco antes de escribirla.
+- **El panel no dice comprar ni vender.** Describe, nombra de qué depende y deja
+  la **postura** —campo con chips en la sección 9— al analista. Una máquina de
+  reglas con umbrales fijos no puede firmar una recomendación.
+
 ### La serie financiera
 
 `getSerieFinanciera()` en `equity.ts`: cinco requests a `fundamentalsTimeSeries`
