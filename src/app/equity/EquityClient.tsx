@@ -26,8 +26,8 @@ const SECTOR_HUE: Record<Sector, number> = {
   Otros: 0,
 };
 
-const sectorColor = (s: Sector, l = 65) =>
-  s === "Otros" ? `oklch(${l}% 0 0)` : `oklch(${l}% 0.11 ${SECTOR_HUE[s]})`;
+const sectorColor = (s: Sector, l = 65, c = 0.11) =>
+  s === "Otros" ? `oklch(${l}% 0 0)` : `oklch(${l}% ${c} ${SECTOR_HUE[s]})`;
 
 /**
  * Lo que se puede ordenar: los períodos de retorno más el premercado, que no es
@@ -313,8 +313,16 @@ export default function EquityClient({
               ●
             </span>
           )}
-          <span className="block text-[10px] text-meta-suave truncate max-w-[190px]">
-            {f.nombre}
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-[10px] text-meta-suave truncate max-w-[190px]">{f.nombre}</span>
+            {!agrupar && (
+              <span
+                className="text-[10px] shrink-0 whitespace-nowrap"
+                style={{ color: sectorColor(f.sector, 56, 0.06) }}
+              >
+                {SECTOR_LABEL[f.sector]}
+              </span>
+            )}
           </span>
         </span>
       </Link>
