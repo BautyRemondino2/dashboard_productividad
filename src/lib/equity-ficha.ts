@@ -31,7 +31,12 @@
  * llena nunca, y peor: se llena mal. Lo que queda para escribir es lo que
  * ninguna API tiene —el moat, el management, la tesis, los kill criteria—.
  */
+import type { Perfil, PerfilPapel } from "@/lib/equity-perfil";
+
 // ─── La plantilla ────────────────────────────────────────────────────────────
+
+/** Contenido que reemplaza al de base en algunos perfiles. */
+type PorPerfil = Partial<Record<Perfil, { label?: string; pista?: string; opciones?: string[] }>>;
 
 export interface Campo {
   clave: string;
@@ -42,6 +47,22 @@ export interface Campo {
   pista?: string;
   /** Respuestas sugeridas: se ofrecen como chips y se pueden ignorar. */
   opciones?: string[];
+  /**
+   * Lo que hay que contestar sí o sí. El resto de la sección arranca plegado:
+   * una ficha de 43 campos vacíos no se empieza, y el porcentaje de avance
+   * mide lo que importa y no cuántos casilleros quedan.
+   */
+  nucleo?: boolean;
+  /** Perfiles en los que aparece. Sin esto, aparece en todos. */
+  solo?: Perfil[];
+  /** Perfiles en los que no aparece. */
+  excepto?: Perfil[];
+  /** Sólo para ADR argentinos, o sólo para los que no lo son. */
+  geografia?: "argentino" | "global";
+  /** Reemplazos por perfil: la misma pregunta, en el idioma del negocio. */
+  porPerfil?: PorPerfil;
+  /** Lo que se agrega a la pista cuando el papel es argentino. */
+  pistaArgentina?: string;
 }
 
 export interface Tabla {
@@ -52,6 +73,9 @@ export interface Tabla {
   filasFijas?: string[];
   /** Cuántas filas arranca mostrando una tabla libre. */
   filasIniciales?: number;
+  solo?: Perfil[];
+  excepto?: Perfil[];
+  geografia?: "argentino" | "global";
 }
 
 export interface Seccion {
@@ -68,6 +92,15 @@ export interface Seccion {
   auto?: "numeros" | "multiplos" | "deuda" | "seguimiento" | "insiders";
 }
 
+/**
+ * La plantilla completa: la unión de todo lo que cualquier perfil puede pedir.
+ *
+ * Ningún papel ve esto entero — `seccionesDe()` filtra. Pero la validación al
+ * guardar sí va contra la unión, y tiene que ser así: si una ficha se escribió
+ * cuando Yahoo devolvía "Precious Metals" y al día siguiente devuelve otra
+ * industria, lo que ya está escrito se sigue pudiendo guardar. La plantilla
+ * decide qué se pregunta, nunca qué se puede conservar.
+ */
 export const SECCIONES: Seccion[] = [
   {
     id: "negocio",
@@ -79,25 +112,77 @@ export const SECCIONES: Seccion[] = [
         clave: "negocio",
         label: "El negocio",
         tipo: "area",
+        nucleo: true,
         pista: "Qué vende, a quién, por qué le pagan a ella y no al de al lado.",
       },
       {
         clave: "driver_a",
         label: "Driver de ingresos — cantidad",
         tipo: "linea",
+        nucleo: true,
         pista: "Unidades, suscriptores, toneladas, m² alquilados…",
+        porPerfil: {
+          software: { pista: "Clientes o seats, y la retención neta de ingresos (NRR): sin eso el crecimiento no se distingue de la rotación." },
+          semis: { pista: "Unidades y contenido por unidad. Dónde está el ciclo de inventarios de sus clientes." },
+          hardware: { pista: "Unidades vendidas y base instalada. Cuánto es reemplazo y cuánto usuario nuevo." },
+          biotech: { pista: "Pacientes tratados o unidades por droga. Cuántas drogas sostienen las ventas." },
+          salud: { pista: "Procedimientos, altas, camas ocupadas o equipos instalados." },
+          banco: { label: "Driver de ingresos — volumen", pista: "Cartera de préstamos y depósitos, y cómo crecen contra el sistema." },
+          seguros: { label: "Driver de ingresos — volumen", pista: "Primas emitidas y pólizas vigentes. Retención de cartera." },
+          gestora: { label: "Driver de ingresos — activos", pista: "AUM y flujos netos. Cuánto del AUM crece por mercado y cuánto por flujo." },
+          reit: { label: "Driver de ingresos — superficie", pista: "Metros alquilables y ocupación. Qué porcentaje de los contratos vence en tres años." },
+          energia: { label: "Driver de ingresos — producción", pista: "Producción diaria (boe/d) y reservas probadas: cuántos años de vida al ritmo actual." },
+          minera: { label: "Driver de ingresos — producción", pista: "Onzas o toneladas producidas, ley del mineral y vida útil de la mina." },
+          utility: { label: "Driver de ingresos — demanda", pista: "Usuarios y volumen (GWh, m³), y la base de capital regulada sobre la que cobra." },
+          industrial: { pista: "Unidades, o cartera de pedidos (backlog) y cuántos meses de producción cubre." },
+          consumo: { pista: "Locales, tráfico y unidades. Ventas de locales comparables (same-store)." },
+          medios: { label: "Driver de ingresos — abonados", pista: "Suscriptores, altas netas y churn." },
+          transporte: { label: "Driver de ingresos — volumen", pista: "Volumen transportado y factor de ocupación." },
+        },
       },
       {
         clave: "driver_b",
         label: "Driver de ingresos — precio",
         tipo: "linea",
+        nucleo: true,
         pista: "Precio por unidad, ARPU, tarifa regulada…",
+        porPerfil: {
+          software: { pista: "ARPU, tiers, precio por consumo. ¿Sube precios sin perder clientes?" },
+          semis: { pista: "Precio promedio (ASP) y mix. Si el ASP cae, el volumen tiene que correr más rápido." },
+          hardware: { pista: "Precio promedio y mix de producto. Cuánto del ingreso es servicio recurrente." },
+          biotech: { pista: "Precio neto por tratamiento después de descuentos a pagadores, y la presión sobre precios." },
+          salud: { pista: "Reembolso por procedimiento y mix de pagador." },
+          banco: { label: "Driver de ingresos — spread", pista: "Margen financiero neto (NIM) y comisiones. Qué le pasa si la tasa baja 200 pb." },
+          seguros: { label: "Driver de ingresos — tarifa", pista: "Tarifa y momento del ciclo de suscripción: mercado duro o blando." },
+          gestora: { label: "Driver de ingresos — comisión", pista: "Fee rate promedio sobre AUM y hacia dónde va." },
+          reit: { label: "Driver de ingresos — alquiler", pista: "Alquiler por m², renovaciones (leasing spreads) e indexación de los contratos." },
+          energia: { label: "Driver de ingresos — precio realizado", pista: "Precio realizado contra el spot, coberturas y diferencial de la cuenca." },
+          minera: { label: "Driver de ingresos — precio realizado", pista: "Precio realizado contra el spot, y el cash cost / AISC por unidad." },
+          utility: { label: "Driver de ingresos — tarifa", pista: "Cuadro tarifario, retorno regulado autorizado y cuándo es la próxima revisión." },
+          industrial: { pista: "Precio y capacidad de trasladar costos. Cuántos contratos tienen ajuste." },
+          consumo: { pista: "Ticket promedio y capacidad de subir precios sin perder volumen." },
+          medios: { pista: "ARPU y publicidad por usuario." },
+          transporte: { label: "Driver de ingresos — tarifa", pista: "Tarifa por unidad transportada, y si sigue al combustible o se lo come." },
+        },
       },
       {
         clave: "mata",
         label: "Qué la puede matar",
         tipo: "area",
+        nucleo: true,
         pista: "El escenario que hace cero la tesis, no el que la hace rendir menos.",
+        porPerfil: {
+          software: { pista: "Un competidor que regala lo que ella cobra, o un cambio de plataforma que la deja afuera. No 'crece menos'." },
+          semis: { pista: "Perder el diseño en el próximo producto del cliente grande, o un ciclo de inventarios largo con la fábrica pagada." },
+          biotech: { pista: "El ensayo que falla o la patente que vence sin nada atrás. No 'se demora la aprobación'." },
+          banco: { pista: "Una corrida de depósitos, o una cartera que se deteriora más rápido de lo que el capital aguanta." },
+          seguros: { pista: "Un evento de cola mal reservado, o reservas de años anteriores que hay que reforzar." },
+          reit: { pista: "Refinanciar a una tasa que se come el flujo del alquiler, o un inquilino ancla que se va." },
+          energia: { pista: "El precio del barril bajo su costo por varios trimestres, con la deuda ya tomada." },
+          minera: { pista: "El precio bajo el AISC por varios trimestres, o perder la licencia social de la mina principal." },
+          utility: { pista: "Una revisión tarifaria que no reconoce las inversiones ya hechas." },
+          transporte: { pista: "Un combustible que sube y una tarifa que no lo sigue, con los activos financiados." },
+        },
       },
     ],
   },
@@ -105,19 +190,45 @@ export const SECCIONES: Seccion[] = [
     id: "plata",
     numero: 2,
     titulo: "De dónde viene la plata",
-    bajada: "Segmentos, concentración y en qué moneda cobra y paga",
+    bajada: "Segmentos, concentración y qué pasa si se cae una pata",
     campos: [
       {
         clave: "concentracion_clientes",
         label: "Concentración de clientes",
         tipo: "linea",
         pista: "Cuánto pesan los cinco más grandes. Si no lo informa, decirlo.",
+        porPerfil: {
+          banco: { label: "Concentración de cartera", pista: "Por deudor, por sector y por región. Y del lado del pasivo: los depositantes grandes." },
+          seguros: { label: "Concentración de riesgo", pista: "Por ramo y por geografía. Exposición a catástrofe y cuánto está reasegurado." },
+          gestora: { label: "Concentración de AUM", pista: "Cuánto pesan los mandatos más grandes y qué tan rápido se pueden ir." },
+          reit: { label: "Concentración de inquilinos", pista: "Cuánto del alquiler pagan los cinco más grandes y cuándo les vence el contrato." },
+          energia: { label: "Concentración de activos", pista: "Cuánto del EBITDA sale de un solo yacimiento o de una sola cuenca." },
+          minera: { label: "Concentración de activos", pista: "Cuánto del EBITDA sale de una sola mina, y cuánta vida útil le queda." },
+          consumo: { label: "Concentración de canal", pista: "Cuánto pesan las cadenas o distribuidores más grandes. Del otro lado: los proveedores." },
+          medios: { label: "Concentración de ingresos", pista: "Cuánto depende de un anunciante, de una plataforma o de un contrato de distribución." },
+          utility: { label: "Concentración regulatoria", pista: "Cuántas jurisdicciones y cuánto pesa la más grande." },
+        },
+      },
+      {
+        clave: "exposicion_geografica",
+        label: "Exposición geográfica de ventas",
+        tipo: "area",
+        geografia: "global",
+        pista: "Cuánto viene de EE.UU., Europa, China. Qué pasa si un mercado se cierra o se pone un arancel.",
       },
       {
         clave: "descalce",
         label: "¿Hay descalce?",
         tipo: "area",
+        geografia: "argentino",
         pista: "Cobra en pesos y debe en dólares, o al revés. Qué le pasa si el tipo de cambio salta 30%.",
+      },
+      {
+        clave: "fondeo",
+        label: "Estructura de fondeo",
+        tipo: "area",
+        solo: ["banco", "gestora"],
+        pista: "Depósitos a la vista contra plazo, costo de fondeo, liquidez y concentración de depositantes.",
       },
     ],
     tablas: [
@@ -132,6 +243,7 @@ export const SECCIONES: Seccion[] = [
         label: "Exposición por moneda",
         columnas: ["", "% USD", "% ARS", "Otras"],
         filasFijas: ["Ingresos", "Costos", "Deuda"],
+        geografia: "argentino",
       },
     ],
   },
@@ -152,18 +264,57 @@ export const SECCIONES: Seccion[] = [
         label: "Momento del ciclo",
         tipo: "linea",
         pista: "Dónde está parada hoy y contra qué se compara ese punto.",
+        porPerfil: {
+          semis: { pista: "Dónde está el ciclo de inventarios de sus clientes y la utilización de la industria." },
+          banco: { pista: "Dónde está el ciclo de crédito y qué forma tiene la curva de tasas." },
+          seguros: { pista: "Mercado duro o blando: hacia dónde van las tarifas del ramo." },
+          reit: { pista: "El cap rate del sector contra la tasa larga, y qué está pasando con la oferta nueva." },
+          energia: { pista: "El precio del crudo o del gas contra su costo y contra su promedio de diez años." },
+          minera: { pista: "El precio del metal contra el AISC de la industria y contra su promedio de diez años." },
+          industrial: { pista: "Dónde está el ciclo de capex de sus clientes y qué dice el book-to-bill." },
+          transporte: { pista: "Tarifas spot contra contrato, y si hay capacidad entrando o saliendo del mercado." },
+          consumo: { pista: "Qué está haciendo el consumo y cómo viene el trade-down hacia marcas más baratas." },
+        },
       },
       {
         clave: "moat",
         label: "Moat identificado",
         tipo: "linea",
+        nucleo: true,
         pista: "Escala, marca, costos de cambio, red, licencia, activo irreplicable.",
+        porPerfil: {
+          software: { opciones: ["Costos de cambio", "Efecto de red", "Escala de datos", "Integrado al stack del cliente"] },
+          semis: { opciones: ["Propiedad intelectual", "Escala de fabricación", "Costo de rediseño", "Nodo de proceso"] },
+          hardware: { opciones: ["Base instalada", "Estándar de la industria", "Escala en costos", "Red de servicio"] },
+          biotech: { opciones: ["Patentes", "Datos clínicos", "Canal comercial", "Escala en I+D"] },
+          salud: { opciones: ["Red de prestadores", "Densidad geográfica", "Contratos con pagadores", "Escala"] },
+          banco: { opciones: ["Depósitos baratos", "Marca y confianza", "Escala en costos", "Red de distribución"] },
+          seguros: { opciones: ["Disciplina de suscripción", "Datos actuariales", "Escala en reaseguro", "Canal propio"] },
+          gestora: { opciones: ["Historial de performance", "Canal de distribución", "Producto pegajoso", "Escala en costos"] },
+          reit: { opciones: ["Ubicación irreplicable", "Contratos largos", "Costo de capital", "Escala en gestión"] },
+          energia: { opciones: ["Costo por barril", "Calidad de la roca", "Infraestructura propia", "Vida de reservas"] },
+          minera: { opciones: ["Costo por onza", "Ley del mineral", "Vida de reservas", "Infraestructura propia"] },
+          utility: { opciones: ["Monopolio regulado", "Base de capital", "Concesión"] },
+          industrial: { opciones: ["Escala", "Costos de cambio", "Marca técnica", "Servicio postventa"] },
+          consumo: { opciones: ["Marca", "Escala en distribución", "Ubicación", "Costo más bajo"] },
+          medios: { opciones: ["Contenido propio", "Última milla", "Escala en publicidad", "Licencia de espectro"] },
+          transporte: { opciones: ["Red y densidad", "Activos irreplicables", "Concesiones", "Escala en costos"] },
+        },
       },
       {
         clave: "evidencia_moat",
         label: "Evidencia del moat",
         tipo: "area",
+        nucleo: true,
         pista: "Margen y ROIC sostenidos en el tiempo. Sin números, el moat es una opinión.",
+        porPerfil: {
+          software: { pista: "NRR arriba de 110% año tras año, margen bruto estable y churn bajo. Sin números, el moat es una opinión." },
+          banco: { pista: "ROE por encima del costo del capital a lo largo del ciclo, y costo de fondeo por debajo de sus pares." },
+          seguros: { pista: "Combined ratio debajo de 100 en varios años seguidos, no sólo en los buenos." },
+          reit: { pista: "Ocupación y leasing spreads sostenidos, incluso cuando el sector tuvo vacancia." },
+          minera: { pista: "AISC en el primer cuartil de la curva de costos de la industria, no sólo un año." },
+          energia: { pista: "Costo por barril en el primer cuartil y reposición de reservas por encima de 100%." },
+        },
       },
       {
         clave: "cuota_mercado",
@@ -173,9 +324,31 @@ export const SECCIONES: Seccion[] = [
       },
       {
         clave: "regulacion",
-        label: "Marco regulatorio y riesgo político",
+        label: "Marco regulatorio",
         tipo: "area",
-        pista: "Tarifas, retenciones, licencias, controles de capital.",
+        pista: "Qué organismo puede cambiarle las reglas y con qué anticipación.",
+        pistaArgentina: "Retenciones, controles de capital, cepo, precios máximos: qué le pasa al flujo si cambian.",
+        porPerfil: {
+          software: { pista: "Privacidad, antitrust, moderación de contenido. Qué causa está abierta y qué puede ordenar." },
+          semis: { pista: "Controles de exportación y subsidios: a qué mercados puede vender y con qué tecnología." },
+          biotech: { pista: "FDA/EMA: aprobaciones pendientes, y la presión sobre precios de los pagadores." },
+          salud: { pista: "Reembolsos públicos y privados: quién fija el precio de lo que cobra." },
+          banco: { pista: "Requisitos de capital (CET1), encajes, límites de tasa y de comisiones." },
+          seguros: { pista: "Solvencia, reservas mínimas y aprobación de tarifas." },
+          gestora: { pista: "Reglas de custodia, deber fiduciario, transparencia de comisiones." },
+          reit: { pista: "Régimen REIT: cuánto obliga a distribuir y qué pasa si deja de calificar. Zonificación." },
+          energia: { pista: "Permisos, royalties, política ambiental y acceso a ductos." },
+          minera: { pista: "Permisos, royalties, comunidades y licencia social. Un permiso trabado vale más que un mal trimestre." },
+          utility: { pista: "Marco tarifario: quién fija el precio, cada cuánto se revisa y qué retorno reconoce." },
+          transporte: { pista: "Concesiones, rutas asignadas y límites de tarifa." },
+        },
+      },
+      {
+        clave: "riesgo_pais",
+        label: "Riesgo país y político",
+        tipo: "area",
+        geografia: "argentino",
+        pista: "Qué le pasa a la tesis con un cambio de gobierno, un default o un cepo más duro.",
       },
     ],
   },
@@ -192,7 +365,16 @@ export const SECCIONES: Seccion[] = [
         clave: "asignacion_capital",
         label: "Asignación de capital, últimos 10 años",
         tipo: "area",
+        nucleo: true,
         pista: "En qué se fue la caja: capex, adquisiciones, dividendos, recompras, deuda.",
+        porPerfil: {
+          software: { pista: "En qué se fue la caja: I+D, adquisiciones, recompras. Y cuánto de la 'recompra' sólo tapa la dilución por pago en acciones." },
+          biotech: { pista: "En qué se fue la caja: I+D propio contra licencias y adquisiciones de pipeline. Qué rindió cada camino." },
+          reit: { pista: "En qué se fue la caja: desarrollos, compras, ventas de activos y emisión de acciones. A qué cap rate compró y a cuál vendió." },
+          energia: { pista: "Capex de mantenimiento contra crecimiento, y qué hizo con la caja de los años de precio alto." },
+          minera: { pista: "Exploración, expansión y adquisiciones. Qué hizo con la caja del último pico de precios." },
+          utility: { pista: "Capex sobre base regulada, dividendos y emisión de acciones para financiarlo." },
+        },
       },
       {
         clave: "adquisiciones",
@@ -226,19 +408,161 @@ export const SECCIONES: Seccion[] = [
         clave: "roic_vs_wacc",
         label: "¿ROIC > WACC de forma sostenida?",
         tipo: "linea",
+        nucleo: true,
         opciones: ["Sí", "No", "En el ciclo bueno"],
+        porPerfil: {
+          banco: { label: "¿ROE > costo del capital de forma sostenida?" },
+          seguros: { label: "¿ROE > costo del capital de forma sostenida?" },
+          gestora: { label: "¿ROE > costo del capital de forma sostenida?" },
+        },
       },
       {
         clave: "calidad_resultado",
         label: "Calidad del resultado",
         tipo: "area",
-        pista: "Cuánto es operativo y cuánto financiero, tenencia o RECPAM. En Argentina esto define si el número sirve.",
+        nucleo: true,
+        pista: "Cuánto es operativo y cuánto financiero o de tenencia. Y cuánta caja hay detrás de la ganancia contable.",
+        pistaArgentina: "Cuánto es operativo y cuánto financiero, tenencia o RECPAM. En Argentina esto define si el número sirve.",
+        porPerfil: {
+          software: { pista: "Ganancia contable contra caja: cuánto de la diferencia es pago en acciones (SBC) y capitalización de desarrollo." },
+          biotech: { pista: "Cuánto del resultado es venta de producto y cuánto son hitos, licencias o subsidios que no se repiten." },
+          banco: { pista: "Cuánto del resultado es margen recurrente y cuánto trading, venta de cartera o reversión de previsiones." },
+          reit: { pista: "Resultado contra FFO y AFFO: la revaluación de propiedades no es plata que entró." },
+        },
       },
       {
         clave: "no_recurrentes",
         label: "Ítems no recurrentes normalizados",
         tipo: "area",
         pista: "Qué se sacó de la serie y por qué.",
+      },
+      {
+        clave: "kpi_software",
+        label: "Retención, churn y dilución",
+        tipo: "area",
+        nucleo: true,
+        solo: ["software"],
+        pista: "NRR y churn de los últimos trimestres, y cuánto diluye por año el pago en acciones (SBC).",
+      },
+      {
+        clave: "kpi_semis",
+        label: "Ciclo, inventarios y capacidad",
+        tipo: "area",
+        nucleo: true,
+        solo: ["semis"],
+        pista: "Semanas de inventario propio y del canal, utilización de fábrica y capex del año.",
+      },
+      {
+        clave: "kpi_hardware",
+        label: "Base instalada y recurrencia",
+        tipo: "area",
+        nucleo: true,
+        solo: ["hardware"],
+        pista: "Ciclo de reemplazo, attach rate de servicios y cuánto del ingreso es recurrente.",
+      },
+      {
+        clave: "kpi_biotech",
+        label: "Pipeline y vencimiento de patentes",
+        tipo: "area",
+        nucleo: true,
+        solo: ["biotech"],
+        pista: "Qué droga sostiene las ventas, cuándo pierde exclusividad (LOE) y qué hay atrás en fase 3.",
+      },
+      {
+        clave: "kpi_salud",
+        label: "Volumen y mix de pagador",
+        tipo: "area",
+        nucleo: true,
+        solo: ["salud"],
+        pista: "Procedimientos o altas, reembolso promedio y mix público/privado.",
+      },
+      {
+        clave: "kpi_banco",
+        label: "Calidad de cartera y capital",
+        tipo: "area",
+        nucleo: true,
+        solo: ["banco"],
+        pista: "Mora, cobertura, costo del riesgo, CET1 y ratio de eficiencia. Cómo vienen contra el año pasado.",
+      },
+      {
+        clave: "kpi_seguros",
+        label: "Combined ratio y reservas",
+        tipo: "area",
+        nucleo: true,
+        solo: ["seguros"],
+        pista: "Siniestralidad + gastos sobre primas. Debajo de 100 gana suscribiendo; arriba, sólo con el float. Desarrollo de reservas de años anteriores.",
+      },
+      {
+        clave: "kpi_gestora",
+        label: "AUM, flujos y comisión",
+        tipo: "area",
+        nucleo: true,
+        solo: ["gestora"],
+        pista: "Flujos netos por trimestre, fee rate y performance contra el índice de referencia.",
+      },
+      {
+        clave: "kpi_reit",
+        label: "FFO, ocupación y vencimientos",
+        tipo: "area",
+        nucleo: true,
+        solo: ["reit"],
+        pista: "FFO y AFFO por acción, ocupación, leasing spreads y cuánto de los contratos vence en tres años.",
+      },
+      {
+        clave: "kpi_energia",
+        label: "Reservas y precio de equilibrio",
+        tipo: "area",
+        nucleo: true,
+        solo: ["energia"],
+        pista: "Reservas probadas, años de vida, tasa de reposición y a qué precio el flujo da cero.",
+      },
+      {
+        clave: "kpi_minera",
+        label: "Costos, ley y reservas",
+        tipo: "area",
+        nucleo: true,
+        solo: ["minera"],
+        pista: "AISC por unidad contra el precio realizado, ley del mineral, reservas y vida de mina.",
+      },
+      {
+        clave: "kpi_utility",
+        label: "Base regulada y revisión tarifaria",
+        tipo: "area",
+        nucleo: true,
+        solo: ["utility"],
+        pista: "Rate base, retorno autorizado, cuánto del capex se reconoce y cuándo es la próxima revisión.",
+      },
+      {
+        clave: "kpi_industrial",
+        label: "Cartera de pedidos",
+        tipo: "area",
+        nucleo: true,
+        solo: ["industrial"],
+        pista: "Backlog, book-to-bill y cuántos meses de producción cubre.",
+      },
+      {
+        clave: "kpi_consumo",
+        label: "Ventas comparables",
+        tipo: "area",
+        nucleo: true,
+        solo: ["consumo"],
+        pista: "Same-store sales abiertas en tráfico y ticket. Aperturas netas del año.",
+      },
+      {
+        clave: "kpi_medios",
+        label: "Abonados, churn y contenido",
+        tipo: "area",
+        nucleo: true,
+        solo: ["medios"],
+        pista: "Altas netas, churn mensual, ARPU y qué cuesta el contenido que los retiene.",
+      },
+      {
+        clave: "kpi_transporte",
+        label: "Utilización y tarifa",
+        tipo: "area",
+        nucleo: true,
+        solo: ["transporte"],
+        pista: "Factor de ocupación, tarifa por unidad y cuánto del combustible está cubierto o se traslada.",
       },
     ],
   },
@@ -253,13 +577,20 @@ export const SECCIONES: Seccion[] = [
         clave: "covenants",
         label: "Covenants y holgura",
         tipo: "area",
+        excepto: ["banco", "seguros", "gestora"],
         pista: "Qué ratio compromete, en qué nivel está y cuánto margen queda.",
       },
       {
         clave: "flujo_propio",
         label: "¿Puede pagar con flujo propio o depende de refinanciar?",
         tipo: "area",
+        nucleo: true,
         pista: "FCF de los próximos doce meses contra el vencimiento de los próximos doce meses.",
+        porPerfil: {
+          banco: { label: "Liquidez y capacidad de absorber pérdidas", pista: "LCR, activos líquidos sobre depósitos y cuánta pérdida de cartera aguanta el capital antes de tocar el mínimo." },
+          seguros: { label: "Solvencia y liquidez", pista: "Ratio de solvencia y cuánto del activo se puede liquidar sin realizar pérdidas." },
+          reit: { label: "¿Puede refinanciar sin diluir?", pista: "Vencimientos de tres años contra el AFFO, y a qué tasa vence contra a cuál renovaría hoy." },
+        },
       },
     ],
     tablas: [
@@ -268,6 +599,7 @@ export const SECCIONES: Seccion[] = [
         label: "Perfil de vencimientos",
         columnas: ["Vencimiento", "Monto", "Moneda", "Tasa"],
         filasFijas: ["< 12 m", "12-24 m", "24-36 m", "> 36 m"],
+        excepto: ["banco", "seguros"],
       },
     ],
   },
@@ -304,7 +636,13 @@ export const SECCIONES: Seccion[] = [
     bajada: "Cuánto vale, contra qué se compara y qué descuenta el precio",
     auto: "multiplos",
     campos: [
-      { clave: "rango_valor", label: "Rango de valor", tipo: "linea", pista: "De cuánto a cuánto por acción." },
+      {
+        clave: "rango_valor",
+        label: "Rango de valor",
+        tipo: "linea",
+        nucleo: true,
+        pista: "De cuánto a cuánto por acción.",
+      },
       {
         clave: "vs_historico",
         label: "Vs. su propio promedio histórico",
@@ -315,7 +653,16 @@ export const SECCIONES: Seccion[] = [
         clave: "dcf_inverso",
         label: "DCF inverso — qué descuenta el precio hoy",
         tipo: "area",
-        pista: "Qué crecimiento y qué margen hay que creer para justificar el precio. Es la pregunta más honesta de la ficha.",
+        nucleo: true,
+        pista: "El panel de arriba calcula el crecimiento implícito. Acá va si es creíble, y por qué.",
+        porPerfil: {
+          banco: { label: "Qué descuenta el precio hoy", pista: "El P/BV implica un ROE sostenido: ¿cuál, y lo puede dar? En un banco el DCF de arriba no aplica." },
+          seguros: { label: "Qué descuenta el precio hoy", pista: "Qué combined ratio y qué retorno del float hay que creer para pagar este P/BV." },
+          gestora: { label: "Qué descuenta el precio hoy", pista: "Qué crecimiento de AUM y qué fee rate hay que creer para pagar este precio." },
+          reit: { pista: "El cap rate implícito del precio contra el de las transacciones del mercado. Y el crecimiento de AFFO que hace falta." },
+          minera: { pista: "Qué precio del metal de largo plazo hay que creer para justificar el precio de hoy, contra el spot." },
+          energia: { pista: "Qué precio del crudo de largo plazo hay que creer para justificar el precio de hoy, contra la curva de futuros." },
+        },
       },
     ],
     tablas: [
@@ -324,6 +671,14 @@ export const SECCIONES: Seccion[] = [
         label: "Métodos",
         columnas: ["Método", "Valor por acción", "Supuestos clave"],
         filasFijas: ["DCF — base", "DCF — bajista", "DCF — alcista", "Múltiplos comparables", "SOTP"],
+        excepto: ["banco", "seguros", "gestora"],
+      },
+      {
+        clave: "valuacion_financiero",
+        label: "Métodos",
+        columnas: ["Método", "Valor por acción", "Supuestos clave"],
+        filasFijas: ["P/BV × ROE sostenible", "Descuento de dividendos", "Suma de partes", "Múltiplos comparables"],
+        solo: ["banco", "seguros", "gestora"],
       },
     ],
   },
@@ -337,6 +692,7 @@ export const SECCIONES: Seccion[] = [
         clave: "postura",
         label: "Postura",
         tipo: "linea",
+        nucleo: true,
         pista: "La decisión, en una palabra. El panel de arriba describe; esto lo firma el analista.",
         opciones: ["Comprar", "Acumular", "Mantener", "Mirar de afuera", "Vender"],
       },
@@ -344,9 +700,10 @@ export const SECCIONES: Seccion[] = [
         clave: "tesis",
         label: "Tesis",
         tipo: "area",
+        nucleo: true,
         pista: "Dos o tres oraciones. Si no entra en tres, todavía no está.",
       },
-      { clave: "driver_1", label: "Driver cuantificado 1", tipo: "linea" },
+      { clave: "driver_1", label: "Driver cuantificado 1", tipo: "linea", nucleo: true },
       { clave: "driver_2", label: "Driver cuantificado 2", tipo: "linea" },
       { clave: "driver_3", label: "Driver cuantificado 3", tipo: "linea" },
       {
@@ -361,10 +718,16 @@ export const SECCIONES: Seccion[] = [
         tipo: "area",
         pista: "En qué difiero del consenso y por qué tengo razón yo.",
       },
-      { clave: "riesgo_1", label: "Riesgo 1 — probabilidad × impacto", tipo: "linea" },
+      { clave: "riesgo_1", label: "Riesgo 1 — probabilidad × impacto", tipo: "linea", nucleo: true },
       { clave: "riesgo_2", label: "Riesgo 2", tipo: "linea" },
       { clave: "riesgo_3", label: "Riesgo 3", tipo: "linea" },
-      { clave: "kill_1", label: "Kill criteria 1 — abandono la tesis si…", tipo: "linea" },
+      {
+        clave: "kill_1",
+        label: "Kill criteria 1 — abandono la tesis si…",
+        tipo: "linea",
+        nucleo: true,
+        pista: "Un número y un plazo. 'Si se pone feo' no es un kill criteria.",
+      },
       { clave: "kill_2", label: "Kill criteria 2", tipo: "linea" },
       { clave: "kill_3", label: "Kill criteria 3", tipo: "linea" },
     ],
@@ -380,12 +743,69 @@ export const SECCIONES: Seccion[] = [
         clave: "metricas_vigilar",
         label: "Métricas a vigilar cada trimestre",
         tipo: "area",
+        nucleo: true,
         pista: "Las tres que confirman o rompen la tesis. No las diez del reporte.",
       },
       { clave: "ultima_actualizacion_modelo", label: "Última actualización del modelo", tipo: "linea" },
     ],
   },
 ];
+
+// ─── La plantilla de un papel concreto ───────────────────────────────────────
+
+/** ¿Este campo o tabla le corresponde a este papel? */
+function aplica(
+  x: { solo?: Perfil[]; excepto?: Perfil[]; geografia?: "argentino" | "global" },
+  perfil: PerfilPapel
+): boolean {
+  if (x.solo && !x.solo.includes(perfil.id)) return false;
+  if (x.excepto?.includes(perfil.id)) return false;
+  if (x.geografia === "argentino" && !perfil.argentino) return false;
+  if (x.geografia === "global" && perfil.argentino) return false;
+  return true;
+}
+
+/**
+ * El campo con el texto que le corresponde al perfil ya resuelto.
+ *
+ * Devuelve un objeto nuevo con **sólo lo que la pantalla usa**, no un spread
+ * del original. La diferencia no es cosmética: estas secciones cruzan a un
+ * Client Component, así que un `...campo` mandaba el `porPerfil` entero —las
+ * dieciséis variantes de cada pregunta— dentro del HTML de cada ficha, para
+ * que el navegador descarte quince.
+ */
+function resolver(campo: Campo, perfil: PerfilPapel): Campo {
+  const propio = campo.porPerfil?.[perfil.id];
+
+  return {
+    clave: campo.clave,
+    tipo: campo.tipo,
+    nucleo: campo.nucleo,
+    label: propio?.label ?? campo.label,
+    pista:
+      perfil.argentino && campo.pistaArgentina
+        ? campo.pistaArgentina
+        : propio?.pista ?? campo.pista,
+    opciones: propio?.opciones ?? campo.opciones,
+  };
+}
+
+/**
+ * La plantilla que le toca a un papel.
+ *
+ * Saca lo que no aplica y traduce lo que queda al idioma del negocio: a una
+ * empresa de software le pregunta por NRR y dilución por SBC, a una minera por
+ * AISC y ley del mineral, a un banco por mora y CET1. Las secciones y las
+ * claves son las mismas —lo que ya está escrito se sigue viendo— y lo único
+ * que cambia es qué se pregunta y cómo.
+ */
+export function seccionesDe(perfil: PerfilPapel): Seccion[] {
+  return SECCIONES.map((s) => ({
+    ...s,
+    campos: s.campos.filter((c) => aplica(c, perfil)).map((c) => resolver(c, perfil)),
+    tablas: s.tablas?.filter((t) => aplica(t, perfil)),
+  }));
+}
 
 /** Todas las claves de texto de la plantilla, en orden. */
 export const CLAVES = SECCIONES.flatMap((s) => s.campos.map((c) => c.clave));
@@ -395,6 +815,26 @@ const POR_CLAVE = new Map<string, Campo>(
 );
 
 export const esCampoValido = (clave: string) => POR_CLAVE.has(clave);
+
+/** El campo de la plantilla completa, para poder etiquetar lo que ya no se pregunta. */
+export const campoDe = (clave: string): Campo | null => POR_CLAVE.get(clave) ?? null;
+
+/**
+ * Lo que está escrito y esta plantilla ya no pregunta.
+ *
+ * Pasa cuando una ficha se empezó con otro perfil —Yahoo cambió la industria,
+ * o el papel dejó de ser un ADR argentino en el universo— y también cuando se
+ * corrige una regla de clasificación. El texto sigue en la base; sin esto,
+ * sería texto que nadie puede ver ni borrar. La plantilla decide qué se
+ * pregunta, nunca qué se conserva.
+ */
+export function camposHuerfanos(ficha: FichaAnalisis, secciones: Seccion[]): Campo[] {
+  const visibles = new Set(secciones.flatMap((s) => s.campos.map((c) => c.clave)));
+  return Object.entries(ficha.campos)
+    .filter(([clave, valor]) => valor.trim().length > 0 && !visibles.has(clave))
+    .map(([clave]) => campoDe(clave))
+    .filter((c): c is Campo => c != null);
+}
 
 export function tablaDe(clave: string): Tabla | null {
   for (const s of SECCIONES) {
@@ -424,30 +864,55 @@ export interface FichaAnalisis {
 // ─── Completitud ─────────────────────────────────────────────────────────────
 
 export interface Avance {
-  /** Campos de texto escritos sobre el total de la plantilla. */
+  /** Campos del núcleo escritos, sobre el total del núcleo. */
   completos: number;
   total: number;
   porcentaje: number;
+  /** Campos opcionales escritos, sobre los opcionales de este papel. */
+  opcionales: number;
+  totalOpcionales: number;
   /** Qué secciones tienen al menos un campo escrito. */
   seccionesConAlgo: string[];
 }
 
-export function avanceDe(ficha: FichaAnalisis): Avance {
-  const completos = CLAVES.filter((c) => (ficha.campos[c] ?? "").trim().length > 0).length;
-  const seccionesConAlgo = SECCIONES.filter(
-    (s) =>
-      s.campos.some((c) => (ficha.campos[c.clave] ?? "").trim().length > 0) ||
-      // Misma regla que al guardar: la etiqueta de una fila fija no la escribió nadie.
-      s.tablas?.some((t) =>
-        ficha.tablas[t.clave]?.some((f) => f.slice(t.filasFijas ? 1 : 0).some(Boolean))
-      ) ||
-      s.checklist?.some((i) => ficha.checks[i])
-  ).map((s) => s.id);
+/**
+ * Cuánto de la ficha está escrito.
+ *
+ * El porcentaje mide **sólo el núcleo**: los diecinueve campos sin los cuales
+ * la ficha no dice nada. Antes contaba los 43 y una ficha con la tesis, los
+ * kill criteria y la valuación escritas marcaba 40%, que desalienta y además
+ * miente sobre qué falta. Lo opcional se cuenta aparte y suma prolijidad, no
+ * avance.
+ *
+ * Recibe las secciones ya resueltas para el papel: si a una minera no se le
+ * pregunta por NRR, ese campo no puede contar en su denominador.
+ */
+export function avanceDe(ficha: FichaAnalisis, secciones: Seccion[] = SECCIONES): Avance {
+  const escrito = (c: Campo) => (ficha.campos[c.clave] ?? "").trim().length > 0;
+  const campos = secciones.flatMap((s) => s.campos);
+  const nucleo = campos.filter((c) => c.nucleo);
+  const resto = campos.filter((c) => !c.nucleo);
+
+  const seccionesConAlgo = secciones
+    .filter(
+      (s) =>
+        s.campos.some(escrito) ||
+        // Misma regla que al guardar: la etiqueta de una fila fija no la escribió nadie.
+        s.tablas?.some((t) =>
+          ficha.tablas[t.clave]?.some((f) => f.slice(t.filasFijas ? 1 : 0).some(Boolean))
+        ) ||
+        s.checklist?.some((i) => ficha.checks[i])
+    )
+    .map((s) => s.id);
+
+  const completos = nucleo.filter(escrito).length;
 
   return {
     completos,
-    total: CLAVES.length,
-    porcentaje: Math.round((completos / CLAVES.length) * 100),
+    total: nucleo.length,
+    porcentaje: nucleo.length ? Math.round((completos / nucleo.length) * 100) : 0,
+    opcionales: resto.filter(escrito).length,
+    totalOpcionales: resto.length,
     seccionesConAlgo,
   };
 }

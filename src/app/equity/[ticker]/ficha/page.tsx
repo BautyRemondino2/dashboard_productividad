@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { POR_TICKER } from "@/lib/equity-universo";
+import { perfilDe } from "@/lib/equity-perfil";
+import { seccionesDe } from "@/lib/equity-ficha";
 import { getComparacion, getFicha, getSerieFinanciera, type Ficha } from "@/lib/equity";
 import { getFichaAnalisis } from "@/lib/equity-ficha-db";
 import { valuacionDe, waccDe } from "@/lib/equity-analisis";
@@ -131,6 +133,16 @@ export default async function FichaAnalisisPage({
   const ficha = await getFicha(ticker);
   if (!ficha) notFound();
 
+  // La plantilla se arma para este papel: a una minera no se le pregunta por
+  // NRR ni a una empresa de Texas por el descalce de monedas.
+  const empresa = POR_TICKER.get(ticker)!;
+  const perfil = perfilDe({
+    sector: ficha.sector,
+    industria: ficha.industria ?? empresa.industria,
+    argentino: empresa.argentino,
+  });
+  const secciones = seccionesDe(perfil);
+
   const analisis = getFichaAnalisis(ticker);
   const fechaFicha = analisis.creado?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
 
@@ -163,6 +175,7 @@ export default async function FichaAnalisisPage({
             <Meta label="Precio" valor={fmtUsd(ficha.precio)} />
             <Meta label="Market cap" valor={fmtCap(ficha.fundamentals.capitalizacion)} />
             <Meta label="EV" valor={fmtCap(ficha.fundamentals.enterpriseValue)} />
+            <Meta label="Plantilla" valor={perfil.label} />
           </div>
         </div>
 
@@ -186,6 +199,7 @@ export default async function FichaAnalisisPage({
       <FichaClient
         ticker={ticker}
         inicial={analisis}
+        secciones={secciones}
         bloques={{
           numeros: (
             <Suspense fallback={<Esqueleto alto={430} />}>

@@ -197,7 +197,9 @@ fuente**: todo lo demás se recupera solo, esto es criterio propio.
 
 - **Plantilla como dato.** Las diez secciones se declaran en
   `src/lib/equity-ficha.ts` (`SECCIONES`) y la pantalla las recorre. Agregar un
-  campo es una línea; la completitud se cuenta sola.
+  campo es una línea; la completitud se cuenta sola. Desde sep-2026 `SECCIONES`
+  es la **unión** de lo que cualquier perfil puede pedir y lo que se dibuja sale
+  de `seccionesDe(perfil)` — ver abajo.
 - **Dos módulos, no uno.** `equity-ficha.ts` es puro (plantilla, tipos,
   `avanceDe`, `estimarWacc`) porque lo importa el componente cliente;
   `equity-ficha-db.ts` tiene la persistencia. Es la misma trampa que
@@ -214,6 +216,54 @@ fuente**: todo lo demás se recupera solo, esto es criterio propio.
   cuadro entero de la sección 5, los múltiplos contra los pares y la fecha del
   próximo balance se completan solos (`Bloques.tsx`). Una ficha que pide tipear
   el margen bruto de cinco años no se llena nunca, y peor: se llena mal.
+
+### La plantilla se adapta al papel (`equity-perfil.ts`)
+
+Era una sola plantilla de 43 campos para las 2.126 empresas del universo, y
+Bauty lo marcó bien: **en cualquier papel concreto sobra medio formulario**. A
+una empresa de software de Texas le preguntaba si cobra en pesos y debe en
+dólares, con una tabla de %USD/%ARS, y le ofrecía "toneladas, m² alquilados"
+como driver de ingresos. Un cuestionario que no es de esta empresa no se
+contesta: se saltea.
+
+`perfilDe({ sector, industria, argentino })` clasifica en **16 perfiles** con
+regex sobre la industria de Nasdaq —que es mucho más fina que el GICS: "Major
+Banks", "Precious Metals", "Computer Software: Prepackaged Software"— y cae al
+sector cuando no matchea. Sobre 2.127 papeles quedan 22 en `generico`, y son
+los que vienen con sector "Otros" y sin industria.
+
+`seccionesDe(perfil)` devuelve la plantilla resuelta: filtra por `solo` /
+`excepto` / `geografia` y reemplaza label, pista y opciones por las del perfil
+(`porPerfil`). GTLB pregunta por NRR, churn y dilución por SBC; AEM por AISC,
+ley del mineral y vida de mina; JPM por mora, CET1 y "¿ROE > costo del
+capital?" en vez de ROIC, sin tabla de vencimientos de deuda y con la grilla de
+métodos cambiada por P/BV × ROE. YPF conserva el descalce de monedas y suma
+riesgo político.
+
+Cuatro cosas para no volver a tropezarse:
+
+- **La validación al guardar va contra la unión, nunca contra la plantilla del
+  papel.** Si Yahoo cambia la industria de un ticker, lo que ya está escrito se
+  tiene que poder seguir guardando. `CLAVES` y `esCampoValido` se arman sobre
+  `SECCIONES` (la unión), no sobre `seccionesDe()`.
+- **Y lo que quedó escrito con otra plantilla se muestra igual.**
+  `camposHuerfanos()` lo detecta y la ficha lo pinta en un card al final. Sin
+  eso sería texto en la base que nadie puede ver ni borrar.
+- **`resolver()` devuelve un objeto nuevo, no un spread.** Las secciones cruzan
+  a un Client Component: un `...campo` mandaba el `porPerfil` entero —las 16
+  variantes de cada pregunta— dentro del HTML de cada ficha. Eran 16 KB por
+  página para que el navegador descarte quince plantillas.
+- **El orden de las reglas importa.** "Finance: Consumer Services" tiene que
+  caer en `banco` antes de que `consumo` lo agarre por la palabra; "Electrical
+  Products" es industrial y no una utility (por eso la regex dice `electric
+  power`, no `electric`); el carbón se mina y va a `minera`, no a `energia`.
+
+### El núcleo y lo opcional
+
+`avanceDe()` mide **sólo los 19 campos del núcleo** (`nucleo: true`), no los 43.
+Antes una ficha con la tesis, la valuación y los kill criteria escritos marcaba
+40%: desalienta y además miente sobre qué falta. El resto arranca plegado
+detrás de un "N campos más" por sección, y se cuenta aparte.
 
 ### Radiografía: qué está pasando con el papel (Finviz)
 

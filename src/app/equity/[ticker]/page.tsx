@@ -18,7 +18,8 @@ import {
 } from "@/lib/equity-formato";
 import GraficoTradingView from "@/components/GraficoTradingView";
 import { getFichaAnalisis } from "@/lib/equity-ficha-db";
-import { avanceDe } from "@/lib/equity-ficha";
+import { avanceDe, seccionesDe } from "@/lib/equity-ficha";
+import { perfilDe } from "@/lib/equity-perfil";
 import { riesgoDe, valuacionDe } from "@/lib/equity-analisis";
 import PanelRiesgo from "./Riesgo";
 import PanelValuacion from "./Valuacion";
@@ -147,7 +148,12 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
   const ficha = await getFicha(ticker);
   if (!ficha) notFound();
 
-  const avance = avanceDe(getFichaAnalisis(ticker));
+  const perfil = perfilDe({
+    sector: ficha.sector,
+    industria: ficha.industria ?? POR_TICKER.get(ticker)?.industria ?? null,
+    argentino: POR_TICKER.get(ticker)?.argentino ?? false,
+  });
+  const avance = avanceDe(getFichaAnalisis(ticker), seccionesDe(perfil));
   const { analistas: ana, earnings } = ficha;
   const upside =
     ana.precioObjetivo && ficha.precio ? (ana.precioObjetivo / ficha.precio - 1) * 100 : null;
@@ -215,8 +221,8 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
           <div className="font-serif text-[15px] text-titulo">Ficha de análisis</div>
           <p className="text-[11px] text-meta mt-0.5">
             {avance.completos === 0
-              ? "Sin empezar · negocio, moat, management, números, tesis y kill criteria"
-              : `${avance.completos} de ${avance.total} campos escritos`}
+              ? `Sin empezar · plantilla de ${perfil.label}`
+              : `${avance.completos} de ${avance.total} del núcleo escritos`}
           </p>
         </div>
 

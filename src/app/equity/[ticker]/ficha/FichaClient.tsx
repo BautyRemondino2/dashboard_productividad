@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Card from "@/components/Card";
 import {
-  SECCIONES,
   avanceDe,
+  camposHuerfanos,
   type Campo,
   type FichaAnalisis,
+  type Seccion,
   type Tabla,
 } from "@/lib/equity-ficha";
 import {
@@ -282,11 +283,14 @@ export default function FichaClient({
   ticker,
   inicial,
   bloques,
+  secciones,
 }: {
   ticker: string;
   inicial: FichaAnalisis;
   /** Los cuadros calculados, ya renderizados en el servidor. */
   bloques: Partial<Record<string, ReactNode>>;
+  /** La plantilla ya resuelta para este papel: cambia según qué clase de negocio es. */
+  secciones: Seccion[];
 }) {
   const [campos, setCampos] = useState(inicial.campos);
   const [tablas, setTablas] = useState(inicial.tablas);
@@ -298,11 +302,19 @@ export default function FichaClient({
     inicial.actualizado ? new Date(inicial.actualizado.replace(" ", "T") + "Z") : null
   );
   const [, iniciar] = useTransition();
-  const [activa, setActiva] = useState(SECCIONES[0].id);
+  const [activa, setActiva] = useState(secciones[0].id);
 
   const avance = useMemo(
-    () => avanceDe({ ...inicial, campos, tablas, checks }),
-    [inicial, campos, tablas, checks]
+    () => avanceDe({ ...inicial, campos, tablas, checks }, secciones),
+    [inicial, campos, tablas, checks, secciones]
+  );
+
+  // Lo que se escribió cuando la ficha usaba otra plantilla. Se calcula sobre
+  // `inicial` y no sobre el borrador: si se calculara sobre lo que se está
+  // tipeando, un campo aparecería acá abajo mientras se escribe arriba.
+  const huerfanos = useMemo(
+    () => camposHuerfanos({ ...inicial, campos: inicial.campos }, secciones),
+    [inicial, secciones]
   );
 
   /** Manda el cambio y deja el sello. Un error se muestra y no se traga. */
@@ -355,12 +367,12 @@ export default function FichaClient({
       },
       { rootMargin: "-72px 0px -65% 0px" }
     );
-    for (const s of SECCIONES) {
+    for (const s of secciones) {
       const el = document.getElementById(s.id);
       if (el) obs.observe(el);
     }
     return () => obs.disconnect();
-  }, []);
+  }, [secciones]);
 
   const sello =
     estado === "guardando"
@@ -375,7 +387,7 @@ export default function FichaClient({
     <div className="grid xl:grid-cols-[176px_minmax(0,1fr)] gap-6 items-start">
       {/* ── Índice ──────────────────────────────────────────────────── */}
       <nav className="hidden xl:block sticky top-[72px] space-y-px">
-        {SECCIONES.map((s) => {
+        {secciones.map((s) => {
           const conAlgo = avance.seccionesConAlgo.includes(s.id);
           return (
             <a
@@ -401,8 +413,13 @@ export default function FichaClient({
 
         <div className="pt-3 mt-2 border-t border-divisor space-y-2">
           <div className="text-[10px] text-meta-suave tabular-nums">
-            {avance.completos} de {avance.total} campos
+            {avance.completos} de {avance.total} del núcleo
           </div>
+          {avance.opcionales > 0 && (
+            <div className="text-[10px] text-meta-suave tabular-nums">
+              + {avance.opcionales} opcionales
+            </div>
+          )}
           <div className="h-[3px] rounded-full bg-divisor overflow-hidden">
             <div
               className="h-full rounded-full bg-sube/70 transition-all duration-300"
@@ -436,51 +453,101 @@ export default function FichaClient({
           <span className={`text-[11px] ${estado === "error" ? "text-baja" : "text-meta"}`}>
             {sello}
           </span>
-          <span className="ml-auto text-[11px] text-meta-suave tabular-nums">
-            {avance.porcentaje}% · {avance.completos}/{avance.total}
+          <span
+            className="ml-auto text-[11px] text-meta-suave tabular-nums"
+            title={`El porcentaje va sobre el núcleo: los ${avance.total} campos sin los cuales la ficha no dice nada. Los otros ${avance.totalOpcionales} suman prolijidad.`}
+          >
+            {avance.porcentaje}% · {avance.completos}/{avance.total} del núcleo
           </span>
         </div>
 
-        {SECCIONES.map((s) => (
-          <Card
-            key={s.id}
-            id={s.id}
-            titulo={`${s.numero}. ${s.titulo}`}
-            nota={s.bajada}
-            serif
-            className="scroll-mt-[104px]"
-          >
-            <div className="space-y-4">
-              {s.auto && bloques[s.auto]}
+        {secciones.map((s) => {
+          // El núcleo se ve; lo demás arranca plegado. Diez secciones de campos
+          // vacíos son una ficha que no se empieza: lo que está a la vista tiene
+          // que ser lo que hay que contestar sí o sí.
+          const nucleo = s.campos.filter((c) => c.nucleo);
+          const opcionales = s.campos.filter((c) => !c.nucleo);
+          const escritosOpcionales = opcionales.filter(
+            (c) => (campos[c.clave] ?? "").trim().length > 0
+          ).length;
 
-              {s.tablas?.map((t) => (
-                <TablaEditable
-                  key={t.clave}
-                  tabla={t}
-                  filas={tablas[t.clave] ?? []}
-                  onGuardar={(filas) => guardarTabla(t.clave, filas)}
+          const editables = (lista: Campo[]) => (
+            <div className="divide-y divide-divisor-fino">
+              {lista.map((c) => (
+                <CampoEditable
+                  key={c.clave}
+                  campo={c}
+                  valor={campos[c.clave] ?? ""}
+                  onGuardar={(v) => guardarCampo(c.clave, v)}
                 />
               ))}
+            </div>
+          );
 
-              {s.checklist && (
-                <Checklist items={s.checklist} marcados={checks} onAlternar={alternar} />
-              )}
+          return (
+            <Card
+              key={s.id}
+              id={s.id}
+              titulo={`${s.numero}. ${s.titulo}`}
+              nota={s.bajada}
+              serif
+              className="scroll-mt-[104px]"
+            >
+              <div className="space-y-4">
+                {s.auto && bloques[s.auto]}
 
-              {s.campos.length > 0 && (
-                <div className="divide-y divide-divisor-fino">
-                  {s.campos.map((c) => (
-                    <CampoEditable
-                      key={c.clave}
-                      campo={c}
-                      valor={campos[c.clave] ?? ""}
-                      onGuardar={(v) => guardarCampo(c.clave, v)}
-                    />
-                  ))}
-                </div>
-              )}
+                {s.tablas?.map((t) => (
+                  <TablaEditable
+                    key={t.clave}
+                    tabla={t}
+                    filas={tablas[t.clave] ?? []}
+                    onGuardar={(filas) => guardarTabla(t.clave, filas)}
+                  />
+                ))}
+
+                {s.checklist && (
+                  <Checklist items={s.checklist} marcados={checks} onAlternar={alternar} />
+                )}
+
+                {nucleo.length > 0 && editables(nucleo)}
+
+                {opcionales.length > 0 && (
+                  <details className="group" open={escritosOpcionales > 0}>
+                    <summary className="cursor-pointer list-none text-[11px] text-meta hover:text-cuerpo transition-colors select-none">
+                      <span className="group-open:hidden">
+                        ▸ {opcionales.length} {opcionales.length === 1 ? "campo" : "campos"} más
+                        {escritosOpcionales > 0 && ` · ${escritosOpcionales} con algo escrito`}
+                      </span>
+                      <span className="hidden group-open:inline">▾ ocultar los opcionales</span>
+                    </summary>
+                    <div className="mt-2">{editables(opcionales)}</div>
+                  </details>
+                )}
+              </div>
+            </Card>
+          );
+        })}
+
+        {huerfanos.length > 0 && (
+          <Card
+            titulo="Escrito con otra plantilla"
+            nota={`Esta ficha ahora usa la plantilla de otro tipo de negocio y estos ${
+              huerfanos.length === 1 ? "campo ya no se pregunta" : "campos ya no se preguntan"
+            }. Nada se borró: se puede leer, editar o vaciar acá.`}
+            serif
+          >
+            <div className="divide-y divide-divisor-fino">
+              {huerfanos.map((c) => (
+                <CampoEditable
+                  key={c.clave}
+                  campo={c}
+                  valor={campos[c.clave] ?? ""}
+                  onGuardar={(v) => guardarCampo(c.clave, v)}
+                />
+              ))}
             </div>
           </Card>
-        ))}
+        )}
       </div>
     </div>
   );
