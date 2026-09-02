@@ -4,9 +4,8 @@ import { notFound } from "next/navigation";
 import { POR_TICKER } from "@/lib/equity-universo";
 import { getComparacion, getFicha, getSerieFinanciera, type Ficha } from "@/lib/equity";
 import { getFichaAnalisis } from "@/lib/equity-ficha-db";
-import { estimarWacc } from "@/lib/equity-ficha";
+import { valuacionDe, waccDe } from "@/lib/equity-analisis";
 import { DB_IS_EPHEMERAL } from "@/lib/db";
-import { fredSerie, ultimo } from "@/lib/fred";
 import { getFinviz } from "@/lib/finviz";
 import { radiografiar } from "@/lib/finviz-lectura";
 import { fmtCap, fmtFecha, fmtUsd } from "@/lib/equity-formato";
@@ -14,6 +13,7 @@ import Card, { Contenedor } from "@/components/Card";
 import Logo from "../Logo";
 import FichaClient from "./FichaClient";
 import Radiografia from "./Radiografia";
+import PanelValuacion from "../Valuacion";
 import {
   BloqueDeuda,
   BloqueInsiders,
@@ -35,27 +35,6 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
 // empezar a escribir mientras Yahoo contesta la serie financiera, que es lo más
 // lento de la página. `getSerieFinanciera` está memoizada, así que los tres
 // cuadros comparten los mismos cinco requests.
-
-/**
- * El WACC lo piden dos bloques —el cuadro de números y la radiografía, que lee
- * el ROIC contra él—. Las dos fuentes que necesita están memoizadas, así que
- * calcularlo dos veces no cuesta un request: cuesta una multiplicación.
- */
-async function waccDe(ticker: string, ficha: Ficha) {
-  const [serie, tasaLarga] = await Promise.all([
-    getSerieFinanciera(ticker),
-    fredSerie("DGS10").then(ultimo).catch(() => null),
-  ]);
-
-  return estimarWacc({
-    beta: ficha.fundamentals.beta,
-    capitalizacion: ficha.fundamentals.capitalizacion,
-    deudaTotal: serie.deudaTotal,
-    interesesPagados: serie.interesesPagados,
-    tasaImpositiva: serie.tasaImpositiva,
-    tasaLibre: tasaLarga?.valor ?? null,
-  });
-}
 
 async function Numeros({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
   const [serie, wacc] = await Promise.all([getSerieFinanciera(ticker), waccDe(ticker, ficha)]);
@@ -105,6 +84,17 @@ async function Multiplos({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
     getFinviz(ticker).catch(() => null),
   ]);
   return <BloqueMultiplos ficha={ficha} serie={serie} comparacion={comparacion} finviz={finviz} />;
+}
+
+/**
+ * El DCF inverso, en la misma sección que los múltiplos: son las dos maneras de
+ * mirar el mismo precio —contra lo que valen los demás y contra lo que la
+ * empresa tendría que hacer— y la sección 8 pide escribir ambas.
+ */
+async function Valuacion({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
+  return (
+    <PanelValuacion valuacion={await valuacionDe(ticker, ficha).catch(() => null)} sensibilidad />
+  );
 }
 
 async function Insiders({ ticker }: { ticker: string }) {
@@ -208,9 +198,14 @@ export default async function FichaAnalisisPage({
             </Suspense>
           ),
           multiplos: (
-            <Suspense fallback={<Esqueleto alto={92} />}>
-              <Multiplos ticker={ticker} ficha={ficha} />
-            </Suspense>
+            <div className="space-y-4">
+              <Suspense fallback={<Esqueleto alto={92} />}>
+                <Multiplos ticker={ticker} ficha={ficha} />
+              </Suspense>
+              <Suspense fallback={<Esqueleto alto={340} />}>
+                <Valuacion ticker={ticker} ficha={ficha} />
+              </Suspense>
+            </div>
           ),
           insiders: (
             <Suspense fallback={<Esqueleto alto={92} />}>

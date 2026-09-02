@@ -5,7 +5,7 @@ import { POR_TICKER } from "@/lib/equity-universo";
 import { SECTOR_LABEL } from "@/lib/equity-sectores";
 import {
   getComparacion, getConsenso, getFicha, getHistoriaFinanciera,
-  getNoticias, getRetornosDe,
+  getNoticias, getRetornosDe, type Ficha,
 } from "@/lib/equity";
 import { traducirDescripcion } from "@/lib/traducir";
 import {
@@ -19,6 +19,9 @@ import {
 import GraficoTradingView from "@/components/GraficoTradingView";
 import { getFichaAnalisis } from "@/lib/equity-ficha-db";
 import { avanceDe } from "@/lib/equity-ficha";
+import { riesgoDe, valuacionDe } from "@/lib/equity-analisis";
+import PanelRiesgo from "./Riesgo";
+import PanelValuacion from "./Valuacion";
 import Logo from "./Logo";
 import { PanelNoticias } from "./Investigacion";
 import Card from "@/components/Card";
@@ -72,6 +75,20 @@ async function Retornos({ ticker }: { ticker: string }) {
       ))}
     </div>
   );
+}
+
+/**
+ * Volatilidad, beta, drawdown y Sharpe. Es un request más —la serie de tres
+ * años— y por eso va en su propio Suspense: la tabla de retornos, que sale de
+ * una serie ya cacheada, no tiene por qué esperarlo.
+ */
+async function Riesgo({ ticker }: { ticker: string }) {
+  return <PanelRiesgo riesgo={await riesgoDe(ticker).catch(() => null)} />;
+}
+
+/** El DCF inverso. La versión con matriz de sensibilidad vive en la ficha. */
+async function Valuacion({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
+  return <PanelValuacion valuacion={await valuacionDe(ticker, ficha).catch(() => null)} />;
 }
 
 async function Comparacion({ ticker }: { ticker: string }) {
@@ -234,6 +251,14 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             </Suspense>
           </Card>
 
+          <Card titulo="Riesgo" nota="tres años de ruedas diarias, contra el S&P 500">
+            <Suspense
+              fallback={<div className="h-[150px] animate-pulse bg-slate-900/40 rounded" />}
+            >
+              <Riesgo ticker={ficha.ticker} />
+            </Suspense>
+          </Card>
+
           <div className="grid md:grid-cols-2 gap-5">
             <Card titulo="Ventas y márgenes" nota="por año">
               <Suspense fallback={<div className="h-[130px] animate-pulse bg-slate-900/40 rounded" />}>
@@ -247,6 +272,20 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
               </Suspense>
             </Card>
           </div>
+
+          {/* Después de la historia de ventas y márgenes a propósito: el
+              crecimiento implícito sólo significa algo cuando ya se vio contra
+              qué crecimiento real se lo está comparando. */}
+          <Card
+            titulo="Qué descuenta el precio"
+            nota="DCF inverso sobre la caja libre de los últimos doce meses"
+          >
+            <Suspense
+              fallback={<div className="h-[260px] animate-pulse bg-slate-900/40 rounded" />}
+            >
+              <Valuacion ticker={ficha.ticker} ficha={ficha} />
+            </Suspense>
+          </Card>
 
           <Card titulo="A qué se dedica" nota="traducido del original de Yahoo">
             {/* Prosa a la izquierda con el renglón acotado, ficha técnica a la

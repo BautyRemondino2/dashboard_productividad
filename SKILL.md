@@ -281,6 +281,59 @@ la que conseguiría emitiendo ahora—. El peso va a valor de mercado del equity
 contra deuda contable, que es la convención práctica. Es la vara del ROIC: un
 negocio que rinde 9% y se financia al 11% destruye valor por más que gane plata.
 
+### Riesgo del papel (`equity-riesgo.ts`)
+
+Volatilidad, beta propia, drawdown, Sharpe/Sortino y captura de alza/baja sobre
+la serie de cierres. Es **cuenta pura, sin fuente nueva**: la única entrada es
+`getSerieLarga()` (tres años, cacheada 6 h) del papel y de SPY, más DGS10 de
+FRED para el Sharpe. Va en la página del ticker, debajo de Retornos.
+
+- **Ventana de tres años, no trece meses.** `getSerie()` (400 días) alcanza para
+  los retornos del ranking pero no para un desvío ni una beta: con un solo año
+  cualquier susto puntual se come el número.
+- **Beta propia ≠ beta de Yahoo.** Yahoo publica 5 años mensuales; esta va con
+  las ruedas diarias de la ventana. Cuando difieren, la diferencia es
+  información: el papel cambió de comportamiento.
+- **Alinear las dos series por fecha antes de la regresión.** Sin eso la beta
+  compara ruedas distintas (feriados de EE.UU. contra los del papel).
+- Desvío muestral (n−1), 252 ruedas por año, retornos simples. Los cierres no
+  están ajustados por dividendos: la volatilidad y la beta no se ven afectadas,
+  el retorno acumulado de un papel que paga sí queda subestimado, y se aclara en
+  pantalla.
+
+### DCF inverso (`equity-valuacion.ts`)
+
+La sección 8 de la ficha pedía escribir a mano "qué descuenta el precio hoy".
+Se calcula: con FCF, WACC, deuda neta y acciones, el crecimiento implícito es el
+único número que hace cerrar la ecuación. Diez años de crecimiento constante +
+perpetuidad de Gordon al 2,5%, y se resuelve `g` por **bisección** (el valor es
+monótono creciente en `g`). Va en la página del ticker y, con matriz de
+sensibilidad 5×5, en la ficha.
+
+Cuatro cosas que se aprendieron probándolo contra tickers reales:
+
+- **En los financieros no aplica y hay que decirlo.** JPM da −162 mil millones
+  de "caja libre" UDM porque el FCO de un banco se mueve con depósitos, cartera
+  y trading. Mostrar eso como "quema caja" es un error de lectura grave: el
+  panel muestra la explicación y nada más (`SIN_FCF` en `equity-analisis.ts`).
+- **Los crecimientos de referencia hay que recortarlos.** El consenso de Finviz
+  proyecta EPS a **cinco** años y el modelo pide diez: con NVDA en 64% anual, el
+  escenario daba +564% de potencial. Techo en 25% (`TECHO_ESCENARIO`), con el
+  original visible al lado, y la lectura dice que esa referencia no es
+  proyectable en vez de compararla.
+- **CAGR punta a punta no sirve con cuatro puntos.** La caja libre de Apple
+  entre 2022 y 2025 da −3,9% anual por un 2022 alto y un 2025 flojo, cuando lo
+  que hizo fue quedarse quieta. Se ajusta una recta a los logaritmos y se
+  anualiza la pendiente (`crecimientoTendencial`), con los **años de cierre**
+  como eje x para que un ejercicio faltante cuente como el hueco que es.
+- **El punto de partida es una decisión.** El FCF UDM de Apple está 30% arriba
+  del promedio de los ejercicios cerrados; el de NVDA, 170%. Si la desviación
+  pasa de 25% el panel lo dice: todo el ejercicio se apoya en ese número.
+
+Acciones = capitalización / precio (el `sharesOutstanding` de Yahoo llega
+desfasado en las que recompran). Deuda neta = EV − capitalización, que es la que
+el mercado usa hoy; se cae a la del último balance si no hay EV.
+
 ## Cuentas que vale la pena no volver a derivar
 
 - **Sendero implícito de tasa (FedWatch casero).** El contrato ZQ de un mes

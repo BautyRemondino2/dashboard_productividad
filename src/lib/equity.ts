@@ -278,6 +278,29 @@ export function getSerie(ticker: string): Promise<Cierre[]> {
 }
 
 /**
+ * Serie diaria larga, para las métricas de riesgo.
+ *
+ * Los trece meses de `getSerie` alcanzan para los retornos del ranking pero no
+ * para un desvío ni para una beta: con una sola ventana de un año, cualquier
+ * susto puntual se come el número. Tres años es la ventana estándar de las
+ * fichas de fondos y suele incluir por lo menos un tramo feo.
+ *
+ * Es un request más por ticker —sólo en la página de la empresa— y se cachea
+ * seis horas: una rueda más no mueve una volatilidad de tres años.
+ */
+export function getSerieLarga(ticker: string, años = 3): Promise<Cierre[]> {
+  return memo(`serie-larga:${ticker}:${años}`, 21600, async () => {
+    const r = await yf.chart(ticker, { period1: restarDias(Math.round(años * 365.25)), interval: "1d" });
+    return r.quotes
+      .filter((q): q is typeof q & { close: number } => q.close != null)
+      .map((q) => ({
+        fecha: q.date instanceof Date ? q.date.toISOString().slice(0, 10) : String(q.date).slice(0, 10),
+        close: q.close,
+      }));
+  });
+}
+
+/**
  * Enriquece un conjunto de filas con retornos exactos y sparkline.
  * Un request por ticker: llamar sólo con los candidatos que importan.
  */
