@@ -160,6 +160,42 @@ Tres modelos según el dato:
   contexto (Tesoro 10a, TIR implícita del riesgo país) contra las que se lee
   la altura de la curva.
 
+## El hero de macro: los gráficos del dólar y el riesgo país
+
+`HeroMacro.tsx` son los dos cards que abren `/mercado`. La cifra grande y la
+serie dibujada contestan "cuánto está" y "para dónde viene", pero no contestan
+la que se hace todos los días: **cómo vienen los cinco dólares entre sí**. El
+CCL solo no dice si la brecha se abre ni si el blue se adelantó.
+
+`DetalleSeries.tsx` (cliente) envuelve las zonas del hero y abre un modal con
+gráfico multi-serie de Recharts. Es distinto del `SeriesModal` de los tiles de
+abajo, que es de una serie sola.
+
+- **Una vista por unidad, no una línea por serie.** Los cinco dólares comparten
+  el eje en pesos y superpuestos se leen de una. La brecha (%), las reservas
+  (US$) y la base (pesos) van como *vistas* aparte: dos escalas en un eje es un
+  gráfico que miente.
+- **Las series se cruzan por unión de fechas, no por intersección.** No
+  comparten calendario —el mayorista tiene 270 puntos donde el CCL tiene 409, el
+  riesgo país lo publica JP Morgan con su propio rezago— y la intersección
+  tiraría datos buenos. Los huecos se unen con `connectNulls`.
+- **El dominio del eje se calcula sobre las series prendidas.** Apagar el blue
+  reajusta el eje y las diferencias dejan de verse aplastadas.
+- **Cada celda del pie abre el gráfico con esa serie y el CCL prendidos.** La
+  pregunta mirando el blue no es cuánto vale: es cuánto le saca al de
+  referencia.
+
+### La trampa del payload (medida)
+
+Las series cruzan al cliente **enteras y por referencia**, sin `.slice()`.
+Recortar a un año parece que tiene que pesar menos y pesa **178 KB más**:
+`MercadoClient` ya recibe `datos.series` completo, así que esos arrays ya están
+viajando, y pasando el mismo objeto React los serializa una vez y el hero los
+referencia. Un `.slice()` crea arrays nuevos y los manda de nuevo. Medido en el
+dev server: 791 KB con slice, 613 KB sin. **Cuando dos componentes de una misma
+página necesitan los mismos datos, pasar la misma referencia es más barato que
+recortarla.**
+
 ## Curvas y cronogramas
 
 Cuatro curvas en `/renta-fija`, cada una con su generador en `scripts/`. Los
