@@ -1,4 +1,6 @@
 import Card from "@/components/Card";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import { getPosturaFed } from "@/lib/eeuu";
 import PosturaChart from "./PosturaChart";
 import LinkGlosario from "./LinkGlosario";
@@ -102,6 +104,7 @@ export default async function PanelPostura() {
           así que el número se lee mejor contra su propia historia que contra un umbral fijo.
         </p>
       </div>
+      <Fuente creditos={[CREDITOS.fred]} extra="Tasa efectiva de fondos federales contra el PCE núcleo interanual." className="mt-3" />
     </Card>
   );
 }

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import Card from "@/components/Card";
 import { getTasaFed, getProximasReuniones } from "@/lib/fed";
 import { getCurvaTasaFija, breakevenInflacion } from "@/lib/bonos-tasa-fija";
@@ -189,6 +191,12 @@ export default async function Panorama() {
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-divisor">
         {celdas}
+      </div>
+      <div className="px-[18px] py-3 border-t border-divisor">
+        <Fuente
+          creditos={[CREDITOS.data912, CREDITOS.fred]}
+          extra="Las curvas en pesos salen de los precios de la rueda; la tasa de la Fed, de FRED."
+        />
       </div>
     </Card>
   );

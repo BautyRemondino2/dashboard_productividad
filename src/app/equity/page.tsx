@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import Link from "next/link";
 import { getBenchmarks, getRanking, getRetornosIndice } from "@/lib/equity";
 import { UNIVERSO } from "@/lib/equity-universo";
@@ -98,6 +100,11 @@ export default function EquityPage() {
         <Suspense fallback={<Esqueleto />}>
           <Ranking />
         </Suspense>
+
+        <Fuente
+          creditos={[CREDITOS.yahoo]}
+          extra="Precios y fundamentals de NYSE y Nasdaq. Los retornos por período los calcula el dashboard sobre los cierres diarios, sin ajustar por dividendos."
+        />
       </div>
     </Contenedor>
   );

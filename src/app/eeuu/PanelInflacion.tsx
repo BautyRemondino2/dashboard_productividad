@@ -1,4 +1,6 @@
 import Card from "@/components/Card";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import { getInflacionUsa } from "@/lib/eeuu";
 import InflacionChart from "./InflacionChart";
 import LinkGlosario from "./LinkGlosario";
@@ -103,6 +105,7 @@ export default async function PanelInflacion() {
       </div>
 
       <InflacionChart filas={inf.grafico} />
+      <Fuente creditos={[CREDITOS.fred]} extra="CPI y PCE del BLS y el BEA, con el rezago de publicación de cada uno." className="mt-3" />
     </Card>
   );
 }

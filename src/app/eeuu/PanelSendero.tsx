@@ -1,4 +1,6 @@
 import Card from "@/components/Card";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import { getSenderoFed } from "@/lib/fed";
 import SenderoChart, { type FilaSendero } from "./SenderoChart";
 import { fmtFecha } from "@/lib/equity-formato";
@@ -121,6 +123,7 @@ export default async function PanelSendero() {
           , y la probabilidad supone un único movimiento de 25 pb por reunión.
         </p>
       </div>
+      <Fuente creditos={[CREDITOS.yahoo]} extra="Futuros de fondos federales de CME. El sendero se resuelve por mínimos cuadrados sobre los contratos, la misma cuenta que el FedWatch." className="mt-3" />
     </Card>
   );
 }

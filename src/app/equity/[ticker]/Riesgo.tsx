@@ -126,7 +126,7 @@ export default function PanelRiesgo({ riesgo }: { riesgo: Riesgo | null }) {
       </div>
 
       <p className="text-[10.5px] text-meta-suave leading-relaxed">
-        Sobre cierres diarios sin ajustar por dividendos: en un papel que paga, el retorno de acá
+        Cierres diarios de Yahoo Finance, sin ajustar por dividendos: en un papel que paga, el retorno de acá
         queda por debajo del que cobró el que lo tuvo. La volatilidad y la beta no se ven afectadas.
         Todo es historia — describe cómo se comportó, no cómo se va a comportar.
       </p>

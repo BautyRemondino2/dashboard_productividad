@@ -5,6 +5,7 @@ import {
   CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { formatValor, LOWER_IS_BETTER, type MarketSeriesPoint, type Unidad } from "@/lib/mercado";
+import Fuente from "@/components/Fuente";
 
 /**
  * El detalle de las series del hero: los tipos de cambio y el riesgo país,
@@ -333,11 +334,14 @@ function Modal({
           })}
         </div>
 
-        <p className="px-6 pb-4 text-[10.5px] text-meta-suave leading-relaxed">
-          La variación es la del rango que se está viendo, no la del día. Tocá una serie para
-          sacarla del gráfico: con menos líneas el eje se ajusta a lo que queda y las diferencias
-          dejan de verse aplastadas.
-        </p>
+        <div className="px-6 pb-4 space-y-1.5">
+          <Fuente tickers={vista.series.map((x) => x.ticker)} />
+          <p className="text-[10.5px] text-meta-suave leading-relaxed">
+            La variación es la del rango que se está viendo, no la del día. Tocá una serie para
+            sacarla del gráfico: con menos líneas el eje se ajusta a lo que queda y las diferencias
+            dejan de verse aplastadas.
+          </p>
+        </div>
       </div>
     </div>
   );

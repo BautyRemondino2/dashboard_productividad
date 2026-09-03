@@ -1,4 +1,6 @@
 import Card from "@/components/Card";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import { getCurvaTesoro } from "@/lib/eeuu";
 import CurvaTesoroChart from "./CurvaTesoroChart";
 import { fmtFecha } from "@/lib/equity-formato";
@@ -70,6 +72,7 @@ export default async function PanelCurva() {
           nota="La versión que mejor anticipó recesiones en EE.UU. desde 1970."
         />
       </div>
+      <Fuente creditos={[CREDITOS.fred]} extra="Vencimientos constantes (DGS1M…DGS30), publicados por el Tesoro de EE.UU." className="mt-3" />
     </Card>
   );
 }

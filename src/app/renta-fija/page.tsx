@@ -13,6 +13,8 @@ import CurvaPesos from "./CurvaPesos";
 import CurvaTasaFija from "./CurvaTasaFija";
 import CalendarioPagos from "./CalendarioPagos";
 import Card, { Contenedor, EncabezadoPagina } from "@/components/Card";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 
 export const metadata = { title: "Renta fija · Dashboard" };
 
@@ -187,6 +189,7 @@ export default function RentaFijaPage() {
               ust10y={precios["UST10Y"] ?? null}
             />
           </Suspense>
+        <Fuente creditos={[CREDITOS.data912]} extra="Precios de la rueda; las TIR y las duration se calculan sobre los cronogramas del repo." className="mt-3" />
         </Card>
 
         <Card
@@ -198,6 +201,7 @@ export default function RentaFijaPage() {
           <Suspense fallback={<Esqueleto />}>
             <SeccionTasaFija />
           </Suspense>
+        <Fuente creditos={[CREDITOS.data912]} extra="Precios de la rueda; las TIR y las duration se calculan sobre los cronogramas del repo." className="mt-3" />
         </Card>
 
         <Card
@@ -209,6 +213,7 @@ export default function RentaFijaPage() {
           <Suspense fallback={<Esqueleto />}>
             <SeccionCer />
           </Suspense>
+        <Fuente creditos={[CREDITOS.data912]} extra="Precios de la rueda; las TIR y las duration se calculan sobre los cronogramas del repo." className="mt-3" />
         </Card>
 
         <Card
@@ -220,6 +225,7 @@ export default function RentaFijaPage() {
           <Suspense fallback={<Esqueleto />}>
             <SeccionDolarLinked />
           </Suspense>
+        <Fuente creditos={[CREDITOS.data912]} extra="Precios de la rueda; las TIR y las duration se calculan sobre los cronogramas del repo." className="mt-3" />
         </Card>
 
         <Card
@@ -237,6 +243,7 @@ export default function RentaFijaPage() {
                 .map((p) => ({ duration: p.duration, tir: p.tir, ticker: p.ticker }))}
             />
           </Suspense>
+        <Fuente creditos={[CREDITOS.data912]} extra="Precios de la rueda; las TIR y las duration se calculan sobre los cronogramas del repo." className="mt-3" />
         </Card>
       </div>
 
@@ -250,7 +257,8 @@ export default function RentaFijaPage() {
         <Suspense fallback={<Esqueleto alto={280} />}>
           <CalendarioPagos />
         </Suspense>
-      </Card>
+      <Fuente creditos={[CREDITOS.data912]} extra="Precios de la rueda; las TIR y las duration se calculan sobre los cronogramas del repo." className="mt-3" />
+        </Card>
 
       <div>
         <MercadoClient

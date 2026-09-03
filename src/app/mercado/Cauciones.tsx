@@ -1,4 +1,6 @@
 import { getCauciones, type Caucion } from "@/lib/byma";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 
 const fmtTna = (v: number) =>
   `${v.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
@@ -106,11 +108,17 @@ export default async function Cauciones() {
     <div className="rounded-card border border-borde bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-borde">
         <h3 className="text-[13px] font-semibold text-titulo">Cauciones</h3>
-        <p className="text-[10px] text-meta-suave mt-0.5">TNA por plazo · variación vs cierre previo · BYMA</p>
+        <p className="text-[10px] text-meta-suave mt-0.5">TNA por plazo · variación vs cierre previo</p>
       </div>
       {secciones.map(([m, lista], i) => (
         <Seccion key={m} moneda={m} lista={lista} conBorde={i > 0} />
       ))}
+      <div className="px-4 py-3 border-t border-borde">
+        <Fuente
+          creditos={[CREDITOS.byma]}
+          extra="Precio de cierre de cada plazo; los que no operaron hoy muestran el cierre anterior."
+        />
+      </div>
     </div>
   );
 }

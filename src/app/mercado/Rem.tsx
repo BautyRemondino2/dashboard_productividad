@@ -1,4 +1,6 @@
 import Card from "@/components/Card";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import { getRem, mesEnCurso, mesLargo, type RemMes } from "@/lib/rem";
 
 const pct = (v: number, d = 1) =>
@@ -153,6 +155,7 @@ export default async function Rem() {
         centros de investigación y los bancos que participan, relevados los últimos tres días
         hábiles de {rem.relevamientoLabel}.
       </p>
-    </Card>
+    <Fuente creditos={[CREDITOS.bcra]} extra="Relevamiento de Expectativas de Mercado: la encuesta que el BCRA le hace a consultoras y bancos. No son proyecciones del Banco Central." className="mt-3" />
+      </Card>
   );
 }

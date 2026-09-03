@@ -26,6 +26,8 @@ import PanelValuacion from "./Valuacion";
 import Logo from "./Logo";
 import { PanelNoticias } from "./Investigacion";
 import Card from "@/components/Card";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 
 export const dynamic = "force-dynamic";
 
@@ -255,6 +257,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             >
               <Retornos ticker={ficha.ticker} />
             </Suspense>
+            <Fuente creditos={[CREDITOS.yahoo]} extra="Cierres diarios ajustados por splits, no por dividendos." className="mt-3" />
           </Card>
 
           <Card titulo="Riesgo" nota="tres años de ruedas diarias, contra el S&P 500">
@@ -263,6 +266,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             >
               <Riesgo ticker={ficha.ticker} />
             </Suspense>
+            <Fuente creditos={[CREDITOS.yahoo, CREDITOS.fred]} extra="Las ruedas del papel y del SPY salen de Yahoo; la tasa libre del Sharpe, del Tesoro a 10 años de FRED." className="mt-3" />
           </Card>
 
           <div className="grid md:grid-cols-2 gap-5">
@@ -270,12 +274,14 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
               <Suspense fallback={<div className="h-[130px] animate-pulse bg-slate-900/40 rounded" />}>
                 <Historia ticker={ficha.ticker} />
               </Suspense>
+              <Fuente creditos={[CREDITOS.yahoo]} extra="Estados financieros anuales publicados por la empresa." className="mt-3" />
             </Card>
 
             <Card titulo="Resultados vs. consenso" nota="últimos trimestres">
               <Suspense fallback={<div className="h-[130px] animate-pulse bg-slate-900/40 rounded" />}>
                 <Sorpresas ticker={ficha.ticker} />
               </Suspense>
+              <Fuente creditos={[CREDITOS.yahoo]} extra="Consenso de analistas al cierre de cada trimestre." className="mt-3" />
             </Card>
           </div>
 
@@ -291,6 +297,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             >
               <Valuacion ticker={ficha.ticker} ficha={ficha} />
             </Suspense>
+            <Fuente creditos={[CREDITOS.yahoo, CREDITOS.finviz, CREDITOS.fred]} extra="La caja libre y el balance salen de Yahoo; el crecimiento esperado del consenso, de Finviz; la tasa libre del WACC, de FRED. El crecimiento implícito lo calcula el dashboard." className="mt-3" />
           </Card>
 
           <Card titulo="A qué se dedica" nota="traducido del original de Yahoo">
@@ -339,6 +346,9 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             <Suspense fallback={<div className="h-[420px] animate-pulse bg-card" />}>
               <Comparacion ticker={ficha.ticker} />
             </Suspense>
+            <div className="px-[18px] pb-4">
+              <Fuente creditos={[CREDITOS.yahoo]} extra="Los pares se eligen por industria dentro del universo del dashboard, no es una canasta publicada." />
+            </div>
           </Card>
 
         </div>
@@ -349,6 +359,7 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
             <Suspense fallback={<div className="h-40 animate-pulse bg-slate-900/40 rounded" />}>
               <Noticias ticker={ficha.ticker} />
             </Suspense>
+            <Fuente creditos={[CREDITOS.yahoo]} className="mt-3" />
           </Card>
 
           <Card titulo="Analistas" nota={ana.cantidad ? `${ana.cantidad} opiniones` : undefined}>

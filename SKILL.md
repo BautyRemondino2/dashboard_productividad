@@ -160,6 +160,58 @@ Tres modelos según el dato:
   contexto (Tesoro 10a, TIR implícita del riesgo país) contra las que se lee
   la altura de la curva.
 
+## Riesgo país: intradiario de rava, cierre de argentinadatos
+
+argentinadatos publica el **cierre**: a media mañana el panel seguía mostrando
+el número del día anterior (500 cuando ya estaba 493). Rava lo actualiza durante
+la rueda.
+
+`src/lib/rava.ts` lo saca del bloque `<script type="application/ld+json">` de
+`rava.com/perfil/RIESGO PAIS`: un `FinancialProduct` de schema.org con
+`offers.price`. **Es dato estructurado, no HTML de presentación** —está ahí para
+Google— así que sobrevive rediseños que romperían un selector de CSS. El
+`robots.txt` de rava.com no bloquea nada (`Disallow:` vacío).
+
+Cuatro cosas del armado:
+
+- **El orden en `FUENTES` importa.** `ravaFuente` va **antes** que
+  `argentinaDatosFuente`. Las dos upsertean con `ON CONFLICT DO UPDATE`, así que
+  la última gana: mientras las fechas difieren no se pisan, y el día que
+  argentinadatos publique el cierre de hoy, ese cierre le gana al intradiario.
+  Un cierre oficial vale más que una foto de las once.
+- **El fin de semana no escribe.** Rava sigue mostrando el último cierre;
+  estamparlo con la fecha de hoy inventaría un sábado plano que nunca cotizó.
+- **La fecha se calcula en la zona de Buenos Aires**, no con `localDateStr()`:
+  en Vercel el servidor está en UTC y después de las 21 hs de Argentina el valor
+  quedaría con la fecha del día siguiente.
+- **Guarda de rango: 50 a 30.000 pb.** Fuera de ahí lo que volvió no es el
+  riesgo país (es un cero, o un parseo que salió mal) y entraría a la serie para
+  quedarse. Si rava falla o cambia, tira y argentinadatos sigue siendo la fuente
+  del cierre y del histórico entero: lo único que se pierde es la frescura.
+
+## La fuente al pie de cada gráfico
+
+Bauty lo pidió explícito y es la regla del `Card` llevada hasta el final: **todo
+gráfico dice de dónde salió el número**. Un panel de precios sin eso obliga a
+confiar de memoria, y cuando dos series del mismo indicador no coinciden —el
+riesgo país intradiario contra el cierre— sin decir cuál se mira, la diferencia
+parece un error.
+
+- `src/lib/fuentes-credito.ts` mapea ticker → `{ fuente, url, nota }`, más
+  `CREDITOS` para los gráficos que no salen de un ticker del panel (curva del
+  Tesoro, sendero de la Fed, composición de un ETF).
+- **Es un módulo aparte de `fuentes.ts` a propósito**: ese sabe qué fuente cubre
+  qué ticker pero arrastra yahoo-finance2 y no puede viajar al navegador. La
+  contrapartida es mantener las dos en línea; el chequeo es que todo ticker con
+  fuente automática tenga crédito (hoy: 39 de 39).
+- `src/components/Fuente.tsx` lo dibuja: fuente, link para verificar y la letra
+  chica que cambia cómo se lee ("mediana de las TNA que publican los bancos" no
+  es lo mismo que "la TNA").
+- Puesto en: los dos cards del hero y sus dos modales, Panorama, REM, Cauciones,
+  el mapa de provincias, los cuatro paneles de EE.UU., las cinco curvas de renta
+  fija y próximos pagos, la torta de sectores de ETF, el ranking de equity y los
+  siete cards de la página de una empresa.
+
 ## El hero de macro: los gráficos del dólar y el riesgo país
 
 `HeroMacro.tsx` son los dos cards que abren `/mercado`. La cifra grande y la

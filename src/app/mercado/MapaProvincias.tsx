@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import { MAPA_ALTO, MAPA_ANCHO, PROVINCIAS, type Orientacion, type Provincia } from "@/lib/provincias";
 import { RUBRO_LABEL, VIGENCIA, type DatosProvincia } from "@/lib/macro-provincias";
 
@@ -261,6 +263,12 @@ export default function MapaProvincias({ datos }: { datos: Record<string, DatosP
         publica de forma regular ni comparable entre jurisdicciones, y estimarlos sería
         inventarlos.
       </p>
+      <div className="px-4 py-3 border-t border-slate-800/80">
+        <Fuente
+          creditos={[CREDITOS.indec]}
+          extra="Exportaciones y población del INDEC, vía la API de series de datos.gob.ar. El empleo privado sale del Ministerio de Trabajo."
+        />
+      </div>
     </section>
   );
 }

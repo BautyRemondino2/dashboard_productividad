@@ -242,7 +242,7 @@ export default function HeroMacro({ datos }: { datos: PanelDatos }) {
     <div className="grid xl:grid-cols-[1.55fr_1fr] gap-4 items-stretch">
       <Card
         titulo="Dólar"
-        nota="en pesos"
+        nota="en pesos · dolarapi.com, mayorista del BCRA"
         acento={VERDE}
         derecha={`al ${corta(ccl.last.fecha)}`}
         destacada
@@ -342,6 +342,7 @@ export default function HeroMacro({ datos }: { datos: PanelDatos }) {
 
       <Card
         titulo="Riesgo & reservas"
+        nota="riesgo país de Rava, reservas y base del BCRA"
         acento={ROJO}
         derecha={`al ${corta(riesgo.last.fecha)}`}
         destacada

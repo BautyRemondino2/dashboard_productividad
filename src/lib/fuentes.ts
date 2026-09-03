@@ -15,6 +15,7 @@
  *  - api.bcra.gob.ar/estadisticas/v4.0/monetarias/{id}?limit=1
  *    → id 44: TAMAR bancos privados (TNA) · id 1: reservas internacionales (MUSD).
  *    (La serie "tasa de política monetaria" dejó de publicarse en jul-2025.)
+ *  - rava.com/perfil/RIESGO PAIS (riesgo país intradiario, JSON-LD)
  *  - api.argentinadatos.com/v1/finanzas/indices/{riesgo-pais/ultimo,inflacion}
  *  - yahoo-finance2 (ya en el proyecto): ^GSPC → SPX, ^TNX → UST10Y (ya en %).
  */
@@ -25,6 +26,7 @@ import type { MarketInstrument } from "@/lib/mercado";
 import { getCaucion1DiaARS } from "@/lib/byma";
 import { fredSerie, ultimo, variacionInteranual } from "@/lib/fred";
 import { localDateStr } from "@/lib/utils";
+import { esFinDeSemanaEnArgentina, getRiesgoPaisRava, hoyEnArgentina } from "@/lib/rava";
 
 export interface FetchedValue {
   instrumento: string;
@@ -210,6 +212,25 @@ const AD_SERIES: { url: string; ticker: string }[] = [
   { url: "https://api.argentinadatos.com/v1/finanzas/indices/inflacionInteranual", ticker: "IPC_IA" },
   { url: "https://api.argentinadatos.com/v1/finanzas/indices/uva",                 ticker: "UVA" },
 ];
+
+/**
+ * El riesgo país intradiario. Va antes que argentinadatos a propósito: ver
+ * `src/lib/rava.ts` para por qué el orden importa.
+ */
+const ravaFuente: Fuente = {
+  id: "rava",
+  label: "Riesgo país (intradiario)",
+  async fetchValues() {
+    // El fin de semana rava sigue mostrando el último cierre. Estamparlo con la
+    // fecha de hoy inventaría un punto: un sábado plano que nunca cotizó.
+    if (esFinDeSemanaEnArgentina()) return [];
+
+    const valor = await getRiesgoPaisRava();
+    return [
+      { instrumento: "RIESGO_PAIS", metrica: "valor", valor, fecha: hoyEnArgentina() },
+    ];
+  },
+};
 
 const argentinaDatosFuente: Fuente = {
   id: "argentinadatos",
@@ -400,6 +421,7 @@ const FUENTES: Fuente[] = [
   data912Fuente("data912_cedears", "CEDEARs",    "arg_cedears", ["cedear"]),
   dolarapiFuente,
   bcraFuente,
+  ravaFuente,
   argentinaDatosFuente,
   plazoFijoFuente,
   bymaCaucionFuente,

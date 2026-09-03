@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Fuente from "@/components/Fuente";
+import { CREDITOS } from "@/lib/fuentes-credito";
 import Link from "next/link";
 import TortaSectores from "./TortaSectores";
 import GraficoTradingView from "@/components/GraficoTradingView";
@@ -164,6 +166,11 @@ export default function EtfClient({
 
               <div className="p-4 grid md:grid-cols-[auto_1fr] gap-6">
                 <TortaSectores sectores={activo.sectores} />
+                <Fuente
+                  creditos={[CREDITOS.yahoo]}
+                  extra="Tenencias y composición sectorial que publica el emisor del fondo, con el rezago con que las informa."
+                  className="mt-3"
+                />
 
                 {/* Los once valores exactos: la torta responde "de qué depende",
                     la tabla responde "cuánto exactamente" */}

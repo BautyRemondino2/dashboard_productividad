@@ -8,6 +8,7 @@ import Link from "next/link";
 import { computePanelIndicator, formatDelta, formatValor, LOWER_IS_BETTER } from "@/lib/mercado";
 import type { MarketInstrument, MarketSeriesPoint } from "@/lib/mercado";
 import { hrefGlosario, type InstrumentoDef } from "@/lib/glosario-instrumentos";
+import Fuente from "@/components/Fuente";
 
 const RANGOS = [
   { key: "30",  label: "30d",  dias: 30 },
@@ -203,7 +204,7 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
         </div>
 
         {/* Deltas del rango visible */}
-        <div className="px-6 py-3 border-t border-borde grid grid-cols-3 gap-3">
+        <div className="px-6 pt-3 grid grid-cols-3 gap-3 border-t border-borde">
           {([
             ["vs. anterior", ind.dPrev],
             ["30 días", ind.d30],
@@ -231,6 +232,10 @@ export default function SeriesModal({ inst, serie, def, onClose }: {
               </div>
             );
           })}
+        </div>
+
+        <div className="px-6 pt-3 pb-4">
+          <Fuente tickers={[inst.ticker]} />
         </div>
       </div>
     </div>
