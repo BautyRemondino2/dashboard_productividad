@@ -26,6 +26,7 @@ import PanelValuacion from "./Valuacion";
 import Logo from "./Logo";
 import { PanelNoticias } from "./Investigacion";
 import Card from "@/components/Card";
+import AvisoMercado from "@/components/AvisoMercado";
 import Fuente from "@/components/Fuente";
 import { CREDITOS } from "@/lib/fuentes-credito";
 
@@ -210,6 +211,8 @@ export default async function TickerPage({ params }: { params: Promise<{ ticker:
           </div>
         </div>
       </div>
+
+      <AvisoMercado mercados={["eeuu"]} />
 
       {/* La ficha de análisis va antes que todo lo demás y no en el sidebar:
           es el trabajo propio sobre esta empresa, y lo de abajo son insumos

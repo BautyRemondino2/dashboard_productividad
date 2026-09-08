@@ -189,6 +189,54 @@ Cuatro cosas del armado:
   quedarse. Si rava falla o cambia, tira y argentinadatos sigue siendo la fuente
   del cierre y del histórico entero: lo único que se pierde es la frescura.
 
+## Feriados de mercado: cuándo no hay rueda, y por qué
+
+Bauty lo marcó el lunes de Labor Day: el panel de EE.UU. mostraba los números
+del viernes sin una línea que lo explicara. **Un papel "sin variación" y un
+papel que no cotizó se ven exactamente igual, y el segundo no es un dato: es la
+ausencia de uno.**
+
+`src/lib/feriados-mercado.ts` calcula el calendario del NYSE **por regla**
+—tercer lunes de enero, cuarto jueves de noviembre— y no de una lista escrita a
+mano, que sirve hasta el 1 de enero en que nadie se acordó de extenderla, que es
+justo el día en que hace falta. Cada feriado trae dos textos: `porQue` (qué se
+conmemora) y `consecuencia` (qué implica para quien mira precios).
+
+Cosas que son fáciles de errar y ya están resueltas:
+
+- **Los feriados de fecha fija se corren**: sábado → viernes anterior, domingo →
+  lunes siguiente (`observado()`). Por eso Independence Day 2026 es el viernes 3
+  de julio.
+- **Viernes Santo no es feriado federal y el NYSE cierra igual.** Es una
+  particularidad del mercado; los bancos y el gobierno trabajan. Se calcula con
+  el algoritmo de Meeus/Jones/Butcher para Pascua.
+- **La media rueda de la víspera sólo existe si el feriado cae en su fecha
+  natural.** Si el 4 de julio cae sábado el mercado cierra el viernes 3 entero y
+  el jueves 2 es una rueda normal: no hay víspera que anunciar.
+- **El calendario argentino sale de `efemerides.ts`** (feriados + no laborables).
+  Es una aproximación declarada: BYMA suele seguir el calendario nacional pero
+  puede cerrar por decisión propia y eso no está en ninguna fuente pública
+  estable.
+
+Dónde se ve:
+
+- **`ChipMercado`** en la barra de navegación: avisa el día del feriado y
+  también hasta cuatro días antes. Saber el lunes que el jueves no hay rueda
+  cambia cómo se arma la semana; enterarse el jueves no sirve.
+- **`AvisoMercado`** arriba de macro, renta fija, EE.UU., equity, ETF y la ficha
+  de una empresa, con el porqué y la consecuencia completos.
+- **`/efemerides#mercados`**: el calendario de los dos mercados, año actual y
+  siguiente, con los que ya pasaron apagados —sirve para entender por qué una
+  serie tiene un hueco tres semanas atrás—.
+
+**La fecha se resuelve en el cliente**, igual que en `EfemerideWidget`: el server
+de Vercel corre en UTC y a la noche de Argentina avisaría de un feriado que
+todavía no es.
+
+También alimenta la ingesta: `sinRuedaEnArgentina()` corta la fuente rava los
+fines de semana **y los feriados**, para no estampar el último cierre con la
+fecha de hoy e inventar un día plano que nunca cotizó.
+
 ## Cómo se hace un gráfico en este proyecto (obligatorio)
 
 Bauty lo pidió explícito: **todo gráfico propio se abre en grande al tocarlo**,

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import AvisoMercado from "@/components/AvisoMercado";
 import { cargarPanel } from "@/lib/panel-datos";
 import MercadoClient from "./MercadoClient";
 import { VISTA_MERCADO } from "@/lib/mercado";
@@ -31,6 +32,8 @@ export default function MacroPage() {
         bajada={`Dólar, tasas, inflación y actividad · ${conDatos} de ${total} indicadores con dato`}
         derecha={<RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />}
       />
+
+      <AvisoMercado mercados={["argentina"]} />
 
       <HeroMacro datos={datos} />
 

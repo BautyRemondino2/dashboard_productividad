@@ -1,4 +1,5 @@
 import { cargarPanel, contarPorGrupos } from "@/lib/panel-datos";
+import AvisoMercado from "@/components/AvisoMercado";
 import { armarCurva, getCurvaOns, spreadsPorLey, validarCurva } from "@/lib/bonos";
 import { getCurvaCer, getCurvaDolarLinked } from "@/lib/bonos-ars";
 import { breakevenInflacion, getCurvaTasaFija } from "@/lib/bonos-tasa-fija";
@@ -159,6 +160,8 @@ export default function RentaFijaPage() {
         bajada={`Cuatro curvas ajustadas por Nelson-Siegel: hard-dollar, CER, dólar linked y corporativos · ${total} instrumentos, ${conDatos} con datos`}
         derecha={<RefreshButton lastUpdate={datos.lastUpdate} needsBackfill={datos.needsBackfill} />}
       />
+
+      <AvisoMercado mercados={["argentina"]} />
 
       {/* Dos por fila: las cuatro curvas comparten ejes y marcas, y en grilla se
           comparan de un vistazo en vez de scrolleando una debajo de la otra.

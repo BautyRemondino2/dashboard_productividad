@@ -26,7 +26,7 @@ import type { MarketInstrument } from "@/lib/mercado";
 import { getCaucion1DiaARS } from "@/lib/byma";
 import { fredSerie, ultimo, variacionInteranual } from "@/lib/fred";
 import { localDateStr } from "@/lib/utils";
-import { esFinDeSemanaEnArgentina, getRiesgoPaisRava, hoyEnArgentina } from "@/lib/rava";
+import { getRiesgoPaisRava, hoyEnArgentina, sinRuedaEnArgentina } from "@/lib/rava";
 
 export interface FetchedValue {
   instrumento: string;
@@ -221,9 +221,9 @@ const ravaFuente: Fuente = {
   id: "rava",
   label: "Riesgo país (intradiario)",
   async fetchValues() {
-    // El fin de semana rava sigue mostrando el último cierre. Estamparlo con la
-    // fecha de hoy inventaría un punto: un sábado plano que nunca cotizó.
-    if (esFinDeSemanaEnArgentina()) return [];
+    // Fin de semana o feriado: rava sigue mostrando el último cierre y
+    // estamparlo con la fecha de hoy inventaría un día plano que nunca cotizó.
+    if (sinRuedaEnArgentina()) return [];
 
     const valor = await getRiesgoPaisRava();
     return [

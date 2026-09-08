@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import AvisoMercado from "@/components/AvisoMercado";
 import { ETFS, getComposiciones, getIndicesReferencia } from "@/lib/equity";
 import EtfClient from "./EtfClient";
 import { Contenedor, EncabezadoPagina } from "@/components/Card";
@@ -40,6 +41,8 @@ export default function IndicesPage() {
         titulo="ETF"
         bajada={`${ETFS.length} fondos de referencia · composición sectorial, mayores tenencias y qué replican`}
       />
+
+      <AvisoMercado mercados={["eeuu"]} />
 
       <Suspense fallback={<Esqueleto />}>
         <Fondos />

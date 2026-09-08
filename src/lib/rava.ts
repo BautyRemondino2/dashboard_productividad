@@ -27,6 +27,8 @@
  * Que es lo correcto: un cierre oficial vale más que una foto de las once.
  */
 
+import { feriadosEnFecha } from "@/lib/feriados-mercado";
+
 const PERFIL = "https://www.rava.com/perfil/RIESGO%20PAIS";
 const TIMEOUT_MS = 12_000;
 
@@ -75,7 +77,18 @@ export function hoyEnArgentina(): string {
   }).format(new Date());
 }
 
-/** Sábado o domingo en Buenos Aires: no hay rueda que informar. */
+/**
+ * Sábado, domingo o feriado en Buenos Aires: no hay rueda que informar.
+ *
+ * Los dos casos son el mismo problema. Rava sigue mostrando el último cierre
+ * cuando el mercado no abrió, y estamparlo con la fecha de hoy inventaría un
+ * punto: un día plano que nunca cotizó.
+ */
+export function sinRuedaEnArgentina(): boolean {
+  return esFinDeSemanaEnArgentina() || feriadosEnFecha(hoyEnArgentina()).some((f) => f.mercado === "argentina");
+}
+
+/** Sábado o domingo en Buenos Aires. */
 export function esFinDeSemanaEnArgentina(): boolean {
   const dia = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Argentina/Buenos_Aires",

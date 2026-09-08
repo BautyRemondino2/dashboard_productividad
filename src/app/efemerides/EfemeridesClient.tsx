@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import type { Efemeride, EfemerideType } from "@/lib/efemerides";
 import { Contenedor } from "@/components/Card";
+import FeriadosMercado from "./FeriadosMercado";
 
 interface DecoratedEfemeride extends Efemeride {
   days: number;
@@ -88,6 +89,10 @@ export default function EfemeridesClient({ today, year, thisYear, nextYear }: Pr
           Feriados nacionales, días no laborables y fechas históricas con su contexto.
         </p>
       </div>
+
+      {/* Antes de las efemérides históricas: es la lectura que le sirve a quien
+          opera —qué días no hay rueda— y la que faltaba en todo el dashboard. */}
+      <FeriadosMercado hoy={today} />
 
       {/* Next event hero */}
       {next && (

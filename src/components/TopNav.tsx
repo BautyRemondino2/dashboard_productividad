@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import EfemerideWidget from "@/components/EfemerideWidget";
+import ChipMercado from "@/components/ChipMercado";
 
 /**
  * Barra de navegación, 48px y fija arriba de todo.
@@ -95,6 +96,7 @@ export default function TopNav({
             datos temporales
           </span>
         )}
+        <ChipMercado />
         <EfemerideWidget />
         {actualizado && (
           <span className="text-[11px] text-meta-suave tabular-nums whitespace-nowrap">

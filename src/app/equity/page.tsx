@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import AvisoMercado from "@/components/AvisoMercado";
 import Fuente from "@/components/Fuente";
 import { CREDITOS } from "@/lib/fuentes-credito";
 import Link from "next/link";
@@ -80,6 +81,8 @@ export default function EquityPage() {
               calendario de earnings →
             </Link>
             <RefrescarEquity />
+
+      <AvisoMercado mercados={["eeuu"]} />
           </div>
         }
       />

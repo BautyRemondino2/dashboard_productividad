@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import AvisoMercado from "@/components/AvisoMercado";
 import { Contenedor, EncabezadoPagina } from "@/components/Card";
 import Card from "@/components/Card";
 import HeroFed from "./HeroFed";
@@ -52,6 +53,8 @@ export default function EstadosUnidosPage() {
         bajada="La tasa que descuenta al mundo · Fed, curva del Tesoro, inflación y actividad"
         derecha={<RefrescarEeuu />}
       />
+
+      <AvisoMercado mercados={["eeuu"]} />
 
       <Suspense fallback={<Cargando alto={148} />}>
         <HeroFed />
