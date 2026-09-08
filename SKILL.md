@@ -189,6 +189,75 @@ Cuatro cosas del armado:
   quedarse. Si rava falla o cambia, tira y argentinadatos sigue siendo la fuente
   del cierre y del histórico entero: lo único que se pierde es la frescura.
 
+## Cómo se hace un gráfico en este proyecto (obligatorio)
+
+Bauty lo pidió explícito: **todo gráfico propio se abre en grande al tocarlo**,
+con selector de rango de fechas y la fuente al pie. Un gráfico dentro de un card
+mide 150 o 240 píxeles porque convive con otros cinco; a ese tamaño se lee la
+forma y poco más. La pregunta que sigue —"¿esto es alto contra su propia
+historia?"— necesita el eje, y el eje necesita espacio.
+
+**La receta, para cualquier gráfico nuevo:**
+
+```tsx
+// El gráfico puro, sin saber nada del modal. Recibe `alto` por props.
+function Grafico({ filas, alto }: { filas: Fila[]; alto: number }) { … }
+
+// Lo que exporta el módulo: el mismo gráfico, expandible.
+export default function MiChart({ filas, alto = 230 }) {
+  return (
+    <GraficoExpandible
+      titulo="Inflación en EE.UU."
+      nota="Interanual · la meta de la Fed es 2% sobre el PCE núcleo"
+      creditos={FUENTE_INFLACION.creditos}
+      extra={FUENTE_INFLACION.extra}
+      filas={filas}                    // opcional
+      fechaDe={(f) => f.fecha}         // opcional
+      rangos={RANGOS_MENSUALES}        // opcional — los tres van juntos
+      alto={alto}
+    >
+      {({ filas, alto }) => <Grafico filas={filas} alto={alto} />}
+    </GraficoExpandible>
+  );
+}
+```
+
+Reglas que salieron de aplicarlo a los quince gráficos existentes:
+
+- **El gráfico se pasa como función, no como `children`.** El modal tiene que
+  volver a dibujarlo con otro alto y con las filas recortadas. Como es un render
+  prop, `GraficoExpandible` sólo se puede usar desde un Client Component: si el
+  panel es de servidor, **el que se envuelve a sí mismo es el componente del
+  gráfico** (que ya es `"use client"`), no el panel. Es lo que se hizo en los
+  cuatro de EE.UU.
+- **`filas` + `fechaDe` + `rangos` van juntos y son opcionales.** Sin ellos no
+  aparecen los chips, que es lo correcto cuando el gráfico no es una serie de
+  tiempo: la curva del Tesoro es un corte por plazo y el sendero de la Fed son
+  reuniones futuras — "últimos 90 días" no significa nada ahí. Esos se abren
+  igual, más grandes y con su fuente.
+- **`RANGOS_MENSUALES` para datos mensuales, `RANGOS_DIARIOS` para diarios.** En
+  una serie mensual "90 días" son tres puntos: no hay gráfico. Los mensuales
+  abren en "Todo", que es justamente lo que el card recortado no puede mostrar.
+- **El recorte cuenta desde el último dato, no desde el reloj.** Si el último
+  cierre es del viernes y esto se abre un domingo, "30 días" tiene que ser
+  treinta días de datos.
+- **El `extra` de la fuente se declara una sola vez** (`tokens-grafico.ts` en
+  EE.UU.) porque se usa dos veces: al pie del card y al pie del modal. Dos copias
+  del mismo texto se despegan la primera vez que se corrige una.
+- **Si el gráfico necesita fechas para el rango, la serie tiene que viajar con
+  fecha.** Los tiles de EE.UU. mandaban `number[]`; hubo que pasarlos a
+  `PuntoSerie[]` y a diez años de historia (`HISTORIA` en `eeuu.ts`) para que
+  "5 años" significara algo.
+- **`expandido` sirve para mostrar lo que no entra en el card.** La torta de
+  ETF mantiene el anillo de seis más "Otros" —once colores vecinos no se
+  separan, la decisión está tomada— pero en grande la referencia lista los once
+  sectores con su peso.
+
+**Qué queda afuera:** TradingView (trae su propio control de rango y su marca) y
+los sparklines que viven dentro de algo que ya es clickeable — las filas del
+ranking de equity linkean a la ficha del papel, y los tiles de macro ya abren
+`SeriesModal`.
+
 ## La fuente al pie de cada gráfico
 
 Bauty lo pidió explícito y es la regla del `Card` llevada hasta el final: **todo

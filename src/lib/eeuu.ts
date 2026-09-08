@@ -375,16 +375,31 @@ export interface IndicadorUsa {
   nota: string;
   /** Hacia dónde es "mejor": tiñe el cambio de verde o rojo. */
   mejor: "alto" | "bajo" | "neutro";
-  /** Últimos puntos para el sparkline. */
-  serie: number[];
+  /**
+   * La serie del indicador, con fecha. El tile dibuja la miniatura con los
+   * últimos puntos; el modal que se abre al tocarla necesita las fechas para
+   * poder recortar por rango, así que se guarda entera y no como `number[]`.
+   */
+  serie: PuntoSerie[];
   /** Término del glosario que explica el indicador, si existe. */
   termino?: string;
 }
 
-const SPARK = 24;
+/** Puntos que dibuja la miniatura del tile. */
+export const SPARK = 24;
 
-function spark(s: PuntoSerie[] | null | undefined): number[] {
-  return (s ?? []).slice(-SPARK).map((p) => p.valor);
+/** Cuánta historia viaja para el modal: diez años de datos mensuales. */
+const HISTORIA = 130;
+
+/**
+ * La serie que viaja al tile.
+ *
+ * Se mandan hasta diez años y no los 24 puntos de la miniatura: el sparkline
+ * usa la cola —`ultimos()` en el componente— y el modal necesita el resto para
+ * que "5 años" signifique algo. Son unos pocos KB por indicador.
+ */
+function spark(s: PuntoSerie[] | null | undefined): PuntoSerie[] {
+  return (s ?? []).slice(-HISTORIA);
 }
 
 /**
@@ -394,7 +409,7 @@ function spark(s: PuntoSerie[] | null | undefined): number[] {
  * en ascenso perpetuo al lado de un "5,0%" hace creer que la variación se está
  * acelerando cuando puede estar cayendo.
  */
-function sparkIa(s: PuntoSerie[] | null | undefined): number[] {
+function sparkIa(s: PuntoSerie[] | null | undefined): PuntoSerie[] {
   return spark(serieInteranual(s));
 }
 
@@ -460,7 +475,7 @@ export async function getActividadUsa(): Promise<IndicadorUsa[]> {
       nota: "Semanal: el indicador de empleo más fresco. Arriba de 300 mil enciende alarmas.",
       mejor: "bajo",
       frecuencia: "semanal",
-      serie: spark(claims).map((v) => v / 1000),
+      serie: spark(claims).map((p) => ({ ...p, valor: p.valor / 1000 })),
     },
     {
       clave: "SALARIOS",
@@ -558,7 +573,7 @@ export async function getCondicionesFinancieras(): Promise<IndicadorUsa[]> {
       mejor: "bajo",
       frecuencia: "diaria",
       termino: "Spread high yield",
-      serie: spark(hy).map((v) => v * 100),
+      serie: spark(hy).map((p) => ({ ...p, valor: p.valor * 100 })),
     },
     {
       clave: "NFCI",
@@ -596,7 +611,7 @@ export async function getCondicionesFinancieras(): Promise<IndicadorUsa[]> {
       mejor: "neutro",
       frecuencia: "semanal",
       termino: "Quantitative tightening",
-      serie: spark(balance).map((v) => v / 1000),
+      serie: spark(balance).map((p) => ({ ...p, valor: p.valor / 1000 })),
     },
   ];
 }

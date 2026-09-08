@@ -4,6 +4,8 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { SECTOR_LABEL } from "@/lib/equity-sectores";
 import { fmtNumero } from "@/lib/equity-formato";
 import type { Sector } from "@/lib/equity-sectores";
+import GraficoExpandible from "@/components/GraficoExpandible";
+import { CREDITOS } from "@/lib/fuentes-credito";
 
 /**
  * Composición sectorial de un fondo.
@@ -30,10 +32,14 @@ const GRIS_OTROS = "#64748b";
 
 const VISIBLES = 6;
 
-export default function TortaSectores({
+function Grafico({
   sectores,
+  alto,
+  expandido,
 }: {
   sectores: { sector: Sector; peso: number }[];
+  alto: number;
+  expandido: boolean;
 }) {
   if (sectores.length === 0) return null;
 
@@ -56,9 +62,22 @@ export default function TortaSectores({
       : []),
   ];
 
+  // En grande, el anillo sigue siendo el de seis más "Otros" —once colores
+  // vecinos no se separan y la decisión está tomada—, pero la referencia lista
+  // los once sectores con su peso: eso es lo que no entra en el card.
+  const referencia = expandido
+    ? [
+        ...sectores.map((x, i) => ({
+          nombre: SECTOR_LABEL[x.sector],
+          peso: x.peso,
+          color: i < VISIBLES ? COLORES[i] : GRIS_OTROS,
+        })),
+      ]
+    : datos;
+
   return (
     <div className="flex items-center gap-5">
-      <div className="w-[168px] h-[168px] shrink-0">
+      <div style={{ width: alto, height: alto }} className="shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -84,8 +103,8 @@ export default function TortaSectores({
       </div>
 
       {/* Referencia con etiqueta directa: la identidad nunca depende del color solo */}
-      <ul className="space-y-1.5 min-w-0">
-        {datos.map((d) => (
+      <ul className="space-y-1.5 min-w-0 flex-1">
+        {referencia.map((d) => (
           <li key={d.nombre} className="flex items-center gap-2">
             <span
               className="w-2.5 h-2.5 rounded-sm shrink-0"
@@ -99,5 +118,29 @@ export default function TortaSectores({
         ))}
       </ul>
     </div>
+  );
+}
+
+export default function TortaSectores({
+  sectores,
+  nombre,
+}: {
+  sectores: { sector: Sector; peso: number }[];
+  /** El fondo del que es esta composición, para titular el modal. */
+  nombre?: string;
+}) {
+  return (
+    <GraficoExpandible
+      titulo={nombre ? `Composición sectorial de ${nombre}` : "Composición sectorial"}
+      nota="El anillo agrupa del séptimo sector en adelante; en grande, la referencia los lista todos."
+      creditos={[CREDITOS.yahoo]}
+      extra="Tenencias y composición sectorial que publica el emisor del fondo, con el rezago con que las informa."
+      alto={168}
+      altoModal={320}
+    >
+      {({ alto, expandido }) => (
+        <Grafico sectores={sectores} alto={alto} expandido={expandido} />
+      )}
+    </GraficoExpandible>
   );
 }

@@ -118,6 +118,7 @@ export default function CurvaSoberanos({
   return (
     <CurvaNS
       series={series}
+      titulo="Curva de soberanos hard-dollar"
       referencias={referencias}
       vacio="Sin precios cargados. Usá ↻ Actualizar para traerlos de las fuentes."
     >

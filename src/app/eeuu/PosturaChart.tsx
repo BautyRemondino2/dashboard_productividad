@@ -3,7 +3,8 @@
 import {
   Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, XAxis, YAxis,
 } from "recharts";
-import { GRIS, REJILLA, TENUE, escalaLinda, fmtNum, mesCorto } from "./tokens-grafico";
+import { FUENTE_POSTURA, GRIS, REJILLA, TENUE, escalaLinda, fmtNum, mesCorto } from "./tokens-grafico";
+import GraficoExpandible, { RANGOS_MENSUALES } from "@/components/GraficoExpandible";
 
 export interface FilaPostura {
   fecha: string;
@@ -19,7 +20,7 @@ export interface FilaPostura {
  * del cero está, no cuánto vale exactamente. El valor exacto está arriba, en
  * la cuenta.
  */
-export default function PosturaChart({ filas, alto = 150 }: { filas: FilaPostura[]; alto?: number }) {
+function Grafico({ filas, alto = 150 }: { filas: FilaPostura[]; alto?: number }) {
   if (filas.length < 2) return null;
 
   const valores = filas.map((f) => f.real);
@@ -72,5 +73,23 @@ export default function PosturaChart({ filas, alto = 150 }: { filas: FilaPostura
         </AreaChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+export default function PosturaChart({ filas, alto = 150 }: { filas: FilaPostura[]; alto?: number }) {
+  return (
+    <GraficoExpandible
+      titulo="Postura de la Fed"
+      nota="Tasa real = efectiva − PCE núcleo · de qué lado del cero está"
+      creditos={FUENTE_POSTURA.creditos}
+      extra={FUENTE_POSTURA.extra}
+      filas={filas}
+      fechaDe={(f) => f.fecha}
+      rangos={RANGOS_MENSUALES}
+      alto={alto}
+      altoModal={400}
+    >
+      {({ filas, alto }) => <Grafico filas={filas} alto={alto} />}
+    </GraficoExpandible>
   );
 }

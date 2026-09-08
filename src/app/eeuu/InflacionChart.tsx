@@ -3,7 +3,8 @@
 import {
   CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis,
 } from "recharts";
-import { GRIS, HOY, META, NUCLEO, REJILLA, escalaLinda, fmtNum, mesCorto } from "./tokens-grafico";
+import { FUENTE_INFLACION, GRIS, HOY, META, NUCLEO, REJILLA, escalaLinda, fmtNum, mesCorto } from "./tokens-grafico";
+import GraficoExpandible, { RANGOS_MENSUALES } from "@/components/GraficoExpandible";
 
 export interface FilaInflacion {
   fecha: string;
@@ -23,7 +24,7 @@ export interface FilaInflacion {
  * La línea del 2% no es decoración: es el único nivel contra el que estos tres
  * números significan algo.
  */
-export default function InflacionChart({
+function Grafico({
   filas,
   alto = 230,
 }: {
@@ -76,5 +77,32 @@ export default function InflacionChart({
         </LineChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+/**
+ * Lo que ve la página: el gráfico dentro del card, y el mismo gráfico en grande
+ * al tocarlo. El card muestra la serie entera; el modal deja elegir el tramo.
+ */
+export default function InflacionChart({
+  filas,
+  alto = 230,
+}: {
+  filas: FilaInflacion[];
+  alto?: number;
+}) {
+  return (
+    <GraficoExpandible
+      titulo="Inflación en EE.UU."
+      nota="Interanual · la meta de la Fed es 2% sobre el PCE núcleo"
+      creditos={FUENTE_INFLACION.creditos}
+      extra={FUENTE_INFLACION.extra}
+      filas={filas}
+      fechaDe={(f) => f.fecha}
+      rangos={RANGOS_MENSUALES}
+      alto={alto}
+    >
+      {({ filas, alto }) => <Grafico filas={filas} alto={alto} />}
+    </GraficoExpandible>
   );
 }

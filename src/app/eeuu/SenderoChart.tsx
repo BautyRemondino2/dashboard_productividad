@@ -3,7 +3,8 @@
 import {
   CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis,
 } from "recharts";
-import { GRIS, HOY, REJILLA, TENUE, escalaLinda, fmtNum, mesCorto } from "./tokens-grafico";
+import { FUENTE_SENDERO, GRIS, HOY, REJILLA, TENUE, escalaLinda, fmtNum, mesCorto } from "./tokens-grafico";
+import GraficoExpandible from "@/components/GraficoExpandible";
 
 export interface FilaSendero {
   mes: string;
@@ -24,7 +25,7 @@ export interface FilaSendero {
  * implícito arriba: es donde efectivamente se decide, el resto de los meses sólo
  * arrastran lo que ya pasó.
  */
-export default function SenderoChart({
+function Grafico({
   filas,
   effrHoy,
   alto = 220,
@@ -97,5 +98,32 @@ export default function SenderoChart({
         </LineChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+/**
+ * Sin rango de fechas: el sendero mira para adelante. Los contratos que hay son
+ * los que hay, y recortarlos sería esconder reuniones.
+ */
+export default function SenderoChart({
+  filas,
+  effrHoy,
+  alto = 220,
+}: {
+  filas: FilaSendero[];
+  effrHoy: number;
+  alto?: number;
+}) {
+  return (
+    <GraficoExpandible
+      titulo="Sendero de tasa de la Fed"
+      nota="Lo que descuentan los futuros de fondos federales, mes a mes"
+      creditos={FUENTE_SENDERO.creditos}
+      extra={FUENTE_SENDERO.extra}
+      alto={alto}
+      altoModal={420}
+    >
+      {({ alto }) => <Grafico filas={filas} effrHoy={effrHoy} alto={alto} />}
+    </GraficoExpandible>
   );
 }

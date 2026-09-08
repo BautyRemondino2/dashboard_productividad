@@ -6,6 +6,46 @@
  * del mismo panel. Están duplicados y no importados porque `CurvaNS` los tiene
  * privados; si aparece un tercer consumidor, conviene subirlos a `@/components`.
  */
+import { CREDITOS, type Credito } from "@/lib/fuentes-credito";
+
+/**
+ * De dónde sale cada gráfico de la sección.
+ *
+ * Vive acá y no en cada panel porque ahora se usa dos veces: al pie del card y
+ * al pie del modal que se abre al tocar el gráfico. Dos copias del mismo texto
+ * se despegan sola la primera vez que se corrige una.
+ */
+export interface FuenteGrafico {
+  creditos: Credito[];
+  extra: string;
+}
+
+export const FUENTE_CURVA: FuenteGrafico = {
+  creditos: [CREDITOS.fred],
+  extra: "Vencimientos constantes (DGS1M…DGS30), publicados por el Tesoro de EE.UU.",
+};
+
+export const FUENTE_INFLACION: FuenteGrafico = {
+  creditos: [CREDITOS.fred],
+  extra: "CPI y PCE del BLS y el BEA, con el rezago de publicación de cada uno.",
+};
+
+export const FUENTE_POSTURA: FuenteGrafico = {
+  creditos: [CREDITOS.fred],
+  extra: "Tasa efectiva de fondos federales contra el PCE núcleo interanual.",
+};
+
+export const FUENTE_SENDERO: FuenteGrafico = {
+  creditos: [CREDITOS.yahoo],
+  extra:
+    "Futuros de fondos federales de CME. El sendero se resuelve por mínimos cuadrados sobre los contratos, la misma cuenta que el FedWatch.",
+};
+
+export const FUENTE_TILE: FuenteGrafico = {
+  creditos: [CREDITOS.fred],
+  extra: "Series publicadas por el BLS, el BEA, la Fed y el Census, con el rezago de cada una.",
+};
+
 export const GRIS = "#64748b";
 export const TENUE = "#475569";
 export const REJILLA = "#16233a";

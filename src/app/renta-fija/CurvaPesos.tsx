@@ -45,6 +45,7 @@ export default function CurvaPesos({
   return (
     <CurvaNS
       series={[{ id: "pesos", etiqueta, color, puntos }]}
+      titulo={`Curva ${etiqueta.toLowerCase()}`}
       notaDerecha={`${curva.referencia.etiqueta} ${fmt(curva.referencia.valor, 4)} · ${fecha(curva.referencia.fecha)}`}
       vacio="Sin precios en este momento. Los bonos en pesos se piden en vivo a data912."
     />

@@ -165,7 +165,7 @@ export default function EtfClient({
               </header>
 
               <div className="p-4 grid md:grid-cols-[auto_1fr] gap-6">
-                <TortaSectores sectores={activo.sectores} />
+                <TortaSectores sectores={activo.sectores} nombre={activo.ticker} />
                 <Fuente
                   creditos={[CREDITOS.yahoo]}
                   extra="Tenencias y composición sectorial que publica el emisor del fondo, con el rezago con que las informa."

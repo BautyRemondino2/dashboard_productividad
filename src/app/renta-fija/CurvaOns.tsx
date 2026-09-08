@@ -72,6 +72,7 @@ export default function CurvaOns({
 
   return (
     <CurvaNS
+      titulo="Curva de obligaciones negociables"
       series={[
         {
           id: "soberanos",

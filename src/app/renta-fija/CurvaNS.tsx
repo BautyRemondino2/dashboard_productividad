@@ -5,6 +5,8 @@ import {
   CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, XAxis, YAxis, ZAxis,
 } from "recharts";
 import { ajustarNelsonSiegel, type AjusteNS } from "@/lib/nelson-siegel";
+import GraficoExpandible from "@/components/GraficoExpandible";
+import { CREDITOS } from "@/lib/fuentes-credito";
 
 /**
  * El gráfico de curva del dashboard: la nube de bonos y el Nelson-Siegel encima.
@@ -107,6 +109,7 @@ export interface Referencia {
 export default function CurvaNS({
   series,
   alto = 320,
+  titulo,
   notaDerecha,
   referencias,
   vacio = "Sin precios en este momento.",
@@ -114,6 +117,8 @@ export default function CurvaNS({
 }: {
   series: SerieCurva[];
   alto?: number;
+  /** Cómo se llama esta curva cuando se abre en grande. */
+  titulo?: string;
   /** Texto chico arriba a la derecha: el índice con que se ajustó, la fecha. */
   notaDerecha?: string;
   /**
@@ -222,172 +227,187 @@ export default function CurvaNS({
         {notaDerecha && <span className="text-[10px] text-meta-suave ml-auto">{notaDerecha}</span>}
       </div>
 
-      <div style={{ height: alto }} className="-ml-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 12, right: 18, bottom: 16, left: 2 }}>
-            <CartesianGrid stroke={REJILLA} strokeDasharray="2 4" vertical={false} />
-            <XAxis
-              type="number"
-              dataKey="duration"
-              name="Duration"
-              domain={[escalaX.desde, escalaX.hasta]}
-              ticks={escalaX.ticks}
-              tick={{ fill: GRIS, fontSize: 10 }}
-              tickLine={false}
-              axisLine={{ stroke: REJILLA }}
-              tickFormatter={(v: number) => fmt(v, escalaX.decimales)}
-              label={{
-                value: "duration (años)",
-                position: "insideBottomRight",
-                offset: -10,
-                fill: TENUE,
-                fontSize: 10,
-              }}
-            />
-            <YAxis
-              type="number"
-              dataKey="tir"
-              name="TIR"
-              domain={[escalaY.desde, escalaY.hasta]}
-              ticks={escalaY.ticks}
-              tick={{ fill: GRIS, fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v: number) => `${fmt(v, escalaY.decimales)}%`}
-              width={46}
-            />
-            <ZAxis range={[70, 70]} />
-
-            {/* Referencias de contexto, detrás de todo: el nivel de una tasa
-                conocida contra el que se lee la altura de la curva */}
-            {referencias?.map((r, i) => (
-              <ReferenceLine
-                key={`ref-${i}`}
-                y={r.y}
-                stroke={r.color ?? TENUE}
-                strokeDasharray="5 4"
-                strokeOpacity={0.75}
+      {/* El gráfico y su barra de detalle van juntos adentro del expandible:
+          en grande, pasar por un punto tiene que seguir mostrando su TIR. */}
+      <GraficoExpandible
+        titulo={titulo ?? "Curva de rendimientos"}
+        nota={notaDerecha}
+        creditos={[CREDITOS.data912]}
+        extra="Precios de la rueda. Las TIR y las duration las calcula el dashboard sobre los cronogramas del repo; la línea es el ajuste de Nelson-Siegel, no los puntos unidos."
+        alto={alto}
+        altoModal={520}
+      >
+        {({ alto }) => (
+          <>
+        <div style={{ height: alto }} className="-ml-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 12, right: 18, bottom: 16, left: 2 }}>
+              <CartesianGrid stroke={REJILLA} strokeDasharray="2 4" vertical={false} />
+              <XAxis
+                type="number"
+                dataKey="duration"
+                name="Duration"
+                domain={[escalaX.desde, escalaX.hasta]}
+                ticks={escalaX.ticks}
+                tick={{ fill: GRIS, fontSize: 10 }}
+                tickLine={false}
+                axisLine={{ stroke: REJILLA }}
+                tickFormatter={(v: number) => fmt(v, escalaX.decimales)}
                 label={{
-                  value: r.etiqueta,
-                  position: "insideTopRight",
-                  fill: r.color ?? GRIS,
+                  value: "duration (años)",
+                  position: "insideBottomRight",
+                  offset: -10,
+                  fill: TENUE,
                   fontSize: 10,
                 }}
               />
-            ))}
+              <YAxis
+                type="number"
+                dataKey="tir"
+                name="TIR"
+                domain={[escalaY.desde, escalaY.hasta]}
+                ticks={escalaY.ticks}
+                tick={{ fill: GRIS, fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => `${fmt(v, escalaY.decimales)}%`}
+                width={46}
+              />
+              <ZAxis range={[70, 70]} />
 
-            {/* Guías del punto que se está mirando: la lectura va sobre el eje */}
-            {punto && (
-              <ReferenceLine x={punto.duration} stroke={TENUE} strokeDasharray="3 3" />
-            )}
-            {punto && <ReferenceLine y={punto.tir} stroke={TENUE} strokeDasharray="3 3" />}
-
-            {/* Primero las líneas del ajuste, para que las marcas queden encima */}
-            {ajustes.map(({ serie, ajuste }) =>
-              ajuste ? (
-                <Scatter
-                  key={`ns-${serie.id}`}
-                  data={ajuste.curva}
-                  line={{ stroke: serie.color, strokeWidth: 2, strokeLinecap: "round" }}
-                  lineType="joint"
-                  isAnimationActive={false}
-                  shape={() => <g />}
-                />
-              ) : null
-            )}
-
-            {series.map((s) =>
-              s.soloLinea ? null : (
-                <Scatter
-                  key={s.id}
-                  data={s.puntos}
-                  isAnimationActive={false}
-                  shape={(props: unknown) => {
-                    const { cx, cy, payload } = props as { cx: number; cy: number; payload: PuntoNube };
-                    const esta = activo === payload.ticker;
-                    const etiquetar = etiquetarTodos || esta || destacados.has(payload.ticker);
-                    // Contra el piso la etiqueta se montaba sobre los cortes del
-                    // eje —X30S6 quedaba encima del 0—, y contra el techo se
-                    // cortaba: en los bordes manda el borde, no el vecino
-                    const abajo =
-                      cy < 26 ? true : cy > alto - 52 ? false : etiquetaAbajo.has(payload.ticker);
-                    return (
-                      <g
-                        onMouseEnter={() => setActivo(payload.ticker)}
-                        onMouseLeave={() => setActivo(null)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        {/* Área de contacto más grande que la marca */}
-                        <circle cx={cx} cy={cy} r={14} fill="transparent" />
-                        {/* El aro del color del fondo separa las marcas que se tocan */}
-                        <circle
-                          cx={cx}
-                          cy={cy}
-                          r={esta ? 7 : 5}
-                          fill={s.color}
-                          fillOpacity={payload.atenuado ? 0.3 : 1}
-                          stroke={FONDO}
-                          strokeWidth={2}
-                        />
-                        {etiquetar && (
-                          <text
-                            x={cx}
-                            y={cy + (abajo ? 19 : -12)}
-                            textAnchor="middle"
-                            fill={esta ? TINTA : GRIS}
-                            fontSize={10}
-                            /* Halo del color del fondo: en la nube del tramo
-                               corto la etiqueta cae sobre otras marcas, y sin
-                               esto se lee la mitad de las letras */
-                            stroke={FONDO}
-                            strokeWidth={3}
-                            paintOrder="stroke"
-                          >
-                            {payload.ticker}
-                          </text>
-                        )}
-                      </g>
-                    );
+              {/* Referencias de contexto, detrás de todo: el nivel de una tasa
+                  conocida contra el que se lee la altura de la curva */}
+              {referencias?.map((r, i) => (
+                <ReferenceLine
+                  key={`ref-${i}`}
+                  y={r.y}
+                  stroke={r.color ?? TENUE}
+                  strokeDasharray="5 4"
+                  strokeOpacity={0.75}
+                  label={{
+                    value: r.etiqueta,
+                    position: "insideTopRight",
+                    fill: r.color ?? GRIS,
+                    fontSize: 10,
                   }}
                 />
-              )
-            )}
-          </ScatterChart>
-        </ResponsiveContainer>
-      </div>
+              ))}
 
-      <div className="min-h-[44px] rounded-lg border border-borde bg-encabezado/40 px-4 py-2.5">
-        {punto ? (
-          <div className="flex items-baseline gap-x-5 gap-y-1 flex-wrap">
-            <span className="text-[13px] font-semibold text-titulo">{punto.ticker}</span>
-            {punto.nombre && <span className="text-[11px] text-secundario">{punto.nombre}</span>}
-            {punto.detalle?.map((d) => (
-              <span key={d.label} className="text-[11px] text-secundario">
-                {d.label} <span className="text-cuerpo tabular-nums">{d.valor}</span>
-              </span>
-            ))}
-            <span className="text-[11px] text-secundario">
-              TIR <span className="text-cuerpo tabular-nums">{fmt(punto.tir)}%</span>
-            </span>
-            <span className="text-[11px] text-secundario">
-              duration <span className="text-cuerpo tabular-nums">{fmt(punto.duration)} años</span>
-            </span>
-            {residuoActivo && (
-              <span className="text-[11px] text-secundario">
-                contra la curva{" "}
-                <span className="text-cuerpo tabular-nums">
-                  {residuoActivo.pb > 0 ? "+" : ""}
-                  {Math.round(residuoActivo.pb)} pb
+              {/* Guías del punto que se está mirando: la lectura va sobre el eje */}
+              {punto && (
+                <ReferenceLine x={punto.duration} stroke={TENUE} strokeDasharray="3 3" />
+              )}
+              {punto && <ReferenceLine y={punto.tir} stroke={TENUE} strokeDasharray="3 3" />}
+
+              {/* Primero las líneas del ajuste, para que las marcas queden encima */}
+              {ajustes.map(({ serie, ajuste }) =>
+                ajuste ? (
+                  <Scatter
+                    key={`ns-${serie.id}`}
+                    data={ajuste.curva}
+                    line={{ stroke: serie.color, strokeWidth: 2, strokeLinecap: "round" }}
+                    lineType="joint"
+                    isAnimationActive={false}
+                    shape={() => <g />}
+                  />
+                ) : null
+              )}
+
+              {series.map((s) =>
+                s.soloLinea ? null : (
+                  <Scatter
+                    key={s.id}
+                    data={s.puntos}
+                    isAnimationActive={false}
+                    shape={(props: unknown) => {
+                      const { cx, cy, payload } = props as { cx: number; cy: number; payload: PuntoNube };
+                      const esta = activo === payload.ticker;
+                      const etiquetar = etiquetarTodos || esta || destacados.has(payload.ticker);
+                      // Contra el piso la etiqueta se montaba sobre los cortes del
+                      // eje —X30S6 quedaba encima del 0—, y contra el techo se
+                      // cortaba: en los bordes manda el borde, no el vecino
+                      const abajo =
+                        cy < 26 ? true : cy > alto - 52 ? false : etiquetaAbajo.has(payload.ticker);
+                      return (
+                        <g
+                          onMouseEnter={() => setActivo(payload.ticker)}
+                          onMouseLeave={() => setActivo(null)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {/* Área de contacto más grande que la marca */}
+                          <circle cx={cx} cy={cy} r={14} fill="transparent" />
+                          {/* El aro del color del fondo separa las marcas que se tocan */}
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={esta ? 7 : 5}
+                            fill={s.color}
+                            fillOpacity={payload.atenuado ? 0.3 : 1}
+                            stroke={FONDO}
+                            strokeWidth={2}
+                          />
+                          {etiquetar && (
+                            <text
+                              x={cx}
+                              y={cy + (abajo ? 19 : -12)}
+                              textAnchor="middle"
+                              fill={esta ? TINTA : GRIS}
+                              fontSize={10}
+                              /* Halo del color del fondo: en la nube del tramo
+                                 corto la etiqueta cae sobre otras marcas, y sin
+                                 esto se lee la mitad de las letras */
+                              stroke={FONDO}
+                              strokeWidth={3}
+                              paintOrder="stroke"
+                            >
+                              {payload.ticker}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    }}
+                  />
+                )
+              )}
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="min-h-[44px] rounded-lg border border-borde bg-encabezado/40 px-4 py-2.5">
+          {punto ? (
+            <div className="flex items-baseline gap-x-5 gap-y-1 flex-wrap">
+              <span className="text-[13px] font-semibold text-titulo">{punto.ticker}</span>
+              {punto.nombre && <span className="text-[11px] text-secundario">{punto.nombre}</span>}
+              {punto.detalle?.map((d) => (
+                <span key={d.label} className="text-[11px] text-secundario">
+                  {d.label} <span className="text-cuerpo tabular-nums">{d.valor}</span>
                 </span>
+              ))}
+              <span className="text-[11px] text-secundario">
+                TIR <span className="text-cuerpo tabular-nums">{fmt(punto.tir)}%</span>
               </span>
-            )}
-          </div>
-        ) : (
-          <p className="text-[11px] text-meta">
-            Pasá el mouse por un punto para ver su TIR y cuánto se aparta de la curva.
-          </p>
+              <span className="text-[11px] text-secundario">
+                duration <span className="text-cuerpo tabular-nums">{fmt(punto.duration)} años</span>
+              </span>
+              {residuoActivo && (
+                <span className="text-[11px] text-secundario">
+                  contra la curva{" "}
+                  <span className="text-cuerpo tabular-nums">
+                    {residuoActivo.pb > 0 ? "+" : ""}
+                    {Math.round(residuoActivo.pb)} pb
+                  </span>
+                </span>
+              )}
+            </div>
+          ) : (
+            <p className="text-[11px] text-meta">
+              Pasá el mouse por un punto para ver su TIR y cuánto se aparta de la curva.
+            </p>
+          )}
+        </div>
+          </>
         )}
-      </div>
+      </GraficoExpandible>
 
       {/* La curva de referencia no lleva ficha: no es la que se está mirando */}
       {ajustes.map(({ serie, ajuste }) =>

@@ -47,6 +47,7 @@ export default function CurvaTasaFija({
   return (
     <CurvaNS
       series={[{ id: "tasafija", etiqueta: "Lecaps y Boncaps", color: COLOR, puntos }]}
+      titulo="Curva de tasa fija en pesos"
       vacio="Sin precios en este momento. Las letras se piden en vivo a data912."
     >
       {datos.puntos.length > 0 && (

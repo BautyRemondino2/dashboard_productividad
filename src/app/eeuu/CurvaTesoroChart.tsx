@@ -3,7 +3,8 @@
 import {
   CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, XAxis, YAxis,
 } from "recharts";
-import { ANIO, GRIS, HOY, MES, REJILLA, escalaLinda, fmtNum } from "./tokens-grafico";
+import { ANIO, FUENTE_CURVA, GRIS, HOY, MES, REJILLA, escalaLinda, fmtNum } from "./tokens-grafico";
+import GraficoExpandible from "@/components/GraficoExpandible";
 import type { PuntoCurva } from "@/lib/eeuu";
 
 /**
@@ -19,7 +20,7 @@ import type { PuntoCurva } from "@/lib/eeuu";
  * lo que tiene que ver con la política monetaria— se amontonan contra el
  * origen y el gráfico queda dominado por el tramo 20-30, que casi no se mueve.
  */
-export default function CurvaTesoroChart({
+function Grafico({
   puntos,
   alto = 240,
 }: {
@@ -78,5 +79,31 @@ export default function CurvaTesoroChart({
         </LineChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+/**
+ * Sin selector de rango a propósito: esto no es una serie de tiempo sino un
+ * corte por plazo, y las tres líneas ya son las tres fotos que importan (hoy,
+ * hace un mes, hace un año). "Últimos 90 días" no significaría nada acá.
+ */
+export default function CurvaTesoroChart({
+  puntos,
+  alto = 240,
+}: {
+  puntos: PuntoCurva[];
+  alto?: number;
+}) {
+  return (
+    <GraficoExpandible
+      titulo="Curva del Tesoro de EE.UU."
+      nota="Rendimiento por plazo · hoy contra hace un mes y hace un año"
+      creditos={FUENTE_CURVA.creditos}
+      extra={FUENTE_CURVA.extra}
+      alto={alto}
+      altoModal={460}
+    >
+      {({ alto }) => <Grafico puntos={puntos} alto={alto} />}
+    </GraficoExpandible>
   );
 }

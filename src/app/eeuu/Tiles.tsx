@@ -1,4 +1,4 @@
-import Sparkline from "@/components/Sparkline";
+import TileGrafico from "./TileGrafico";
 import LinkGlosario from "./LinkGlosario";
 import { fmtFecha } from "@/lib/equity-formato";
 import type { IndicadorUsa } from "@/lib/eeuu";
@@ -103,8 +103,8 @@ export default function Tiles({ indicadores }: { indicadores: IndicadorUsa[] }) 
                 {fmtValor(ind.valor, ind.unidad)}
               </div>
             </div>
-            <div className="shrink-0 pt-0.5" style={{ color: colorSpark(ind) }}>
-              <Sparkline data={ind.serie} color={colorSpark(ind)} width={64} height={22} />
+            <div className="shrink-0 pt-0.5">
+              <TileGrafico ind={ind} color={colorSpark(ind)} />
             </div>
           </div>
 
