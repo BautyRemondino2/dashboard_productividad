@@ -20,6 +20,7 @@ import { getFinviz } from "@/lib/finviz";
 import { estimarWacc, type Wacc } from "@/lib/equity-ficha";
 import { calcularRiesgo, type Riesgo } from "@/lib/equity-riesgo";
 import { armarValuacion, type Referencia, type Valuacion } from "@/lib/equity-valuacion";
+import { getSerieSec, type SerieSec } from "@/lib/sec";
 
 /** El ETF contra el que se mide todo: el mercado estadounidense. */
 const BENCHMARK = "SPY";
@@ -112,12 +113,33 @@ function crecimientoTendencial(puntos: { periodo: string; valor: number | null }
  * capital de trabajo—, pero es el único número prospectivo que hay y la ficha
  * lo dice donde se muestra.
  */
-function referenciasDe(serie: SerieFinanciera, consenso: number | null): Referencia[] {
+function referenciasDe(
+  serie: SerieFinanciera,
+  consenso: number | null,
+  sec: SerieSec | null
+): Referencia[] {
   const cerrados = serie.periodos.filter((p) => !p.esUdm);
-  const porFcf = crecimientoTendencial(cerrados.map((p) => ({ periodo: p.periodo, valor: p.fcf })));
-  const porVentas = crecimientoTendencial(
-    cerrados.map((p) => ({ periodo: p.periodo, valor: p.ventas }))
-  );
+
+  /**
+   * La tendencia se calcula sobre la serie más larga que haya.
+   *
+   * Yahoo llega a cinco ejercicios y con cinco puntos la pendiente depende
+   * demasiado de las puntas: la caja libre de Apple daba −3,9% anual cuando lo
+   * que hizo fue quedarse quieta. La SEC devuelve todo lo reportado —diecinueve
+   * ejercicios en Apple— y sobre esa serie la tendencia significa algo.
+   */
+  const largos = (sec?.ejercicios ?? []).filter((e) => e.fcf != null);
+  const usaSec = largos.length > cerrados.length;
+  const fuenteSerie = usaSec ? "SEC" : "Yahoo";
+  const cuantos = usaSec ? largos.length : cerrados.length;
+
+  const porFcf = usaSec
+    ? crecimientoTendencial(largos.map((e) => ({ periodo: e.año, valor: e.fcf })))
+    : crecimientoTendencial(cerrados.map((p) => ({ periodo: p.periodo, valor: p.fcf })));
+
+  const porVentas = usaSec
+    ? crecimientoTendencial((sec?.ejercicios ?? []).map((e) => ({ periodo: e.año, valor: e.ventas })))
+    : crecimientoTendencial(cerrados.map((p) => ({ periodo: p.periodo, valor: p.ventas })));
 
   const refs: Referencia[] = [];
   if (consenso != null) {
@@ -130,13 +152,13 @@ function referenciasDe(serie: SerieFinanciera, consenso: number | null): Referen
   if (porFcf != null) {
     refs.push({
       nombre: "Lo que viene haciendo",
-      fuente: `tendencia de la caja libre, ${cerrados.length} ejercicios`,
+      fuente: `tendencia de la caja libre, ${cuantos} ejercicios · ${fuenteSerie}`,
       crecimiento: porFcf,
     });
   } else if (porVentas != null) {
     refs.push({
       nombre: "Lo que viene haciendo",
-      fuente: `tendencia de las ventas, ${cerrados.length} ejercicios (la caja libre no alcanza para una serie)`,
+      fuente: `tendencia de las ventas, ${cuantos} ejercicios · ${fuenteSerie} (la caja libre no alcanza para una serie)`,
       crecimiento: porVentas,
     });
   }
@@ -172,10 +194,11 @@ const SIN_FCF: Partial<Record<Ficha["sector"], string>> = {
 };
 
 export async function valuacionDe(ticker: string, ficha: Ficha): Promise<Valuacion | null> {
-  const [serie, wacc, finviz] = await Promise.all([
+  const [serie, wacc, finviz, sec] = await Promise.all([
     getSerieFinanciera(ticker),
     waccDe(ticker, ficha),
     getFinviz(ticker).catch(() => null),
+    getSerieSec(ticker).catch(() => null),
   ]);
 
   const f = ficha.fundamentals;
@@ -197,7 +220,7 @@ export async function valuacionDe(ticker: string, ficha: Ficha): Promise<Valuaci
     deudaNeta,
     acciones: f.capitalizacion != null && ficha.precio ? f.capitalizacion / ficha.precio : null,
     precio: ficha.precio,
-    referencias: referenciasDe(serie, finviz?.epsProximos5 ?? null),
+    referencias: referenciasDe(serie, finviz?.epsProximos5 ?? null, sec),
     motivoNoAplica: SIN_FCF[ficha.sector] ?? null,
   });
 }

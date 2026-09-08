@@ -104,6 +104,28 @@ Tres modelos según el dato:
    6 h, sin DB. La inflación que el mercado espera para el **mes en curso**, que
    es lo que el IPC de INDEC no puede contestar todavía. Se muestra en `/mercado`
    (`Rem.tsx`), arriba de los tiles.
+   - **El card cruza REM con INDEC** (sep-2026). Antes mostraba sólo la
+     expectativa y esa mitad sola no se puede juzgar: un 1,8% esperado no
+     significa nada hasta saber que el mes pasado midió 2,1%. `src/lib/inflacion.ts`
+     arma la serie continua —el IPC medido sale de `market_series` (ticker `IPC`),
+     el resto del REM— con una regla: **donde hay dato de INDEC manda INDEC**, y el
+     REM sólo completa lo que todavía no se midió. El corte se hace por fecha
+     contra el último mes medido, no por pertenencia al conjunto: la ventana
+     visible (`MESES_MEDIDOS`, 12) recorta la lista y un mes viejo podría volver
+     a entrar dibujado como pronóstico.
+   - Siempre hay un **mes de hueco**: el que acaba de cerrar no tiene IPC todavía
+     (INDEC publica con ~2 semanas de rezago) y lo tapa el REM. Es pronóstico
+     sobre un mes casi terminado, pero pronóstico: va marcado como esperado.
+   - `InflacionMensualChart.tsx` lo dibuja en barras. **Un solo hue a propósito**:
+     es la misma medida en dos regímenes, no dos series, así que lo que separa el
+     dato del pronóstico es el relleno —sólido contra hueco—, que además sobrevive
+     a un daltonismo. El violeta contra celeste que se probó primero falla la
+     separación CVD (ΔE 5,2 en deuteranopía, contra un piso de 8), así que **no
+     usar ese par**. El corte se marca con un `ReferenceArea` tenue sobre los meses
+     esperados y no con una línea vertical, que sobre un eje de categorías cae en
+     el centro de una barra y se lee como si marcara ese mes. La leyenda se dibuja
+     a mano: el `Legend` de recharts sólo pinta cuadrados llenos y dos swatches
+     idénticos no explicarían nada.
    - **No hay API.** Dos caminos probados y descartados: la **API v4.0 del BCRA**
      sólo publica la variable 29 (mediana i.a. esperada a 12 meses), sin sendero
      mensual; y **apis.datos.gob.ar** tiene el dataset del REM completo
@@ -510,6 +532,55 @@ dicen que está gastando en algo que todavía no rinde, y de qué depende la tes
 - **El panel no dice comprar ni vender.** Describe, nombra de qué depende y deja
   la **postura** —campo con chips en la sección 9— al analista. Una máquina de
   reglas con umbrales fijos no puede firmar una recomendación.
+
+### SEC EDGAR: los balances completos (`sec.ts`)
+
+Bauty propuso sumar Google Finance. **No sirve**: cerraron la API en 2012,
+`GOOGLEFINANCE()` sólo corre dentro de Sheets, y la página redirige a
+`/finance/beta/` con markup ofuscado y **1,27 MB por ticker** —treinta veces
+Finviz— para devolver P/E, EPS, beta y empleados, que el dashboard ya tiene.
+Medido, no supuesto.
+
+Lo que sí resolvía el problema de fondo es **la fuente de la que derivan todos
+ellos**: cada 10-K se presenta etiquetado en XBRL y `data.sec.gov` lo devuelve
+como JSON, gratis y sin clave. De Apple salen **19 ejercicios (2007–2025)**
+contra los 5 de Yahoo.
+
+Por qué importaba: la tendencia de la caja libre de Apple sobre los 4 puntos de
+Yahoo daba **−2,7% anual** —un artefacto de la ventana, no un hecho— y con los
+19 de la SEC da **+15,9%**. El DCF inverso comparaba el crecimiento implícito
+contra un número inventado por el tamaño de la muestra.
+
+- **`companyconcept`, no `companyfacts`.** El segundo trae todo en una request
+  pero pesa 3,8 MB en Apple; el primero son 2–18 KB por concepto, seis en
+  paralelo.
+- **No hay un tag único por métrica.** Apple informó ventas como `Revenues`
+  hasta 2018 y como `RevenueFromContractWithCustomerExcludingAssessedTax` desde
+  2019. Hay que recorrer **toda** la cadena de tags y fusionar: cortando en el
+  primero que devuelve algo, la serie quedaba con tres años y catorce huecos.
+- **Cada 10-K reexpresa los dos ejercicios anteriores**, así que el mismo cierre
+  aparece tres veces. Gana la presentación más reciente.
+- **Los splits hay que deducirlos.** EDGAR no los marca. Apple partió 4 a 1 en
+  2020: el 10-K de ese año reexpresó 2018 y 2019 pero 2017 quedó para siempre en
+  términos viejos, y el FCF por acción se desplomaba de US$9,86 a US$3,21 entre
+  dos años en los que no pasó nada. El factor se deduce del **mismo ejercicio
+  informado dos veces con valores distintos**: el cociente es el split y la
+  fecha de la presentación nueva es cuándo se aplicó. Guardarraíl: el cociente
+  tiene que caer dentro del 0,5% de un entero ≥ 2; si no, no se toca nada.
+- **Hechos de duración contra hechos de instante.** Las ventas cubren un período
+  (`start`–`end`), el patrimonio es una foto. Los de duración se filtran a 11–13
+  meses o entran trimestres en una serie anual.
+- **Sólo US GAAP.** Un emisor extranjero bajo IFRS (20-F, 40-F) no tiene estos
+  conceptos: YPF devuelve vacío y Agnico Eagle se corta en 2013, cuando migró.
+  El panel lo dice en pantalla — una serie que termina hace años no está
+  incompleta, está discontinuada.
+- **Nada de EBITDA ni ROIC.** No son conceptos que la empresa reporte sino
+  cuentas que cada analista arma distinto; reconstruirlas de veinte etiquetas
+  sería inventar precisión. Para eso está el cuadro de Yahoo, que llega a cinco
+  años pero viene calculado.
+
+La lectura que sólo aparece con la serie larga: "entre 2007 y 2025 las acciones
+de Apple cayeron 2,8% por año". En cinco años una recompra del 3% no se nota.
 
 ### La serie financiera
 

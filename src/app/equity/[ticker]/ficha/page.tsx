@@ -7,6 +7,7 @@ import { seccionesDe } from "@/lib/equity-ficha";
 import { getComparacion, getFicha, getSerieFinanciera, type Ficha } from "@/lib/equity";
 import { getFichaAnalisis } from "@/lib/equity-ficha-db";
 import { valuacionDe, waccDe } from "@/lib/equity-analisis";
+import { getSerieSec } from "@/lib/sec";
 import { DB_IS_EPHEMERAL } from "@/lib/db";
 import { getFinviz } from "@/lib/finviz";
 import { radiografiar } from "@/lib/finviz-lectura";
@@ -16,6 +17,7 @@ import Logo from "../Logo";
 import FichaClient from "./FichaClient";
 import Radiografia from "./Radiografia";
 import PanelValuacion from "../Valuacion";
+import HistoriaLarga from "./HistoriaLarga";
 import {
   BloqueDeuda,
   BloqueInsiders,
@@ -41,6 +43,24 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
 async function Numeros({ ticker, ficha }: { ticker: string; ficha: Ficha }) {
   const [serie, wacc] = await Promise.all([getSerieFinanciera(ticker), waccDe(ticker, ficha)]);
   return <BloqueNumeros serie={serie} wacc={wacc} />;
+}
+
+/**
+ * La serie completa de la SEC, debajo del cuadro de Yahoo. Va en su propio
+ * Suspense: son seis requests a EDGAR y no tienen por qué demorar el cuadro de
+ * arriba, que sale de una fuente ya cacheada.
+ */
+async function Historia({ ticker }: { ticker: string }) {
+  const serie = await getSerieSec(ticker).catch(() => null);
+  if (!serie) return null;
+  return (
+    <div className="pt-4 mt-4 border-t border-divisor">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-tenue mb-2.5">
+        La historia completa · balances presentados ante la SEC
+      </div>
+      <HistoriaLarga serie={serie} />
+    </div>
+  );
 }
 
 /**
@@ -202,9 +222,14 @@ export default async function FichaAnalisisPage({
         secciones={secciones}
         bloques={{
           numeros: (
-            <Suspense fallback={<Esqueleto alto={430} />}>
-              <Numeros ticker={ticker} ficha={ficha} />
-            </Suspense>
+            <>
+              <Suspense fallback={<Esqueleto alto={430} />}>
+                <Numeros ticker={ticker} ficha={ficha} />
+              </Suspense>
+              <Suspense fallback={<Esqueleto alto={220} />}>
+                <Historia ticker={ticker} />
+              </Suspense>
+            </>
           ),
           deuda: (
             <Suspense fallback={<Esqueleto alto={92} />}>

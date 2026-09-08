@@ -40,6 +40,7 @@ export const CREDITOS = {
   byma: { fuente: "BYMA open data", url: "https://open.bymadata.com.ar" },
   finviz: { fuente: "Finviz", url: "https://finviz.com" },
   indec: { fuente: "INDEC", url: "https://www.indec.gob.ar" },
+  sec: { fuente: "SEC EDGAR", url: "https://www.sec.gov/edgar/searchedgar/companysearch" },
 } as const satisfies Record<string, Credito>;
 
 const DOLARAPI: Credito = { fuente: "dolarapi.com", url: "https://dolarapi.com" };
