@@ -43,10 +43,10 @@ export default function MacroPage() {
         <Panorama />
       </Suspense>
 
-      {/* La inflación esperada del mes en curso: el complemento del IPC del panel,
-          que siempre es del mes cerrado. Va antes de los tiles porque contesta la
-          pregunta que el dato de INDEC deja abierta —cómo viene este mes—. */}
-      <Suspense fallback={<div className="h-[196px] mt-4 rounded-card border border-borde bg-card animate-pulse" />}>
+      {/* La inflación mensual, medida y esperada, en una sola línea de tiempo.
+          Va antes de los tiles porque el IPC del panel es siempre el mes cerrado
+          y acá se ve además cómo viene el mes en curso. */}
+      <Suspense fallback={<div className="h-[424px] mt-4 rounded-card border border-borde bg-card animate-pulse" />}>
         <Rem />
       </Suspense>
 

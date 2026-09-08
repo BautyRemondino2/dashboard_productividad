@@ -1,44 +1,17 @@
 import Card from "@/components/Card";
 import Fuente from "@/components/Fuente";
 import { CREDITOS } from "@/lib/fuentes-credito";
-import { getRem, mesEnCurso, mesLargo, type RemMes } from "@/lib/rem";
+import { getRem, mesEnCurso, mesLargo } from "@/lib/rem";
+import { serieInflacion } from "@/lib/inflacion";
+import InflacionMensualChart from "./InflacionMensualChart";
 
 const pct = (v: number, d = 1) =>
   `${v.toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d })}%`;
 
 const VIOLETA = "oklch(70% 0.11 300)";
 
-/** Un mes del sendero: etiqueta, valor y una barra para leer la forma de un vistazo. */
-function Mes({ dato, tope, actual }: { dato: RemMes; tope: number; actual: boolean }) {
-  return (
-    <div className={`px-4 py-3 min-w-0 ${actual ? "bg-chip" : "bg-card"}`}>
-      <div
-        className={`text-[10px] uppercase tracking-[0.12em] ${actual ? "text-secundario" : "text-tenue"}`}
-      >
-        {dato.etiqueta}
-      </div>
-      <div
-        className={`text-[15px] font-semibold tabular-nums mt-1.5 leading-none ${
-          actual ? "text-num" : "text-cuerpo"
-        }`}
-      >
-        {pct(dato.mediana)}
-      </div>
-      <div className="h-[3px] rounded-full bg-divisor mt-2 overflow-hidden">
-        <div
-          className="h-full rounded-full"
-          style={{
-            width: `${Math.max(6, (dato.mediana / tope) * 100)}%`,
-            background: actual ? VIOLETA : "var(--color-separador)",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-/** Un horizonte interanual, para el bloque de la derecha. */
-function Horizonte({ label, valor, nota }: { label: string; valor: string; nota: string }) {
+/** Un número de cabecera con su unidad, para el bloque de la derecha. */
+function Cifra({ label, valor, nota }: { label: string; valor: string; nota: string }) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-[0.12em] text-tenue">{label}</div>
@@ -51,26 +24,54 @@ function Horizonte({ label, valor, nota }: { label: string; valor: string; nota:
 }
 
 /**
- * La inflación que el mercado espera para el mes en curso, según el REM del BCRA.
+ * La leyenda del gráfico.
  *
- * Es el complemento natural del IPC del panel: ese es el mes cerrado y éste es
- * el mes que está corriendo, que todavía no tiene dato de INDEC. El relevamiento
- * se hace los últimos tres días hábiles del mes y se publica en los primeros del
- * siguiente, así que el número del mes en curso siempre sale del REM anterior:
- * la tarjeta lo dice en el header para que la fecha no se lea mal.
+ * Va acá y no dentro de recharts porque lo que distingue las dos partes es el
+ * relleno —sólido contra hueco—, y el `Legend` de recharts sólo sabe pintar
+ * cuadrados llenos: dos swatches idénticos no explicarían nada.
+ */
+function Leyenda() {
+  return (
+    <div className="flex items-center gap-4 text-[10.5px] text-meta">
+      <span className="flex items-center gap-1.5">
+        <span className="w-2.5 h-2.5 rounded-[3px] bg-[#a78bfa]" />
+        medido · INDEC
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="w-2.5 h-2.5 rounded-[3px] border border-[#a78bfa] bg-[#a78bfa]/15" />
+        esperado · REM
+      </span>
+    </div>
+  );
+}
+
+/**
+ * La inflación mensual argentina: lo que ya pasó y lo que el mercado espera.
  *
- * Dos cosas que la tarjeta se ocupa de no dejar ambiguas:
+ * El card cruza dos fuentes que se complementan y **no son lo mismo**:
  *
- *  - **No es una proyección del BCRA.** Es la mediana de lo que pronostican las
- *    consultoras y los bancos que participan. El propio BCRA lo aclara arriba de
- *    su publicación y acá va al pie, porque leerlo como meta oficial cambia por
- *    completo lo que significa.
+ *  - **INDEC** mide el IPC del mes cerrado, con unas dos semanas de rezago.
+ *  - **El REM del BCRA** es la mediana de lo que pronostican consultoras,
+ *    centros de investigación y bancos para los meses que vienen.
+ *
+ * Antes el card mostraba sólo la expectativa, y esa mitad sola no se puede
+ * juzgar: un 1,8% esperado no dice nada hasta saber que el mes pasado midió
+ * 2,1%. El gráfico pone las dos en la misma línea de tiempo, con el relleno
+ * marcando dónde termina lo medido y empieza lo pronosticado.
+ *
+ * Dos cosas que el card se ocupa de no dejar ambiguas:
+ *
+ *  - **El REM no es una proyección del BCRA.** Lo aclara el propio banco arriba
+ *    de su publicación y acá va al pie, porque leerlo como meta oficial cambia
+ *    por completo lo que significa.
  *  - **Es una mediana, no un consenso.** Por eso al lado va el rango del 25 al
  *    75: si la mitad central de los analistas está entre 1,7% y 1,9%, el dato
  *    es firme; si se abre, la mediana sola engaña.
  *
- * Los meses ya vencidos no se muestran: para esos manda el dato de INDEC, que
- * está en el panel de abajo.
+ * El relevamiento se hace los últimos tres días hábiles del mes y se publica en
+ * los primeros del siguiente, así que el número del mes en curso siempre sale
+ * del REM anterior. De ahí también sale el mes que acaba de cerrar y todavía no
+ * tiene dato de INDEC: es el hueco que el REM tapa hasta que llega la medición.
  */
 export default async function Rem() {
   let rem;
@@ -81,20 +82,20 @@ export default async function Rem() {
   }
 
   const hoy = mesEnCurso();
-  const adelante = rem.mensual.filter((m) => m.mes >= hoy);
-  const actual = adelante[0];
+  const actual = rem.mensual.find((m) => m.mes >= hoy);
   if (!actual) return null; // el último REM ya no alcanza al mes en curso
 
   const esElMes = actual.mes === hoy;
   const nucleo = rem.nucleo.find((m) => m.mes === actual.mes) ?? null;
   const doce = rem.interanual.find((h) => h.clave.includes("12 meses"));
   const anio = rem.interanual.find((h) => h.clave === hoy.slice(0, 4));
-  const tope = Math.max(...adelante.map((m) => m.mediana));
+  const serie = serieInflacion(rem);
+  const medido = serie.ultimoMedido;
 
   return (
     <Card
-      titulo="REM · inflación esperada"
-      nota={`Mediana de los pronósticos del relevamiento de ${rem.relevamientoLabel} · BCRA`}
+      titulo="Inflación mensual"
+      nota={`Lo que midió INDEC y lo que espera el REM de ${rem.relevamientoLabel}`}
       acento={VIOLETA}
       derecha={rem.participantes ? `${rem.participantes} participantes` : undefined}
       cuerpo={false}
@@ -110,7 +111,7 @@ export default async function Rem() {
             <span className="text-[40px] leading-none font-semibold text-num tabular-nums tracking-[-0.03em]">
               {pct(actual.mediana)}
             </span>
-            <span className="text-[13px] text-tenue">mensual</span>
+            <span className="text-[13px] text-tenue">esperado</span>
             {nucleo && (
               <span className="text-[12px] text-secundario tabular-nums pl-3 border-l border-borde">
                 núcleo {pct(nucleo.mediana)}
@@ -124,16 +125,19 @@ export default async function Rem() {
           )}
         </div>
 
-        <div className="flex gap-9">
-          {doce && (
-            <Horizonte
-              label="Próximos 12 meses"
-              valor={pct(doce.mediana)}
-              nota="interanual"
+        <div className="flex flex-wrap gap-x-9 gap-y-4">
+          {/* El dato medido va primero: la expectativa del mes en curso no se
+              puede juzgar sin saber contra qué viene. */}
+          {medido && (
+            <Cifra
+              label="Último dato"
+              valor={pct(medido.valor)}
+              nota={`${mesLargo(medido.mes)} · INDEC`}
             />
           )}
+          {doce && <Cifra label="Próximos 12 meses" valor={pct(doce.mediana)} nota="interanual" />}
           {anio && (
-            <Horizonte
+            <Cifra
               label={`Cierre de ${anio.clave}`}
               valor={pct(anio.mediana)}
               nota="acumulada del año"
@@ -142,20 +146,24 @@ export default async function Rem() {
         </div>
       </div>
 
-      {/* Los separadores salen del gap sobre el fondo, no de `divide-*`: una
-          grilla que envuelve deja líneas sueltas en el borde de cada fila. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-divisor border-t border-divisor">
-        {adelante.map((m) => (
-          <Mes key={m.mes} dato={m} tope={tope} actual={m.mes === actual.mes} />
-        ))}
+      <div className="border-t border-divisor pt-3 pb-1">
+        <div className="px-5 flex justify-end">
+          <Leyenda />
+        </div>
+        <InflacionMensualChart meses={serie.meses} />
       </div>
 
       <p className="px-5 py-2.5 text-[10.5px] text-meta-suave leading-relaxed border-t border-divisor">
-        El REM no son proyecciones propias del BCRA: es lo que pronostican las consultoras, los
-        centros de investigación y los bancos que participan, relevados los últimos tres días
-        hábiles de {rem.relevamientoLabel}.
+        Las barras llenas son el IPC que publicó INDEC. Las huecas son el REM, que no son
+        proyecciones propias del BCRA: es lo que pronostican las consultoras, los centros de
+        investigación y los bancos que participan, relevados los últimos tres días hábiles de{" "}
+        {rem.relevamientoLabel}.
       </p>
-    <Fuente creditos={[CREDITOS.bcra]} extra="Relevamiento de Expectativas de Mercado: la encuesta que el BCRA le hace a consultoras y bancos. No son proyecciones del Banco Central." className="mt-3" />
-      </Card>
+      <Fuente
+        creditos={[CREDITOS.indec, CREDITOS.bcra]}
+        extra="IPC de INDEC (vía argentinadatos) y Relevamiento de Expectativas de Mercado, la encuesta que el BCRA le hace a consultoras y bancos. El REM no son proyecciones del Banco Central."
+        className="mt-3"
+      />
+    </Card>
   );
 }
