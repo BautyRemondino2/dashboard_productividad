@@ -47,27 +47,31 @@ export interface Rango {
   dias: number;
 }
 
-/** Series diarias: dólar, riesgo país, precios. */
-export const RANGOS_DIARIOS: Rango[] = [
+/**
+ * Los rangos que ofrece cualquier gráfico del dashboard.
+ *
+ * Es **una sola lista para todos**, diarios y mensuales, para que el control se
+ * lea igual en toda la página. Los que no dan puntos suficientes se muestran
+ * deshabilitados con el motivo en el tooltip, en vez de esconderse: que la
+ * inflación no se pueda mirar a 30 días es información sobre el dato —se publica
+ * una vez por mes—, no una opción que convenga ocultar.
+ */
+export const RANGOS: Rango[] = [
   { key: "30", label: "30 días", dias: 30 },
   { key: "90", label: "90 días", dias: 90 },
-  { key: "365", label: "1 año", dias: 365 },
-  { key: "all", label: "Todo", dias: Infinity },
-];
-
-/**
- * Series mensuales: inflación, tasa real, actividad.
- *
- * Arranca en tres años y no en noventa días porque con datos mensuales un
- * trimestre son tres puntos: no hay gráfico ahí. El default es "todo" —la
- * historia completa es justamente lo que el card recortado no puede mostrar—.
- */
-export const RANGOS_MENSUALES: Rango[] = [
   { key: "1a", label: "1 año", dias: 365 },
   { key: "3a", label: "3 años", dias: 365 * 3 },
   { key: "5a", label: "5 años", dias: 365 * 5 },
   { key: "all", label: "Todo", dias: Infinity },
 ];
+
+/**
+ * Puntos mínimos para que un rango valga la pena.
+ *
+ * Con dos, el gráfico es una recta entre dos marcas y sugiere una transición
+ * suave que nadie observó. Con tres ya hay forma.
+ */
+const MINIMO_PUNTOS = 3;
 
 export interface EstadoGrafico<T> {
   filas: T[];
@@ -88,6 +92,7 @@ interface Props<T> {
   /** La serie completa. Sin esto no hay selector de rango. */
   filas?: T[];
   fechaDe?: (fila: T) => string;
+  /** Por defecto, la lista completa. Se pasa sólo para acotarla. */
   rangos?: Rango[];
   /** Rango con el que abre el modal. Por defecto, el último de la lista. */
   rangoInicial?: string;
@@ -105,7 +110,12 @@ interface Props<T> {
  * reloj: si el último cierre es del viernes y esto se abre un domingo, "30
  * días" tiene que significar treinta días de datos y no veintiocho.
  */
-function recortar<T>(filas: T[], fechaDe: (f: T) => string, dias: number): T[] {
+function recortar<T>(
+  filas: T[],
+  fechaDe: (f: T) => string,
+  dias: number,
+  relleno = true
+): T[] {
   if (dias === Infinity || filas.length === 0) return filas;
 
   const ancla = filas.map(fechaDe).sort().at(-1);
@@ -115,7 +125,10 @@ function recortar<T>(filas: T[], fechaDe: (f: T) => string, dias: number): T[] {
   const cortadas = filas.filter((f) => fechaDe(f) >= desde);
 
   // Con series mensuales un rango corto puede dejar un solo punto, y un punto
-  // no es un gráfico: ahí conviene mostrar los dos últimos antes que nada.
+  // no es un gráfico: ahí conviene mostrar los dos últimos antes que nada. Al
+  // contar para habilitar los chips ese relleno se apaga, porque justamente lo
+  // que se quiere saber es cuántos puntos hay de verdad.
+  if (!relleno) return cortadas;
   return cortadas.length >= 2 ? cortadas : filas.slice(-2);
 }
 
@@ -127,7 +140,7 @@ export default function GraficoExpandible<T>({
   extra,
   filas,
   fechaDe,
-  rangos,
+  rangos = RANGOS,
   rangoInicial,
   alto,
   altoModal = 440,
@@ -135,8 +148,49 @@ export default function GraficoExpandible<T>({
   children,
 }: Props<T>) {
   const [abierto, setAbierto] = useState(false);
-  const hayRangos = Boolean(filas && fechaDe && rangos?.length);
-  const [rango, setRango] = useState(() => rangoInicial ?? rangos?.at(-1)?.key ?? "all");
+  const hayRangos = Boolean(filas && fechaDe && rangos.length);
+  const [rango, setRango] = useState(() => rangoInicial ?? rangos.at(-1)?.key ?? "all");
+
+  /**
+   * Cuántos puntos deja cada rango. Con esto se sabe cuáles ofrecer: en una
+   * serie mensual "30 días" es un solo dato y "90 días" son tres, y en una
+   * serie que arranca hace ocho meses "5 años" es lo mismo que "Todo".
+   */
+  const puntosPorRango = useMemo(() => {
+    const out = new Map<string, number>();
+    if (!filas || !fechaDe) return out;
+    for (const r of rangos) {
+      out.set(r.key, r.dias === Infinity ? filas.length : recortar(filas, fechaDe, r.dias, false).length);
+    }
+    return out;
+  }, [filas, fechaDe, rangos]);
+
+  /**
+   * Un rango sirve si tiene puntos suficientes y si además muestra algo que
+   * "Todo" no muestre ya.
+   *
+   * Lo segundo importa tanto como lo primero: si la serie arranca hace catorce
+   * meses, "3 años" y "5 años" dibujan exactamente lo mismo que "Todo". Tres
+   * chips que hacen lo mismo no son tres opciones, son dos que decepcionan.
+   *
+   * El que sobrevive siempre es el último —"Todo"— y no el más chico de los que
+   * empatan: es el que el lector espera encontrar, y el único cuyo nombre sigue
+   * siendo cierto cuando la serie crezca.
+   */
+  const habilitado = (r: Rango, i: number) => {
+    const puntos = puntosPorRango.get(r.key) ?? 0;
+    if (puntos < MINIMO_PUNTOS) return false;
+    const total = filas?.length ?? 0;
+    return i === rangos.length - 1 || puntos < total;
+  };
+
+  const disponibles = rangos.filter(habilitado);
+
+  // Si el rango elegido se quedó sin datos —cambió la serie— se cae al mayor
+  // que sí tenga: mejor mostrar de más que un gráfico vacío.
+  const rangoEfectivo = disponibles.some((r) => r.key === rango)
+    ? rango
+    : disponibles.at(-1)?.key ?? rango;
 
   useEffect(() => {
     if (!abierto) return;
@@ -150,9 +204,9 @@ export default function GraficoExpandible<T>({
   const filasModal = useMemo(() => {
     if (!filas) return [] as T[];
     if (!hayRangos || !fechaDe) return filas;
-    const dias = rangos!.find((r) => r.key === rango)?.dias ?? Infinity;
+    const dias = rangos.find((r) => r.key === rangoEfectivo)?.dias ?? Infinity;
     return recortar(filas, fechaDe, dias);
-  }, [filas, fechaDe, hayRangos, rangos, rango]);
+  }, [filas, fechaDe, hayRangos, rangos, rangoEfectivo]);
 
   return (
     <>
@@ -205,19 +259,38 @@ export default function GraficoExpandible<T>({
 
             {hayRangos && (
               <div className="px-6 pt-3 flex items-center gap-1.5 flex-wrap">
-                {rangos!.map((r) => (
-                  <button
-                    key={r.key}
-                    onClick={() => setRango(r.key)}
-                    className={`px-2.5 py-1 rounded-md text-[11px] transition-colors ${
-                      rango === r.key
-                        ? "bg-slate-700/70 text-titulo"
-                        : "text-meta hover:text-cuerpo hover:bg-slate-800/60"
-                    }`}
-                  >
-                    {r.label}
-                  </button>
-                ))}
+                {rangos.map((r, i) => {
+                  const puntos = puntosPorRango.get(r.key) ?? 0;
+                  const activo = rangoEfectivo === r.key;
+                  const sinDatos = !habilitado(r, i);
+                  return (
+                    <button
+                      key={r.key}
+                      onClick={() => !sinDatos && setRango(r.key)}
+                      disabled={sinDatos}
+                      title={
+                        sinDatos
+                          ? puntos === 0
+                            ? "La serie no llega tan atrás."
+                            : puntos >= MINIMO_PUNTOS
+                              ? "La serie no llega tan atrás: este rango muestra lo mismo que \u201cTodo\u201d."
+                              : `Este dato se publica cada tanto: en ${r.label.toLowerCase()} hay ${puntos} ${
+                                  puntos === 1 ? "punto" : "puntos"
+                                }, no alcanza para un gráfico.`
+                          : `${puntos} datos`
+                      }
+                      className={`px-2.5 py-1 rounded-md text-[11px] transition-colors ${
+                        sinDatos
+                          ? "text-slate-700 cursor-not-allowed"
+                          : activo
+                            ? "bg-slate-700/70 text-titulo"
+                            : "text-meta hover:text-cuerpo hover:bg-slate-800/60"
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  );
+                })}
                 <span className="text-[10.5px] text-meta-suave ml-2">
                   {filasModal.length} {filasModal.length === 1 ? "dato" : "datos"}
                 </span>

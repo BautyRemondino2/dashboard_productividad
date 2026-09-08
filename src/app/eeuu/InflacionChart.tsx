@@ -4,7 +4,7 @@ import {
   CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis,
 } from "recharts";
 import { FUENTE_INFLACION, GRIS, HOY, META, NUCLEO, REJILLA, escalaLinda, fmtNum, mesCorto } from "./tokens-grafico";
-import GraficoExpandible, { RANGOS_MENSUALES } from "@/components/GraficoExpandible";
+import GraficoExpandible from "@/components/GraficoExpandible";
 
 export interface FilaInflacion {
   fecha: string;
@@ -99,7 +99,6 @@ export default function InflacionChart({
       extra={FUENTE_INFLACION.extra}
       filas={filas}
       fechaDe={(f) => f.fecha}
-      rangos={RANGOS_MENSUALES}
       alto={alto}
     >
       {({ filas, alto }) => <Grafico filas={filas} alto={alto} />}

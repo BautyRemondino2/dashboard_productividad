@@ -4,9 +4,7 @@ import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import Sparkline from "@/components/Sparkline";
-import GraficoExpandible, {
-  RANGOS_DIARIOS, RANGOS_MENSUALES,
-} from "@/components/GraficoExpandible";
+import GraficoExpandible from "@/components/GraficoExpandible";
 import { FUENTE_TILE, GRIS, HOY, REJILLA, escalaLinda, fmtNum, mesCorto } from "./tokens-grafico";
 import { SPARK, type IndicadorUsa } from "@/lib/eeuu";
 import type { PuntoSerie } from "@/lib/fred";
@@ -19,8 +17,9 @@ import type { PuntoSerie } from "@/lib/fred";
  * necesita el eje, y el eje necesita espacio. De ahí que el mismo dato se abra
  * en grande con el rango a elección.
  *
- * El rango va en años para las series mensuales y en días para las diarias: en
- * un dato mensual, "90 días" son tres puntos.
+ * Los rangos son los mismos para todos los indicadores; el que no da puntos
+ * suficientes se muestra deshabilitado. En el desempleo —mensual— "30 días" es
+ * un solo dato, y decirlo enseña algo sobre la serie.
  */
 
 const fmtEje = (valor: number, unidad: IndicadorUsa["unidad"], decimales: number) =>
@@ -111,7 +110,6 @@ export default function TileGrafico({
       extra={FUENTE_TILE.extra}
       filas={ind.serie}
       fechaDe={(p) => p.fecha}
-      rangos={ind.frecuencia === "diaria" ? RANGOS_DIARIOS : RANGOS_MENSUALES}
       alto={22}
       altoModal={380}
       ayuda={`Ver la serie completa de ${ind.label}`}

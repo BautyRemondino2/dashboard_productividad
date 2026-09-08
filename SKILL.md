@@ -259,9 +259,9 @@ export default function MiChart({ filas, alto = 230 }) {
       nota="Interanual · la meta de la Fed es 2% sobre el PCE núcleo"
       creditos={FUENTE_INFLACION.creditos}
       extra={FUENTE_INFLACION.extra}
-      filas={filas}                    // opcional
-      fechaDe={(f) => f.fecha}         // opcional
-      rangos={RANGOS_MENSUALES}        // opcional — los tres van juntos
+      filas={filas}                    // opcional — habilita los chips de rango
+      fechaDe={(f) => f.fecha}         // opcional — va junto con `filas`
+      // `rangos` es opcional: por defecto van los seis y se deshabilitan solos
       alto={alto}
     >
       {({ filas, alto }) => <Grafico filas={filas} alto={alto} />}
@@ -278,14 +278,20 @@ Reglas que salieron de aplicarlo a los quince gráficos existentes:
   panel es de servidor, **el que se envuelve a sí mismo es el componente del
   gráfico** (que ya es `"use client"`), no el panel. Es lo que se hizo en los
   cuatro de EE.UU.
-- **`filas` + `fechaDe` + `rangos` van juntos y son opcionales.** Sin ellos no
-  aparecen los chips, que es lo correcto cuando el gráfico no es una serie de
+- **`filas` + `fechaDe` van juntos y son opcionales.** Sin ellos no aparecen los
+  chips, que es lo correcto cuando el gráfico no es una serie de
   tiempo: la curva del Tesoro es un corte por plazo y el sendero de la Fed son
   reuniones futuras — "últimos 90 días" no significa nada ahí. Esos se abren
   igual, más grandes y con su fuente.
-- **`RANGOS_MENSUALES` para datos mensuales, `RANGOS_DIARIOS` para diarios.** En
-  una serie mensual "90 días" son tres puntos: no hay gráfico. Los mensuales
-  abren en "Todo", que es justamente lo que el card recortado no puede mostrar.
+- **Una sola lista de rangos para todos** (`RANGOS`: 30 días, 90 días, 1 año,
+  3 años, 5 años, Todo) y no una por granularidad. El componente **deshabilita**
+  el chip que no aplica en vez de esconderlo, con el motivo en el tooltip: que
+  la inflación no se pueda mirar a 30 días es información sobre el dato —se
+  publica una vez por mes— y no una opción que convenga ocultar. Dos reglas:
+  menos de tres puntos no es un gráfico, y un rango que ya muestra toda la serie
+  es redundante. En los empates sobrevive **"Todo"** y no el más chico: es el que
+  el lector busca y el único cuyo nombre sigue siendo cierto cuando la serie
+  crezca.
 - **El recorte cuenta desde el último dato, no desde el reloj.** Si el último
   cierre es del viernes y esto se abre un domingo, "30 días" tiene que ser
   treinta días de datos.
