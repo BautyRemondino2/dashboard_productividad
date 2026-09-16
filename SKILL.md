@@ -12,8 +12,8 @@ better-sqlite3 + Recharts + Anthropic SDK.
 
 - Correr local: `npm run dev -- -p 3001` → http://localhost:3001
 - `/` redirige a `/mercado`. Módulos: mercado, renta-fija, equity (con la
-  **ficha de análisis** por empresa), etf, **eeuu**, **radar**, glossary,
-  efemerides.
+  **ficha de análisis** por empresa), etf, **eeuu**, **radar**,
+  **morning-brief**, glossary, efemerides.
 
 ## Deploy (IMPORTANTE — corregido 27-ago-2026)
 
@@ -160,6 +160,74 @@ Tres modelos según el dato:
    en la hoja de compartir. **No hay API de canales de WhatsApp**: eso es lo más
    automatizable sin automatizar un cliente web, que rompe los términos.
    Necesita `ANTHROPIC_API_KEY`; sin ella la caja muestra el error y no rompe.
+
+8. **Morning Brief** (sep-2026) — `/morning-brief`, `src/lib/morning-brief-*.ts`.
+   La rutina matinal de un PM: indicadores en orden, Claude interpreta, tesis
+   propia primero y contrastable al cierre. El principio de diseño es estricto
+   y va antes que cualquier otra decisión: **el código trae y calcula todos
+   los números; Claude sólo interpreta, nunca busca datos**. `radar.ts` ya era
+   el precedente de esto (`output_config` + `json_schema` sobre datos que el
+   código preparó); acá se llevó más lejos, con validación posterior de cada
+   cita.
+   - **De ~24 indicadores pedidos, la mitad ya estaban.** `morning-brief-config.ts`
+     declara la fuente de cada uno, y para los que `fuentes.ts` ya baja y
+     persiste en `market_series` (UST10Y, DXY, VIX, ORO, SOJA, MEP, CCL,
+     RIESGO_PAIS, RESERVAS, CAUCION1, y GD30/AL30 en USD vía el sufijo D de
+     data912) se **lee la columna**, no se vuelve a pegar a la fuente. Sólo son
+     fetch nuevos: Nikkei, Euro Stoxx 50, Treasury 2 años (FRED `DGS2`, sin API
+     key — el endpoint público de `fredgraph.csv` que ya usa `fred.ts` sirve
+     para cualquier serie), ES=F/NQ=F, WTI, cobre, maíz, trigo, y los ADRs
+     GGAL/YPF/VIST. Once símbolos de Yahoo nuevos, cacheados con el mismo
+     patrón TTL en memoria de `byma.ts`/`fred.ts` (15 min, sin DB: no tiene
+     sentido guardar historial de algo que ya se puede recalcular con un
+     `chart()` de 150 días).
+   - **"Dólar oficial A3500" es el ticker `MAYORISTA`**, no `OFICIAL`. El panel
+     de Mercado ya tenía los dos (BCRA variable 5 = A3500 mayorista;
+     `OFICIAL` es la pizarra minorista de Banco Nación vía dolarapi) y son
+     fáciles de confundir porque los dos se llaman "dólar oficial" en la
+     jerga.
+   - **La variación se mide distinto según el indicador**, fijado en
+     `tipoVariacion` de cada entrada de config: `bps` para tasas cotizadas en
+     puntos porcentuales (Treasury 2y/10y, caución), `pb_absoluto` para series
+     que ya están en puntos básicos (riesgo país), `pct` para todo lo demás.
+     Las bandas de "estable" para la evaluación al cierre salen de la misma
+     lógica: 2 pb para tasas, 50 pb para caución (la banda genérica de tasas
+     es demasiado ajustada para una tasa que se mueve así de rápido), 5 pb
+     para riesgo país, 0,25% para precios.
+   - **"Inusual"** (`morning-brief-datos.ts`): desvío muestral (n−1, mismo
+     criterio que `equity-riesgo.ts`) sobre las últimas 60 variaciones,
+     `|última| > 2×desvío`. Con menos de 20 variaciones disponibles, `null` —
+     le pasa a CAUCION1 y a GD30/AL30 en este dashboard porque esas series se
+     automatizaron hace poco (ver punto 4 de esta lista) y todavía no
+     acumulan historial.
+   - **Claude va con `effort: "high"`**, no "medium" como radar: acá no
+     clasifica, sintetiza ocho pasos con citas cruzadas entre bloques
+     (`morning-brief-claude.ts`). El único input es el snapshot serializado;
+     el `system` prompt prohíbe explícitamente inventar niveles, variaciones,
+     consensos o noticias y exige que toda afirmación cite el id del
+     indicador en que se apoya.
+   - **La validación posterior no corrige, sólo advierte**
+     (`morning-brief-validacion.ts`): un id citado que no existe, que no
+     tiene valor, o cuyo `fecha_dato` no es el de hoy, se lista como
+     advertencia en rojo. Mismo criterio para un alias de cliente que Claude
+     nombra sin que exista.
+   - **La evaluación al cierre es código, no Claude**
+     (`morning-brief-evaluacion.ts`): re-fetchea sólo los indicadores citados
+     en las predicciones (reusa `construirIndicadorPorId`, no todo el
+     snapshot) y compara la dirección real —del signo de la variación contra
+     la banda estable de ese indicador— contra la predicha.
+   - **La tesis propia no se puede calificar en código** (es prosa libre, no
+     una predicción con id y dirección), así que el historial de "mi tasa de
+     aciertos" sale de una autoevaluación manual de tres botones (acertó /
+     parcial / no acertó) que carga el propio asesor al evaluar el cierre —
+     columna `tesis_acierto` en `morning_briefs`, separada de `aciertos`
+     (que sí son las predicciones de Claude, verificadas en código).
+   - Tres tablas nuevas: `morning_brief_agenda` (carga manual, hora ART +
+     evento + consenso + anterior + dato), `morning_brief_clientes` (alias,
+     nunca nombre real; tenencias y eventos como JSON, mismo patrón que
+     `equity_fichas` porque es criterio propio y no un dataset de columnas
+     fijas) y `morning_briefs` (una fila por fecha con la tesis propia, el
+     snapshot, lo que devolvió Claude, las advertencias y la evaluación).
 
 ## Convenciones
 

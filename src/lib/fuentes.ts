@@ -374,7 +374,11 @@ const YAHOO_SYMS: { symbol: string; ticker: string; factor?: number }[] = [
   { symbol: "^MERV",      ticker: "MERVAL" },
 ];
 
-async function yahooSerie(
+/**
+ * Exportada para `morning-brief-datos.ts`: mismo `chart()` de yahoo-finance2,
+ * sin duplicar el boilerplate de validación/parseo.
+ */
+export async function yahooSerie(
   symbol: string,
   ticker: string,
   factor: number,

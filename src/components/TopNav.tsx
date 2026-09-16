@@ -23,6 +23,7 @@ const PRIMARIAS = [
 ];
 
 const SECUNDARIAS = [
+  { href: "/morning-brief", label: "Morning Brief" },
   { href: "/radar", label: "Radar" },
   { href: "/glossary", label: "Glosario" },
   { href: "/efemerides", label: "Efemérides" },

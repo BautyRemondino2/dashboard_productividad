@@ -139,6 +139,55 @@ function initSchema(db: Database.Database) {
       snapshot_json TEXT,
       created_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- ── Morning Brief ────────────────────────────────────────────────────
+    -- Agenda cargada a mano: eventos económicos con su consenso, para que
+    -- Claude interprete qué implicaría una sorpresa sin adivinar el dato.
+    CREATE TABLE IF NOT EXISTS morning_brief_agenda (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      fecha      TEXT NOT NULL,
+      hora_art   TEXT NOT NULL,
+      evento     TEXT NOT NULL,
+      consenso   TEXT,
+      anterior   TEXT,
+      dato       TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_morning_brief_agenda_fecha ON morning_brief_agenda(fecha);
+
+    -- Clientes por alias (nunca nombre real). Documento JSON para tenencias y
+    -- eventos próximos: es criterio propio del asesor, no un dataset de
+    -- columnas fijas (misma razón que equity_fichas).
+    CREATE TABLE IF NOT EXISTS morning_brief_clientes (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      alias         TEXT NOT NULL UNIQUE,
+      perfil        TEXT NOT NULL DEFAULT '',
+      tenencias_json TEXT NOT NULL DEFAULT '[]',
+      eventos_json  TEXT NOT NULL DEFAULT '[]',
+      activo        INTEGER NOT NULL DEFAULT 1,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- Una fila por fecha: la tesis propia, el snapshot que se le mandó a
+    -- Claude, lo que devolvió, las advertencias de validación y, más tarde,
+    -- la evaluación al cierre.
+    CREATE TABLE IF NOT EXISTS morning_briefs (
+      fecha              TEXT PRIMARY KEY,
+      tesis_propia       TEXT,
+      snapshot_json      TEXT,
+      brief_json         TEXT,
+      advertencias_json  TEXT,
+      cierre_json        TEXT,
+      evaluacion_json    TEXT,
+      aciertos           INTEGER,
+      total_predicciones INTEGER,
+      -- Autoevaluación del asesor sobre su propia tesis del día (no la de
+      -- Claude): es prosa libre, así que no hay forma de calificarla en
+      -- código. Se carga a mano al evaluar el cierre.
+      tesis_acierto      TEXT CHECK(tesis_acierto IN ('si','parcial','no')),
+      aprendizaje        TEXT,
+      created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Migración jul-2026: el dashboard dejó de ser de facultad (pivot a asesor
