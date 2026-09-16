@@ -11,6 +11,7 @@
  */
 import { getDb } from "@/lib/db";
 import {
+  combinarSeries,
   computePanelIndicator,
   formatDelta,
   formatValor,
@@ -57,42 +58,19 @@ const CELDAS: { ticker: string; label: string; unidad: Unidad }[] = [
   { ticker: "SPX", label: "S&P 500", unidad: "idx" },
 ];
 
-/** Los dos derivados y de qué par salen. */
+/**
+ * Los dos derivados y de qué par salen.
+ *
+ * La brecha va contra el **mayorista** (A3500) y no contra la pizarra
+ * minorista: es como se mide y como la publica todo el mercado. Con el
+ * minorista —que lleva el spread del banco adentro— daba un punto y medio
+ * menos, y el brief la mostraba contra el A3500: dos números con el mismo
+ * nombre y distinto valor en la misma pantalla se leen como un error.
+ */
 const DERIVADOS: Record<string, { de: [string, string]; fn: (a: number, b: number) => number }> = {
-  BRECHA: { de: ["CCL", "OFICIAL"], fn: (ccl, of) => (ccl / of - 1) * 100 },
+  BRECHA: { de: ["CCL", "MAYORISTA"], fn: (ccl, may) => (ccl / may - 1) * 100 },
   MERVAL_USD: { de: ["MERVAL", "CCL"], fn: (m, ccl) => m / ccl },
 };
-
-/**
- * Combina dos series por fecha, arrastrando el último valor conocido de `b`.
- *
- * Exigir que las dos tengan exactamente la misma fecha rompe los derivados: el
- * Merval y el CCL no cotizan todos los mismos días, así que la intersección
- * estricta dejaba huecos de semanas y el "contra el dato anterior" terminaba
- * comparando contra hace veinte días. Con el arrastre, cada fecha del Merval usa
- * el CCL vigente ese día, que es como se calcula de verdad.
- */
-function combinar(
-  a: MarketSeriesPoint[] | undefined,
-  b: MarketSeriesPoint[] | undefined,
-  fn: (a: number, b: number) => number
-): MarketSeriesPoint[] {
-  if (!a?.length || !b?.length) return [];
-
-  const out: MarketSeriesPoint[] = [];
-  let i = 0;
-  let vigente: number | null = null;
-
-  for (const p of a) {
-    // Avanza `b` hasta el último punto con fecha <= la de `a`
-    while (i < b.length && b[i].fecha <= p.fecha) {
-      vigente = b[i].valor;
-      i++;
-    }
-    if (vigente && vigente > 0) out.push({ fecha: p.fecha, valor: fn(p.valor, vigente) });
-  }
-  return out;
-}
 
 export function cargarCinta(): CeldaCinta[] {
   const db = getDb();
@@ -120,7 +98,7 @@ export function cargarCinta(): CeldaCinta[] {
   }
 
   for (const [ticker, d] of Object.entries(DERIVADOS)) {
-    series[ticker] = combinar(series[d.de[0]], series[d.de[1]], d.fn);
+    series[ticker] = combinarSeries(series[d.de[0]], series[d.de[1]], d.fn);
   }
 
   const salida: CeldaCinta[] = [];

@@ -170,6 +170,9 @@ const BCRA_VARS: { idVariable: number; ticker: string; metrica: string }[] = [
   { idVariable: 1,  ticker: "RESERVAS",  metrica: "valor" },
   { idVariable: 15, ticker: "BASE_MON",  metrica: "valor" },
   { idVariable: 5,  ticker: "MAYORISTA", metrica: "precio" },
+  // 78 = "Variación de reservas internacionales por compra de divisas": el
+  // flujo diario que explica el stock. Publica con ~3 días de rezago.
+  { idVariable: 78, ticker: "COMPRAS_BCRA", metrica: "valor" },
 ];
 
 const bcraFuente: Fuente = {

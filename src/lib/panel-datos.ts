@@ -6,7 +6,7 @@
  * duplicados en cada `page.tsx`.
  */
 import { getDb } from "@/lib/db";
-import { defaultMetric } from "@/lib/mercado";
+import { combinarSeries, defaultMetric } from "@/lib/mercado";
 import type { MarketInstrument, MarketSeriesPoint } from "@/lib/mercado";
 import { TERMINO_POR_TICKER, type InstrumentoDef } from "@/lib/glosario-instrumentos";
 import { tieneFuenteAutomatica } from "@/lib/fuentes";
@@ -29,37 +29,6 @@ export interface PanelDatos {
   conDatos: number;
 }
 
-/**
- * Combina dos series por fecha, arrastrando el último valor conocido de `b`.
- *
- * Exigir que las dos tengan exactamente la misma fecha rompe los derivados: el
- * Merval y el CCL no cotizan todos los mismos días, así que la intersección
- * estricta dejaba huecos de semanas y el "contra el dato anterior" terminaba
- * comparando contra hace veinte días. Con el arrastre, cada fecha del Merval usa
- * el CCL vigente ese día, que es como se calcula de verdad.
- */
-function derivarSeries(
-  a: MarketSeriesPoint[] | undefined,
-  b: MarketSeriesPoint[] | undefined,
-  fn: (a: number, b: number) => number
-): MarketSeriesPoint[] {
-  if (!a?.length || !b?.length) return [];
-
-  const out: MarketSeriesPoint[] = [];
-  let i = 0;
-  let vigente: number | null = null;
-
-  for (const p of a) {
-    // Avanza `b` hasta el último punto con fecha <= la de `a`
-    while (i < b.length && b[i].fecha <= p.fecha) {
-      vigente = b[i].valor;
-      i++;
-    }
-    if (vigente && vigente > 0) out.push({ fecha: p.fecha, valor: fn(p.valor, vigente) });
-  }
-  return out;
-}
-
 export function cargarPanel(): PanelDatos {
   const db = getDb();
 
@@ -78,7 +47,9 @@ export function cargarPanel(): PanelDatos {
   // Indicadores derivados: no viven en la DB, se recalculan al leer.
   const allInstruments = [...instruments];
 
-  const brecha = derivarSeries(series["CCL"], series["OFICIAL"], (ccl, of) => (ccl / of - 1) * 100);
+  // Contra el mayorista (A3500), que es como se mide la brecha en el mercado.
+  // El minorista lleva el spread del banco adentro y da más chica.
+  const brecha = combinarSeries(series["CCL"], series["MAYORISTA"], (ccl, may) => (ccl / may - 1) * 100);
   if (brecha.length > 0) {
     series["BRECHA"] = brecha;
     allInstruments.push({
@@ -88,7 +59,7 @@ export function cargarPanel(): PanelDatos {
   }
 
   // El Merval en pesos sube con la inflación; en dólares es la comparación real
-  const mervalUsd = derivarSeries(series["MERVAL"], series["CCL"], (m, ccl) => m / ccl);
+  const mervalUsd = combinarSeries(series["MERVAL"], series["CCL"], (m, ccl) => m / ccl);
   if (mervalUsd.length > 0) {
     series["MERVAL_USD"] = mervalUsd;
     allInstruments.push({

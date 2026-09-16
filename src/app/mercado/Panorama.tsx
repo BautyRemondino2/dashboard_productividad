@@ -6,7 +6,6 @@ import { getTasaFed, getProximasReuniones } from "@/lib/fed";
 import { getCurvaTasaFija, breakevenInflacion } from "@/lib/bonos-tasa-fija";
 import { getCurvaCer } from "@/lib/bonos-ars";
 import { ajustarNelsonSiegel } from "@/lib/nelson-siegel";
-import { contarPendientes } from "@/lib/radar";
 
 const pct = (v: number, d = 2) =>
   `${v.toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d })}%`;
@@ -76,18 +75,11 @@ function Celda({
  * responden, esa celda no se dibuja y las demás siguen.
  */
 export default async function Panorama() {
-  const [tasa, proximas, tasaFija, cer, pendientes] = await Promise.all([
+  const [tasa, proximas, tasaFija, cer] = await Promise.all([
     getTasaFed().catch(() => null),
     getProximasReuniones(1).catch(() => []),
     getCurvaTasaFija().catch(() => null),
     getCurvaCer().catch(() => null),
-    Promise.resolve().then(() => {
-      try {
-        return contarPendientes();
-      } catch {
-        return 0;
-      }
-    }),
   ]);
 
   const celdas: React.ReactNode[] = [];
@@ -164,21 +156,6 @@ export default async function Panorama() {
       );
     }
   }
-
-  celdas.push(
-    <Celda
-      key="radar"
-      href="/radar"
-      label="Radar"
-      valor={pendientes > 0 ? String(pendientes) : "—"}
-      tono={pendientes > 0 ? "text-num" : "text-meta"}
-      nota={
-        pendientes > 0
-          ? `${pendientes === 1 ? "noticia" : "noticias"} sin leer con relevancia 3 o más`
-          : "sin noticias pendientes · pegá un volcado de los canales"
-      }
-    />
-  );
 
   if (celdas.length <= 1) return null;
 

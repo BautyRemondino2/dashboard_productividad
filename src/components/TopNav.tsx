@@ -15,6 +15,8 @@ import ChipMercado from "@/components/ChipMercado";
  */
 
 const PRIMARIAS = [
+  // Primero el brief: es la pantalla con la que arranca el día.
+  { href: "/morning-brief", label: "Brief" },
   { href: "/mercado", label: "Macro" },
   { href: "/renta-fija", label: "Renta fija" },
   { href: "/equity", label: "Equity" },
@@ -23,8 +25,6 @@ const PRIMARIAS = [
 ];
 
 const SECUNDARIAS = [
-  { href: "/morning-brief", label: "Morning Brief" },
-  { href: "/radar", label: "Radar" },
   { href: "/glossary", label: "Glosario" },
   { href: "/efemerides", label: "Efemérides" },
 ];
@@ -37,13 +37,10 @@ function horaDe(iso: string): string {
 export default function TopNav({
   ephemeral = false,
   actualizado = null,
-  radarPendientes = 0,
 }: {
   ephemeral?: boolean;
   /** ISO del último dato automático. Se muestra como sello a la derecha. */
   actualizado?: string | null;
-  /** Noticias del radar sin leer con relevancia 3+, para el punto del nav. */
-  radarPendientes?: number;
 }) {
   const pathname = usePathname();
 
@@ -78,14 +75,7 @@ export default function TopNav({
       <span className="w-px h-4 bg-separador mx-[10px] shrink-0" />
 
       {SECUNDARIAS.map((s) => (
-        <ItemNav
-          key={s.href}
-          href={s.href}
-          label={s.label}
-          activo={activo(s.href)}
-          secundaria
-          contador={s.href === "/radar" ? radarPendientes : 0}
-        />
+        <ItemNav key={s.href} href={s.href} label={s.label} activo={activo(s.href)} secundaria />
       ))}
 
       <div className="ml-auto flex items-center gap-3.5 shrink-0">

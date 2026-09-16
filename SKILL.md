@@ -12,8 +12,8 @@ better-sqlite3 + Recharts + Anthropic SDK.
 
 - Correr local: `npm run dev -- -p 3001` → http://localhost:3001
 - `/` redirige a `/mercado`. Módulos: mercado, renta-fija, equity (con la
-  **ficha de análisis** por empresa), etf, **eeuu**, **radar**,
-  **morning-brief**, glossary, efemerides.
+  **ficha de análisis** por empresa), etf, **eeuu**, **morning-brief**,
+  glossary, efemerides.
 
 ## Deploy (IMPORTANTE — corregido 27-ago-2026)
 
@@ -152,82 +152,78 @@ Tres modelos según el dato:
      anterior** (el de julio trae ago-26). El cuadro cubre de `t` a `t+6`: el mes
      corriente siempre está.
 
-7. **Radar / WhatsApp** — `src/lib/radar.ts`, tabla `radar_items`. Clasifica un
-   volcado crudo con el SDK de Anthropic (`claude-opus-5`, `output_config` con
-   `effort: "medium"` y `format: json_schema`) y guarda sólo lo que sobrevive.
-   Entra por la caja de pegado de `/radar` o por `POST /api/radar/ingest` con
-   header `x-radar-token` (variable `RADAR_TOKEN`), pensado para un Atajo de iOS
-   en la hoja de compartir. **No hay API de canales de WhatsApp**: eso es lo más
-   automatizable sin automatizar un cliente web, que rompe los términos.
-   Necesita `ANTHROPIC_API_KEY`; sin ella la caja muestra el error y no rompe.
-
-8. **Morning Brief** (sep-2026) — `/morning-brief`, `src/lib/morning-brief-*.ts`.
-   La rutina matinal de un PM: indicadores en orden, Claude interpreta, tesis
-   propia primero y contrastable al cierre. El principio de diseño es estricto
-   y va antes que cualquier otra decisión: **el código trae y calcula todos
-   los números; Claude sólo interpreta, nunca busca datos**. `radar.ts` ya era
-   el precedente de esto (`output_config` + `json_schema` sobre datos que el
-   código preparó); acá se llevó más lejos, con validación posterior de cada
-   cita.
-   - **De ~24 indicadores pedidos, la mitad ya estaban.** `morning-brief-config.ts`
-     declara la fuente de cada uno, y para los que `fuentes.ts` ya baja y
-     persiste en `market_series` (UST10Y, DXY, VIX, ORO, SOJA, MEP, CCL,
-     RIESGO_PAIS, RESERVAS, CAUCION1, y GD30/AL30 en USD vía el sufijo D de
-     data912) se **lee la columna**, no se vuelve a pegar a la fuente. Sólo son
-     fetch nuevos: Nikkei, Euro Stoxx 50, Treasury 2 años (FRED `DGS2`, sin API
-     key — el endpoint público de `fredgraph.csv` que ya usa `fred.ts` sirve
-     para cualquier serie), ES=F/NQ=F, WTI, cobre, maíz, trigo, y los ADRs
-     GGAL/YPF/VIST. Once símbolos de Yahoo nuevos, cacheados con el mismo
-     patrón TTL en memoria de `byma.ts`/`fred.ts` (15 min, sin DB: no tiene
-     sentido guardar historial de algo que ya se puede recalcular con un
-     `chart()` de 150 días).
-   - **"Dólar oficial A3500" es el ticker `MAYORISTA`**, no `OFICIAL`. El panel
-     de Mercado ya tenía los dos (BCRA variable 5 = A3500 mayorista;
-     `OFICIAL` es la pizarra minorista de Banco Nación vía dolarapi) y son
-     fáciles de confundir porque los dos se llaman "dólar oficial" en la
-     jerga.
-   - **La variación se mide distinto según el indicador**, fijado en
-     `tipoVariacion` de cada entrada de config: `bps` para tasas cotizadas en
-     puntos porcentuales (Treasury 2y/10y, caución), `pb_absoluto` para series
-     que ya están en puntos básicos (riesgo país), `pct` para todo lo demás.
-     Las bandas de "estable" para la evaluación al cierre salen de la misma
-     lógica: 2 pb para tasas, 50 pb para caución (la banda genérica de tasas
-     es demasiado ajustada para una tasa que se mueve así de rápido), 5 pb
-     para riesgo país, 0,25% para precios.
-   - **"Inusual"** (`morning-brief-datos.ts`): desvío muestral (n−1, mismo
-     criterio que `equity-riesgo.ts`) sobre las últimas 60 variaciones,
-     `|última| > 2×desvío`. Con menos de 20 variaciones disponibles, `null` —
-     le pasa a CAUCION1 y a GD30/AL30 en este dashboard porque esas series se
-     automatizaron hace poco (ver punto 4 de esta lista) y todavía no
-     acumulan historial.
-   - **Claude va con `effort: "high"`**, no "medium" como radar: acá no
-     clasifica, sintetiza ocho pasos con citas cruzadas entre bloques
-     (`morning-brief-claude.ts`). El único input es el snapshot serializado;
-     el `system` prompt prohíbe explícitamente inventar niveles, variaciones,
-     consensos o noticias y exige que toda afirmación cite el id del
-     indicador en que se apoya.
-   - **La validación posterior no corrige, sólo advierte**
-     (`morning-brief-validacion.ts`): un id citado que no existe, que no
-     tiene valor, o cuyo `fecha_dato` no es el de hoy, se lista como
-     advertencia en rojo. Mismo criterio para un alias de cliente que Claude
-     nombra sin que exista.
-   - **La evaluación al cierre es código, no Claude**
-     (`morning-brief-evaluacion.ts`): re-fetchea sólo los indicadores citados
-     en las predicciones (reusa `construirIndicadorPorId`, no todo el
-     snapshot) y compara la dirección real —del signo de la variación contra
-     la banda estable de ese indicador— contra la predicha.
-   - **La tesis propia no se puede calificar en código** (es prosa libre, no
-     una predicción con id y dirección), así que el historial de "mi tasa de
-     aciertos" sale de una autoevaluación manual de tres botones (acertó /
-     parcial / no acertó) que carga el propio asesor al evaluar el cierre —
-     columna `tesis_acierto` en `morning_briefs`, separada de `aciertos`
-     (que sí son las predicciones de Claude, verificadas en código).
-   - Tres tablas nuevas: `morning_brief_agenda` (carga manual, hora ART +
-     evento + consenso + anterior + dato), `morning_brief_clientes` (alias,
-     nunca nombre real; tenencias y eventos como JSON, mismo patrón que
-     `equity_fichas` porque es criterio propio y no un dataset de columnas
-     fijas) y `morning_briefs` (una fila por fecha con la tesis propia, el
-     snapshot, lo que devolvió Claude, las advertencias y la evaluación).
+7. **Morning Brief** (sep-2026) — `/morning-brief`, `src/lib/morning-brief-*.ts`.
+   El pantallazo de las nueve de la mañana, antes de sentarse a estudiar el
+   mercado. **Es sólo dato: no hay nada que completar, nada que esperar y
+   ninguna llamada a un modelo.**
+   - **Cómo nació y qué se aprendió.** La primera versión fue un ritual
+     completo —tesis propia obligatoria antes de ver nada, predicciones de
+     Claude, evaluación al cierre, clientes por alias, tasa de aciertos— y
+     **estaba mal**: Bauty quería mirar treinta segundos cómo viene el mundo,
+     no completar un formulario. Se tiró todo eso. La lección vale para lo que
+     venga: cuando el pedido es "ver rápido cómo andan las cosas", cualquier
+     cosa que haya que escribir antes de ver el dato es fricción, no rigor.
+   - **Radar se eliminó en el mismo movimiento.** Cumplía el mismo rol (el
+     pantallazo de la mañana) y no se usaban los dos. Se fue la página, la
+     tabla `radar_items`, el endpoint `/api/radar/ingest` y el Atajo de iOS.
+     Si alguna vez vuelve a hacer falta clasificar volcados de WhatsApp, el
+     código está en el historial de git, antes de sep-2026.
+   - **Seis bloques, en el orden de la rutina** (`morning-brief-config.ts`):
+     qué pasó mientras dormías (Asia cerrada, Europa abierta) → tasas y dólar
+     global → termómetro de riesgo → commodities → agenda → Argentina.
+     **El orden es el contenido**: Argentina va última porque es la traducción
+     de todo lo anterior, y leerla primero es leer el final de la película.
+   - **La mitad de los números ya estaban.** Para todo lo que `fuentes.ts` ya
+     baja y persiste en `market_series` (UST10Y, DXY, VIX, ORO, SOJA, MEP,
+     CCL, riesgo país, reservas, caución, TAMAR, GD30/AL30/GD35) se **lee la
+     columna**, no se vuelve a pegar a la fuente. Fetch nuevos: los índices de
+     Asia y Europa, los futuros, WTI, cobre, maíz y trigo (Yahoo, cacheados 10
+     min en memoria) y el Treasury 2 años (FRED `DGS2`, sin API key).
+   - **Los ADRs van por `quote()` y no por `chart()`**: los ocho entran en un
+     solo request y es la única llamada que trae `preMarketPrice`, que a las
+     nueve de la mañana de acá es lo que se quiere ver (Nueva York abre 10:30
+     hora local). Fuera de esa franja los campos vienen vacíos y queda el
+     cierre, que es lo honesto.
+   - **Compras del BCRA**: variable **78** de la API del BCRA ("Variación de
+     reservas internacionales por compra de divisas"), sumada a `BCRA_VARS` y
+     al seed como ticker `COMPRAS_BCRA`. Es el flujo que explica el stock:
+     un día de reservas planas puede ser el BCRA comprando y pagando deuda a
+     la vez. Va marcada `sinVariacion` en la config — **la variación
+     porcentual de un flujo no significa nada** (de 6 a 11 millones no es
+     "+83%", son dos días distintos).
+   - **La brecha se mide contra el mayorista (A3500), no contra el minorista.**
+     Estaba mal en `cinta.ts` y en `panel-datos.ts` (usaban `OFICIAL`, la
+     pizarra minorista, que lleva el spread del banco adentro y da ~1,5 puntos
+     menos). Se corrigieron los dos: el brief y la cinta se ven juntos en la
+     misma pantalla y dos números con el mismo nombre y distinto valor se leen
+     como un error.
+   - **Variación según el tipo de dato** (`TipoVariacion`): `pct` para precios
+     e índices, `bps` para tasas cotizadas en puntos porcentuales, `pb_absoluto`
+     para lo que ya viene en puntos básicos (riesgo país, pendiente 2s10s) y
+     `pp` para la brecha — pasar de 5% a 6% es +1 pp, no +20%.
+   - **"Inusual"**: desvío muestral (n−1, igual que `equity-riesgo.ts`) sobre
+     las últimas 60 variaciones, y se marca en ámbar si la última supera dos
+     desvíos. Con menos de 20 variaciones, `null` y no se marca nada. Es lo
+     que separa "se movió" de "se movió raro", que es lo único que justifica
+     frenar el barrido.
+   - **El termómetro risk-on / risk-off es una regla, no una opinión**: tres
+     votos (futuros del S&P, futuros del Nasdaq y el VIX dado vuelta), gana el
+     que saque dos, con umbral de 0,1% en los futuros y 1% en el VIX para que
+     un día plano no se lea como señal. Es auditable a ojo desde la misma
+     tabla, y por eso no necesita un modelo.
+   - **La agenda sale de lo que el dashboard ya sabe** (`morning-brief-agenda.ts`):
+     calendario del FOMC (`fed.ts`), el `proximoEarnings` que `getTablero()`
+     ya trae gratis, y los feriados calculados por regla. La hora del FOMC se
+     pasa a hora de Buenos Aires comparando las dos zonas para esa fecha, no
+     restando una constante: entre marzo y noviembre Nueva York está en
+     horario de verano y la diferencia cambia. **No hay calendario abierto de
+     CPI/empleo** (ver punto 5): no se promete lo que no se puede saber.
+   - **Layout**: los separadores de las grillas van como **borde de cada
+     celda**, no como `gap` pintado sobre el fondo. Con `gap-px bg-divisor`, un
+     grupo de tres tiles en una grilla de seis dejaba media fila de huecos
+     oscuros; con bordes, lo que no existe no se dibuja. Las columnas se
+     calculan según la cantidad de tiles (`columnasPara`) con clases literales,
+     porque Tailwind no genera una clase armada en runtime.
 
 ## Convenciones
 

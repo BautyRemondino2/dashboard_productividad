@@ -176,6 +176,37 @@ function addDaysStr(dateStr: string, days: number): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * Combina dos series por fecha, arrastrando el último valor conocido de `b`.
+ *
+ * Exigir que las dos tengan exactamente la misma fecha rompe los derivados: el
+ * Merval y el CCL no cotizan todos los mismos días, así que la intersección
+ * estricta dejaba huecos de semanas y el "contra el dato anterior" terminaba
+ * comparando contra hace veinte días. Con el arrastre, cada fecha de `a` usa el
+ * valor de `b` vigente ese día, que es como se calcula de verdad.
+ */
+export function combinarSeries(
+  a: MarketSeriesPoint[] | undefined,
+  b: MarketSeriesPoint[] | undefined,
+  fn: (a: number, b: number) => number
+): MarketSeriesPoint[] {
+  if (!a?.length || !b?.length) return [];
+
+  const out: MarketSeriesPoint[] = [];
+  let i = 0;
+  let vigente: number | null = null;
+
+  for (const p of a) {
+    // Avanza `b` hasta el último punto con fecha <= la de `a`
+    while (i < b.length && b[i].fecha <= p.fecha) {
+      vigente = b[i].valor;
+      i++;
+    }
+    if (vigente && vigente > 0) out.push({ fecha: p.fecha, valor: fn(p.valor, vigente) });
+  }
+  return out;
+}
+
 /** series debe venir ordenada ascendente por fecha, un punto por fecha. */
 export function computePanelIndicator(series: MarketSeriesPoint[]): PanelIndicator {
   if (series.length === 0) return { last: null, dPrev: null, d30: null, d90: null };

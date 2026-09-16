@@ -41,7 +41,7 @@ const NAV_COMMANDS: CommandPaletteItem[] = [
   { type: "nav", id: -3, label: "Ir a Equity",          subtitle: "Acciones, CEDEARs y fundamentals", href: "/equity" },
   { type: "nav", id: -4, label: "Ir a ETF",             subtitle: "Composición y sectores", href: "/etf" },
   { type: "nav", id: -5, label: "Ir a Estados Unidos",  subtitle: "Fed, tasa, curva del Tesoro, inflación USA", href: "/eeuu" },
-  { type: "nav", id: -6, label: "Ir a Radar",           subtitle: "Lo que llega por los canales, filtrado", href: "/radar" },
+  { type: "nav", id: -6, label: "Ir a Morning Brief",   subtitle: "El pantallazo de la mañana, en seis bloques", href: "/morning-brief" },
   { type: "nav", id: -7, label: "Ir a Glosario",        subtitle: "Términos financieros", href: "/glossary" },
   { type: "nav", id: -8, label: "Ir a Efemérides",      subtitle: "Feriados y fechas", href: "/efemerides" },
 ];

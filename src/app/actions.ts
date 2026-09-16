@@ -229,5 +229,8 @@ function persistFuentes(results: FuenteResult[]): RefreshSummary[] {
   }
 
   revalidatePath("/mercado");
+  // El brief lee las mismas series: sin esto, actualizar desde ahí no cambia
+  // nada en pantalla hasta la próxima navegación.
+  revalidatePath("/morning-brief");
   return summary;
 }

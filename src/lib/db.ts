@@ -91,30 +91,6 @@ function initSchema(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_market_cashflows_ticker ON market_cashflows(ticker);
 
-    -- ── Radar ────────────────────────────────────────────────────────────
-    -- Lo que llega por canales de WhatsApp, ya clasificado. Una fila por
-    -- noticia, no por mensaje: un volcado de treinta mensajes puede dar tres
-    -- items útiles y veintisiete de ruido que nunca se guardan.
-    CREATE TABLE IF NOT EXISTS radar_items (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      -- Hash del título normalizado: la misma noticia llega por tres canales
-      -- distintos y sin esto el feed se llena de duplicados.
-      hash        TEXT    NOT NULL UNIQUE,
-      fecha       TEXT    NOT NULL,
-      titulo      TEXT    NOT NULL,
-      resumen     TEXT    NOT NULL,
-      tema        TEXT    NOT NULL,
-      relevancia  INTEGER NOT NULL,
-      tickers     TEXT    NOT NULL DEFAULT '[]',
-      accionable  TEXT,
-      fuente      TEXT,
-      original    TEXT    NOT NULL,
-      leido       INTEGER NOT NULL DEFAULT 0,
-      origen      TEXT    NOT NULL DEFAULT 'pegado',
-      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE INDEX IF NOT EXISTS idx_radar_fecha ON radar_items(fecha DESC, relevancia DESC);
-
     -- ── Equity ───────────────────────────────────────────────────────────
     -- La ficha de análisis de una empresa: el trabajo propio del analista,
     -- lo único del dashboard que no se puede volver a bajar de una fuente.
@@ -140,54 +116,6 @@ function initSchema(db: Database.Database) {
       created_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- ── Morning Brief ────────────────────────────────────────────────────
-    -- Agenda cargada a mano: eventos económicos con su consenso, para que
-    -- Claude interprete qué implicaría una sorpresa sin adivinar el dato.
-    CREATE TABLE IF NOT EXISTS morning_brief_agenda (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      fecha      TEXT NOT NULL,
-      hora_art   TEXT NOT NULL,
-      evento     TEXT NOT NULL,
-      consenso   TEXT,
-      anterior   TEXT,
-      dato       TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE INDEX IF NOT EXISTS idx_morning_brief_agenda_fecha ON morning_brief_agenda(fecha);
-
-    -- Clientes por alias (nunca nombre real). Documento JSON para tenencias y
-    -- eventos próximos: es criterio propio del asesor, no un dataset de
-    -- columnas fijas (misma razón que equity_fichas).
-    CREATE TABLE IF NOT EXISTS morning_brief_clientes (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      alias         TEXT NOT NULL UNIQUE,
-      perfil        TEXT NOT NULL DEFAULT '',
-      tenencias_json TEXT NOT NULL DEFAULT '[]',
-      eventos_json  TEXT NOT NULL DEFAULT '[]',
-      activo        INTEGER NOT NULL DEFAULT 1,
-      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    -- Una fila por fecha: la tesis propia, el snapshot que se le mandó a
-    -- Claude, lo que devolvió, las advertencias de validación y, más tarde,
-    -- la evaluación al cierre.
-    CREATE TABLE IF NOT EXISTS morning_briefs (
-      fecha              TEXT PRIMARY KEY,
-      tesis_propia       TEXT,
-      snapshot_json      TEXT,
-      brief_json         TEXT,
-      advertencias_json  TEXT,
-      cierre_json        TEXT,
-      evaluacion_json    TEXT,
-      aciertos           INTEGER,
-      total_predicciones INTEGER,
-      -- Autoevaluación del asesor sobre su propia tesis del día (no la de
-      -- Claude): es prosa libre, así que no hay forma de calificarla en
-      -- código. Se carga a mano al evaluar el cierre.
-      tesis_acierto      TEXT CHECK(tesis_acierto IN ('si','parcial','no')),
-      aprendizaje        TEXT,
-      created_at         TEXT NOT NULL DEFAULT (datetime('now'))
-    );
   `);
 
   // Migración jul-2026: el dashboard dejó de ser de facultad (pivot a asesor
@@ -203,6 +131,14 @@ function initSchema(db: Database.Database) {
     DROP TABLE IF EXISTS subjects;
     DROP TABLE IF EXISTS semesters;
     DROP TABLE IF EXISTS transactions;
+
+    -- Migración sep-2026: Radar se eliminó (su rol lo cubre Morning Brief,
+    -- que es sólo datos) y el Morning Brief dejó de guardar tesis propia,
+    -- clientes y predicciones: la pantalla no persiste nada.
+    DROP TABLE IF EXISTS radar_items;
+    DROP TABLE IF EXISTS morning_brief_agenda;
+    DROP TABLE IF EXISTS morning_brief_clientes;
+    DROP TABLE IF EXISTS morning_briefs;
   `);
 
   // Glossary migrations (instalaciones previas)
@@ -634,6 +570,10 @@ function seedMercado(db: Database.Database) {
     // ── Riesgo & reservas ──────────────────────────────────────────────────
     ["RIESGO_PAIS", "Riesgo país (EMBI)", "macro", "USD", null, "pb",   "riesgo"],
     ["RESERVAS",    "Reservas BCRA",      "macro", "USD", null, "musd", "riesgo"],
+    // Compras netas de divisas del BCRA: el flujo que explica el stock de
+    // reservas. Un día de reservas planas puede ser el BCRA comprando y pagando
+    // deuda a la vez, y eso no se ve mirando sólo el stock.
+    ["COMPRAS_BCRA", "Compras de divisas BCRA", "macro", "USD", null, "musd", "riesgo"],
     ["BASE_MON",    "Base monetaria",     "macro", "ARS", null, "mars", "riesgo"],
 
     // ── Global (todo en USD) ───────────────────────────────────────────────
