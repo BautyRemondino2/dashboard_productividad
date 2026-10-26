@@ -812,6 +812,17 @@ el mercado usa hoy; se cae a la del último balance si no hay EV.
   cambiar el código y recargar sigue devolviendo lo viejo: para probar un cambio
   en `fred.ts`, `fed.ts`, `byma.ts` o `equity.ts` hay que **reiniciar el dev
   server** (o usar el botón de refresco, que llama a `invalidarFred()`).
+- **Un ranking por momentum no puede mostrar un derrumbe.** `getRanking`
+  preselecciona candidatos de las 2.128 del universo con
+  `max(vsMedia50, año/4)`, porque los retornos exactos cuestan un request por
+  ticker. El problema: caer fuerte te saca del ranking. El 26-oct-2026, con el
+  mercado brasileño desplomado tras las elecciones (XP -48%, INTR -38%, BBD
+  -30%), 13 de las 15 peores del día no figuraban en la tabla; sobrevivían UGP
+  y PBR solo por su retorno del año. Ordenar por "Hoy" reordena lo que ya
+  entró, no trae nada nuevo. Por eso el pool suma los 30 extremos del día en
+  cada dirección además del momentum (~195 tickers), y hay un preset
+  "Se derrumbaron hoy".
+
 - **`.claude/` está gitignoreado**: por eso este archivo vive en la raíz, para
   que se commitee y viaje con el repo. `AGENTS.md` lo referencia para que se
   cargue en cada sesión.

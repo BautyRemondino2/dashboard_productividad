@@ -335,19 +335,38 @@ export async function getRetornosDe(ticker: string): Promise<{ retornos: Retorno
  * El ranking de la mañana.
  *
  * Los retornos exactos cuestan un request por ticker, así que no se pueden
- * pedir para los 503. Se preselecciona con las métricas baratas — distancia a
- * la media de 50 ruedas, que es el filtro de momentum estándar, más el retorno
- * de 12 meses que sí viene en el lote — y sobre ese grupo se calcula fino.
+ * pedir para las 2.128 del universo. Se preselecciona con las métricas baratas
+ * —distancia a la media de 50 ruedas, que es el filtro de momentum estándar,
+ * más el retorno de 12 meses que sí viene en el lote— y sobre ese grupo se
+ * calcula fino.
  *
- * El sesgo que esto introduce: una acción que subió fuerte en el último mes
- * pero sigue por debajo de sus medias podría no entrar. En la práctica es raro;
- * si sube fuerte, cruza la media de 50.
+ * El momentum solo dejaba un agujero grave: lo que se desploma desaparece de
+ * la pantalla justo el día que importa. Una acción que cae 40% queda muy por
+ * debajo de su media de 50 y no entra nunca, así que el panel no podía mostrar
+ * un derrumbe sectorial —el 26-oct-2026, con XP a -48% tras las elecciones de
+ * Brasil, la tabla solo mostraba las brasileñas que venían de un año fuerte—.
+ * Por eso los extremos del día entran aparte del momentum.
+ *
+ * El sesgo que queda: una acción que subió fuerte en el último mes pero sigue
+ * por debajo de sus medias podría no entrar. En la práctica es raro; si sube
+ * fuerte, cruza la media de 50.
  */
-export async function getRanking(candidatos = 150): Promise<FilaConRetornos[]> {
+export async function getRanking(candidatos = 150, extremos = 30): Promise<FilaConRetornos[]> {
   const tablero = await getTablero();
 
   const puntaje = (f: FilaTablero) => Math.max(f.vsMedia50 ?? -999, (f.año ?? -999) / 4);
-  const pool = [...tablero].sort((a, b) => puntaje(b) - puntaje(a)).slice(0, candidatos);
+  const porMomentum = [...tablero].sort((a, b) => puntaje(b) - puntaje(a)).slice(0, candidatos);
+
+  // Con la rueda cerrada lo que se mueve es la sesión extendida: es la misma
+  // variación que ordena la tabla por defecto en ese horario.
+  const movimiento = (f: FilaTablero) => f.premercado ?? f.dia;
+  const delDia = tablero
+    .filter((f) => movimiento(f) != null)
+    .sort((a, b) => movimiento(a)! - movimiento(b)!);
+  const extremosDelDia = [...delDia.slice(0, extremos), ...delDia.slice(-extremos)];
+
+  // Dedup por ticker: una acción puede entrar por momentum y por extremo
+  const pool = [...new Map([...porMomentum, ...extremosDelDia].map((f) => [f.ticker, f])).values()];
 
   return conRetornos(pool);
 }

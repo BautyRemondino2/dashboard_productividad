@@ -56,7 +56,14 @@ const PRESETS: Preset[] = [
   {
     id: "todos",
     label: "Todo el ranking",
-    ayuda: "Las de más momentum de NYSE y Nasdaq, sin filtrar",
+    ayuda: "Las de más momentum de NYSE y Nasdaq, más los extremos del día",
+  },
+  {
+    id: "derrumbes",
+    label: "Se derrumbaron hoy",
+    ayuda: "Caídas de más de 5% en la rueda: shocks, resultados malos, política",
+    periodo: "dia",
+    filtro: (f) => (f.premercado ?? f.dia ?? 0) < -5,
   },
   {
     id: "maximos",
@@ -172,7 +179,7 @@ export default function EquityClient({
   }, [agrupar, visibles, periodo, valor, subiendo]);
 
   /**
-   * Lo que se busca puede no estar en el ranking: son 150 papeles de 2.126.
+   * Lo que se busca puede no estar en el ranking: entran unos 200 de 2.128.
    * Se consulta el universo completo por API —no viaja al cliente, pesa 44 KB—
    * y se ofrecen los que quedaron afuera como enlace directo a su ficha.
    */
@@ -532,7 +539,7 @@ export default function EquityClient({
             ))}
           </div>
           <p className="text-[10px] text-meta-suave mt-2">
-            Estos no entraron entre las {filas.length} con más momentum, pero tienen su
+            Estos no entraron entre las {filas.length} del ranking, pero tienen su
             ficha completa.
           </p>
         </div>
